@@ -44,260 +44,113 @@
     </div>
   </header>
 
-  <!-- --- Hero Section --- -->
-  <section class="hero-section" id="hero">
-    <div class="container">
-      <div class="hero-grid">
-        <div class="hero-content">
-          <span class="badge badge-primary">INDIA'S LARGEST SCHOOL NETWORK</span>
-          <h1>Connecting Schools <span>Across India</span></h1>
-          <p>
-            Welcome to the digital hub for academic and extracurricular collaboration. CampusLink empowers schools to showcase their achievements, broadcast workshops, coordinate cultural fests, and manage admission cycles—all in one unified network.
-          </p>
-          <div class="btn-group">
-            <button class="btn btn-primary btn-modal-trigger" id="hero-btn-start">Get Started</button>
-            <a href="#showcase" class="btn btn-secondary" id="hero-btn-browse">Browse Events</a>
-          </div>
-        </div>
-        
-        <div class="hero-mockup">
-          <div class="mockup-bg-shape"></div>
-          
-          <!-- Floating Mock Card 1 -->
-          <div class="floating-card floating-card-1">
-            <div class="floating-icon blue">🎓</div>
-            <div class="floating-text">
-              <h4>Admissions Open</h4>
-              <p>12 Schools Active Now</p>
-            </div>
-          </div>
-
-          <!-- Central Dashboard Mockup -->
-          <div class="mockup-container">
-            <div class="mockup-header">
-              <div class="mockup-profile">
-                <div class="mockup-avatar"></div>
-                <div>
-                  <div class="mockup-name-school">St. Joseph's Academy</div>
-                  <div class="mockup-location">Dehradun, Uttarakhand</div>
-                </div>
-              </div>
-              <span class="mockup-badge">Verified Partner</span>
-            </div>
-            
-            <!-- Dashboard Mock Search -->
-            <div style="background-color: var(--light-bg); border-radius: var(--radius-sm); padding: 6px 12px; display: flex; align-items: center; border: 1px solid var(--border-color);">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="#94A3B8" style="margin-right: 6px;">
-                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-              </svg>
-              <input type="text" id="mockup-search-input" placeholder="Search school opportunities..." style="border: none; background: transparent; font-size: 0.75rem; width: 100%; outline: none; color: var(--text-main);">
-            </div>
-            
-            <div class="mockup-body">
-              <!-- Mock Item 1 -->
-              <div class="mockup-feed-item">
-                <div class="mockup-feed-img">🎭</div>
-                <div class="mockup-feed-details">
-                  <div class="mockup-feed-title">Inter-School Drama Festival</div>
-                  <div class="mockup-feed-meta">Cultural • 14 Schools Participating</div>
-                  <div class="mockup-feed-footer">
-                    <div class="mockup-tags">
-                      <span class="mockup-tag">Drama</span>
-                      <span class="mockup-tag">Art</span>
-                    </div>
-                    <span class="mockup-action-btn">Register</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Mock Item 2 -->
-              <div class="mockup-feed-item">
-                <div class="mockup-feed-img">🔬</div>
-                <div class="mockup-feed-details">
-                  <div class="mockup-feed-title">Annual Robotics Championship</div>
-                  <div class="mockup-feed-meta">Competition • Registration open</div>
-                  <div class="mockup-feed-footer">
-                    <div class="mockup-tags">
-                      <span class="mockup-tag">STEM</span>
-                      <span class="mockup-tag">Coding</span>
-                    </div>
-                    <span class="mockup-action-btn">Register</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Floating Mock Card 2 -->
-          <div class="floating-card floating-card-2">
-            <div class="floating-icon teal">🏆</div>
-            <div class="floating-text">
-              <h4>1.5k+ Registrations</h4>
-              <p>For Science Olympiad 2026</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- --- Statistics Section --- -->
-  <section class="section section-bg-dark" id="stats">
-    <div class="container">
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-number" data-target="1500" data-suffix="+">0</div>
-          <span class="stat-label">Verified Schools</span>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number" data-target="8000" data-suffix="+">0</div>
-          <span class="stat-label">Opportunities Listed</span>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number" data-target="250000" data-suffix="K+">0</div>
-          <span class="stat-label">Student Enrollments</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- --- Features Section --- -->
-  <section class="section" id="features">
-    <div class="container">
-      <div class="section-header">
-        <span class="badge badge-primary">Core Modules</span>
-        <h2>Designed to Drive Collaborative Excellence</h2>
-        <p>CampusLink offers robust tooling customized for modern educational institutes to enhance reach, branding, and engagement.</p>
-      </div>
+  <!-- --- Main Feed Layout --- -->
+  <main class="feed-container">
+    <div class="container feed-layout-grid">
       
-      <div class="features-grid">
-        <!-- Feature 1 -->
-        <div class="feature-card" id="feat-profiles">
-          <div class="feature-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-            </svg>
-          </div>
-          <h3>School Profiles</h3>
-          <p>Create verified school portfolios to highlight academic awards, sports infrastructure, lab facilities, and core values directly to parents and peers.</p>
+      <!-- --- Left Column: User Profile Sidebar --- -->
+      <aside class="feed-sidebar-left" id="user-sidebar-card">
+        <!-- Rendered dynamically by app.js based on auth state -->
+        <div class="feed-card-skeleton animate-pulse">
+          <div class="skeleton-banner"></div>
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line"></div>
         </div>
-        
-        <!-- Feature 2 -->
-        <div class="feature-card" id="feat-discovery">
-          <div class="feature-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-            </svg>
-          </div>
-          <h3>Event Discovery</h3>
-          <p>A central feed to easily search, filter, and discover fests, sports meets, coding bootcamps, and debate tournaments across multiple categories.</p>
+      </aside>
+
+      <!-- --- Middle Column: Feed Content --- -->
+      <section class="feed-main-content">
+        <!-- Share Post Box: Rendered dynamically by app.js -->
+        <div id="share-box-container">
+          <!-- Rendered dynamically -->
         </div>
-        
-        <!-- Feature 3 -->
-        <div class="feature-card" id="feat-admissions">
-          <div class="feature-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-              <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1 9h-5v5h-2v-5H5v-2h5V6h2v5h5v2z"/>
-            </svg>
-          </div>
-          <h3>Admission Updates</h3>
-          <p>Publish guidelines, seat availability, entry deadlines, and scholarship details. Enable direct inquiries and structured application processes.</p>
+
+        <!-- Social Feed Section -->
+        <div class="feed-heading-row">
+          <h2 class="feed-title">Campus Feed</h2>
+          <span class="feed-sort-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
+            Latest First
+          </span>
         </div>
-        
-        <!-- Feature 4 -->
-        <div class="feature-card" id="feat-networking">
-          <div class="feature-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-            </svg>
+
+        <div id="social-feed" class="social-feed-list">
+          <div class="feed-loading-state">
+            <div class="spinner"></div>
+            <p>Loading your campus feed...</p>
           </div>
-          <h3>School Networking</h3>
-          <p>Bridge communication between administrators. Host collaborative panels, invite specific schools for leagues, and share best practices.</p>
         </div>
-      </div>
+      </section>
+
+      <!-- --- Right Column: Trending / Suggestions Sidebar --- -->
+      <aside class="feed-sidebar-right">
+        <!-- Trending Events Widget -->
+        <div class="feed-widget-card" id="trending-events-widget">
+          <div class="widget-header">
+            <h3>Trending Events</h3>
+            <span class="widget-icon">⚡</span>
+          </div>
+          <div class="widget-list" id="trending-events-list">
+            <!-- Rendered dynamically -->
+            <div class="widget-list-empty">Loading trending events...</div>
+          </div>
+          <a href="events.html" class="widget-view-all">View all events &rarr;</a>
+        </div>
+
+        <!-- Suggested Schools Widget -->
+        <div class="feed-widget-card" id="suggested-schools-widget">
+          <div class="widget-header">
+            <h3>Featured Schools</h3>
+            <span class="widget-icon">🏫</span>
+          </div>
+          <div class="widget-list" id="suggested-schools-list">
+            <!-- Rendered dynamically -->
+            <div class="widget-list-empty">Loading featured schools...</div>
+          </div>
+          <a href="schools.html" class="widget-view-all">Discover schools &rarr;</a>
+        </div>
+      </aside>
+
     </div>
-  </section>
+  </main>
 
-  <!-- --- Interactive Opportunity Showcase (Unstop Vibe) --- -->
-  <section class="section section-bg-light" id="showcase">
-    <div class="container">
-      <div class="section-header">
-        <span class="badge badge-accent">Live Dashboard</span>
-        <h2>Explore Live Events & Announcements</h2>
-        <p>Browse through ongoing competitions, open admissions, and cultural meets listed by top-rated institutes across India.</p>
-      </div>
-
-      <!-- Search Filters -->
-      <div class="showcase-search-bar">
-        <input type="text" id="showcase-search" placeholder="Search by title, school, or topic (e.g. Science)...">
-        <button id="search-btn">Search</button>
-      </div>
-
-      <!-- Filter Tabs -->
-      <div class="showcase-tabs">
-        <button class="tab-btn active" data-filter="all">All Events</button>
-        <button class="tab-btn" data-filter="fests">Fests & Cultural</button>
-        <button class="tab-btn" data-filter="workshops">Workshops & Seminars</button>
-        <button class="tab-btn" data-filter="competitions">Competitions & Sports</button>
-        <button class="tab-btn" data-filter="admissions">Admission Updates</button>
-      </div>
-
-      <!-- Opportunities Grid -->
-      <div class="showcase-grid" id="showcase-grid">
-        <!-- Rendered dynamically by app.js -->
-      </div>
-    </div>
-  </section>
-
-  <!-- --- How It Works Section --- -->
-  <section class="section" id="how-it-works">
-    <div class="container">
-      <div class="section-header">
-        <span class="badge badge-primary">Quick Setup</span>
-        <h2>How It Works</h2>
-        <p>Connecting and hosting opportunities on CampusLink is simple, transparent, and built to scale.</p>
-      </div>
+  <!-- --- Create Post Modal --- -->
+  <div class="modal-overlay" id="create-post-modal">
+    <div class="modal-content post-modal-content">
+      <button class="modal-close-btn" id="post-modal-close" aria-label="Close modal">&times;</button>
       
-      <div class="steps-container">
-        <!-- Step 1 -->
-        <div class="step-card" id="step-register">
-          <div class="step-number-box">1</div>
-          <h3>Register School</h3>
-          <p>Submit basic registration details to verify your institutional profile and claim your dashboard.</p>
-        </div>
-        
-        <!-- Step 2 -->
-        <div class="step-card" id="step-publish">
-          <div class="step-number-box">2</div>
-          <h3>Publish Events</h3>
-          <p>Draft events, admissions, fests, or seminars with specific dates, registration links, and eligibility criteria.</p>
-        </div>
-        
-        <!-- Step 3 -->
-        <div class="step-card" id="step-discover">
-          <div class="step-number-box">3</div>
-          <h3>Discover Opportunities</h3>
-          <p>Receive registrations from students, communicate updates, and collaborate directly with other schools.</p>
-        </div>
+      <div class="modal-title">
+        <h3>Create a Post</h3>
+        <p>Share achievements, competition wins, projects, or school events with the network.</p>
       </div>
-    </div>
-  </section>
 
-  <!-- --- Call To Action (CTA) Section --- -->
-  <section class="section" style="padding-top: 0;">
-    <div class="container">
-      <div class="cta-wrapper">
-        <div class="cta-content">
-          <h2>Ready to Expand Your School's Reach?</h2>
-          <p>Join thousands of school administrators, sports coordinators, and cultural fests directors listing on India's premier academic network.</p>
-          <div class="btn-group">
-            <button class="btn btn-accent btn-modal-trigger" id="cta-btn-join">Register School Now</button>
-            <a href="#showcase" class="btn btn-secondary" style="background: transparent; color: var(--white); border-color: rgba(255,255,255,0.25);" id="cta-btn-browse">Explore Live Board</a>
+      <form id="create-post-form">
+        <div class="form-group">
+          <label for="post-type-select">Post Type</label>
+          <div class="select-wrapper">
+            <select id="post-type-select" required>
+              <option value="achievement">🏆 Achievement</option>
+              <option value="competition_win">🥇 Competition Win</option>
+              <option value="project">💻 Project</option>
+              <option value="event">📅 Event</option>
+            </select>
           </div>
         </div>
-      </div>
+        
+        <div class="form-group">
+          <label for="post-content-textarea">What's on your mind?</label>
+          <textarea id="post-content-textarea" placeholder="Share details about this accomplishment, win, project, or event..." rows="5" required></textarea>
+        </div>
+        
+        <div class="form-navigation" style="margin-top: 24px; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary" id="post-modal-cancel" style="padding: 10px 20px;">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="post-submit-btn" style="padding: 10px 24px;">Post</button>
+        </div>
+      </form>
     </div>
-  </section>
+  </div>
+
 
   <!-- --- Footer --- -->
   <footer id="about">

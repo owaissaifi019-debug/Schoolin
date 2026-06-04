@@ -215,6 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (supabase) {
       try {
         let dbSchool = null;
+
+        // Fetch school record — by UUID or by index
         if (schoolId.length > 8) { // UUID
           const { data } = await supabase.from('schools').select('*').eq('id', schoolId).maybeSingle();
           dbSchool = data;
@@ -225,30 +227,77 @@ document.addEventListener('DOMContentLoaded', () => {
             dbSchool = data[idx] || data[0];
           }
         }
-        
+
+        // Build currentProfile from the fetched school record
         if (dbSchool) {
+          let description = dbSchool.about || 'Verified academic partner school.';
+          let schoolAchievements = [
+            { year: "2025", title: "Academic Excellence Award", desc: "Awarded for exceptional board results." },
+            { year: "2024", title: "Best Sports Infrastructure", desc: "For state-of-the-art sporting facilities." }
+          ];
+          let schoolHighlights = [
+            "Science & Robotics Core Laboratories",
+            "Olympic-sized Swimming Pool & Tennis Courts",
+            "Fully air-conditioned boarding fests for Boys & Girls",
+            "Digital Library & Smart Classroom infrastructure"
+          ];
+
+          if (dbSchool.about && dbSchool.about.trim().startsWith('{')) {
+            try {
+              const parsedAbout = JSON.parse(dbSchool.about);
+              description = parsedAbout.description || '';
+              schoolAchievements = parsedAbout.achievements || [];
+              schoolHighlights = parsedAbout.highlights || [];
+            } catch (jsonErr) {
+              console.warn('Failed to parse school about JSON:', jsonErr);
+            }
+          }
+
           currentProfile = {
             id: dbSchool.id,
             name: dbSchool.name,
             city: dbSchool.city || 'India',
             board: dbSchool.board || 'CBSE',
-            est: '1995',
-            size: '10 Acres',
+            est: dbSchool.est_year || '1995',
+            size: dbSchool.campus_size || '10 Acres',
             logoLetter: dbSchool.logo_letter || dbSchool.name.charAt(0).toUpperCase(),
             colorClass: dbSchool.color_class || 'color-1',
-            about: dbSchool.about || 'Verified academic partner school.',
-            achievements: [
-              { year: "2025", title: "Academic Excellence Award", desc: "Awarded for exceptional board results." },
-              { year: "2024", title: "Best Sports Infrastructure", desc: "For state-of-the-art sporting facilities." }
-            ],
+            about: description,
+            achievements: schoolAchievements,
+            highlights: schoolHighlights,
             admissionText: "No active admissions at the moment."
           };
           
+          // Check if current user is authorized to edit
+          const auth = window.CampusLink && window.CampusLink.auth;
+          if (auth) {
+            try {
+              const session = await auth.getSession();
+              const currentUser = session?.user;
+              if (currentUser) {
+                const isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
+                const isSuperAdmin = currentUser.email === 'owaissaifi019@gmail.com';
+                
+                if (isSchoolAdmin || isSuperAdmin) {
+                  const editBtn = document.getElementById('btn-edit-school');
+                  if (editBtn) {
+                    editBtn.style.display = 'inline-flex';
+                    setupSchoolEditFeatures(dbSchool);
+                  }
+                }
+              }
+            } catch (authErr) {
+              console.warn('Error loading auth states for school editor:', authErr);
+            }
+          }
+          
+          // Load admissions data
           const { data: dbAdmissions } = await supabase.from('admissions').select('*').eq('school_id', dbSchool.id).eq('status', 'open').maybeSingle();
           if (dbAdmissions) {
             currentProfile.admissionText = `Admissions Open: Registration for ${dbAdmissions.classes_open} is open until ${dbAdmissions.last_date}.`;
           }
           
+          // Load events data
           const { data: dbEvents } = await supabase.from('events').select('*').eq('school_id', dbSchool.id);
           if (dbEvents && dbEvents.length > 0) {
             opportunities.length = 0;
@@ -276,6 +325,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!loadedFromDB) {
       const idx = parseInt(schoolId, 10) || 1;
       currentProfile = schoolProfiles[idx] || schoolProfiles[1];
+      if (currentProfile) {
+        currentProfile.id = String(idx);
+      }
     }
     
     populateProfilePage();
@@ -354,6 +406,22 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Highlights list loading
+    const highlightsList = document.getElementById('profile-highlights-list');
+    if (highlightsList) {
+      highlightsList.innerHTML = '';
+      const hls = currentProfile.highlights || [];
+      if (hls.length === 0) {
+        highlightsList.innerHTML = '<li style="list-style:none; color:var(--text-muted);">No infrastructure highlights specified yet.</li>';
+      } else {
+        hls.forEach(hl => {
+          const li = document.createElement('li');
+          li.textContent = hl;
+          highlightsList.appendChild(li);
+        });
+      }
+    }
+
     // School Events tab loading
     const eventsGrid = document.getElementById('profile-events-grid');
     if (eventsGrid) {
@@ -414,7 +482,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Populate dynamic elements
-  loadSchoolProfile();
+  loadSchoolProfile().then(() => {
+    checkJoinState();
+  });
 
   /* --- Tab Navigation Logic --- */
   const tabButtons = document.querySelectorAll('.profile-tab-btn');
@@ -518,22 +588,94 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Follow button click feedback
-  const followBtn = document.getElementById('btn-follow-school');
-  if (followBtn) {
-    let isFollowing = false;
-    followBtn.addEventListener('click', () => {
-      isFollowing = !isFollowing;
-      if (isFollowing) {
-        followBtn.textContent = 'Following ✓';
-        followBtn.style.color = 'var(--white)';
-        followBtn.style.backgroundColor = 'var(--primary)';
-        followBtn.style.borderColor = 'var(--primary)';
+  // Join button logic
+  const joinBtn = document.getElementById('btn-join-school');
+  const auth = window.CampusLink && window.CampusLink.auth;
+  const supabase = window.CampusLink && window.CampusLink.supabase;
+
+  async function checkJoinState() {
+    if (!joinBtn || !auth || !supabase || !currentProfile) return;
+
+    const session = await auth.getSession();
+    if (!session || !session.user) {
+      // Not logged in — show default "Join School" state
+      styleNotJoinedState();
+      return;
+    }
+
+    try {
+      const profile = await auth.getProfile(session.user.id);
+      if (profile && profile.school_id === currentProfile.id) {
+        styleJoinedState();
       } else {
-        followBtn.textContent = 'Follow School';
-        followBtn.style.color = 'var(--primary)';
-        followBtn.style.backgroundColor = 'transparent';
-        followBtn.style.borderColor = 'rgba(0, 102, 200, 0.3)';
+        styleNotJoinedState();
+      }
+    } catch (err) {
+      console.warn('Error checking joined state:', err);
+    }
+  }
+
+  function styleJoinedState() {
+    if (!joinBtn) return;
+    joinBtn.textContent = 'Joined ✓';
+    joinBtn.style.color = 'var(--white)';
+    joinBtn.style.backgroundColor = 'var(--primary)';
+    joinBtn.style.borderColor = 'var(--primary)';
+    joinBtn.classList.remove('btn-secondary');
+    joinBtn.classList.add('btn-primary');
+  }
+
+  function styleNotJoinedState() {
+    if (!joinBtn) return;
+    joinBtn.textContent = 'Join School';
+    joinBtn.style.color = 'var(--primary)';
+    joinBtn.style.backgroundColor = 'transparent';
+    joinBtn.style.borderColor = 'rgba(0, 102, 200, 0.3)';
+    joinBtn.classList.remove('btn-primary');
+    joinBtn.classList.add('btn-secondary');
+  }
+
+  if (joinBtn) {
+    joinBtn.addEventListener('click', async () => {
+      if (!auth || !supabase) return;
+
+      const session = await auth.getSession();
+      if (!session || !session.user) {
+        // Not logged in — redirect to login page
+        window.location.href = 'login.html';
+        return;
+      }
+
+      try {
+        const profile = await auth.getProfile(session.user.id);
+        const isJoined = profile && profile.school_id === currentProfile.id;
+
+        if (isJoined) {
+          if (confirm(`Are you sure you want to leave ${currentProfile.name}?`)) {
+            const { error } = await supabase
+              .from('profiles')
+              .update({ school_id: null })
+              .eq('id', session.user.id);
+
+            if (error) throw error;
+            
+            styleNotJoinedState();
+            alert(`You have left ${currentProfile.name}.`);
+          }
+        } else {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ school_id: currentProfile.id })
+            .eq('id', session.user.id);
+
+          if (error) throw error;
+
+          styleJoinedState();
+          alert(`You have successfully joined ${currentProfile.name}!`);
+        }
+      } catch (err) {
+        console.error('Failed to update school join state:', err);
+        alert('Failed to update join state: ' + err.message);
       }
     });
   }
@@ -618,5 +760,252 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
       }
     });
+  }
+
+  // --- School Profile Edit Features ---
+  const toastContainer = document.getElementById('toast-container');
+  function showToast(message, type = 'success') {
+    if (!toastContainer) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-alert toast-alert-${type}`;
+    
+    let icon = '✓';
+    if (type === 'info') icon = 'ℹ';
+    if (type === 'error') icon = '⚠';
+
+    toast.innerHTML = `
+      <span style="font-weight:700; font-size:1.1rem; margin-right:8px;">${icon}</span>
+      <div>${message}</div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 50);
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        toast.remove();
+      }, 400);
+    }, 3500);
+  }
+
+  function setupSchoolEditFeatures(dbSchool) {
+    const editBtn = document.getElementById('btn-edit-school');
+    const modal = document.getElementById('edit-school-modal');
+    const closeBtn = document.getElementById('edit-school-close');
+    const cancelBtn = document.getElementById('edit-school-cancel');
+    const form = document.getElementById('edit-school-form');
+
+    if (!editBtn || !modal) return;
+
+    let tempAchievements = [];
+    let tempHighlights = [];
+
+    function renderEditAchievements() {
+      const listEl = document.getElementById('sch-achievements-editable-list');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+      tempAchievements.forEach((ach, index) => {
+        const li = document.createElement('li');
+        li.className = 'editable-list-item';
+        li.innerHTML = `
+          <div style="flex-grow: 1;">
+            <strong>${ach.year}</strong> - ${ach.title}
+            <p style="font-size:0.75rem; color:var(--text-muted); margin:0; font-weight:400;">${ach.desc}</p>
+          </div>
+          <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
+        `;
+        listEl.appendChild(li);
+      });
+
+      // Bind delete buttons
+      listEl.querySelectorAll('.btn-remove-list-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.currentTarget.getAttribute('data-index'), 10);
+          tempAchievements.splice(idx, 1);
+          renderEditAchievements();
+        });
+      });
+    }
+
+    function renderEditHighlights() {
+      const listEl = document.getElementById('sch-highlights-editable-list');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+      tempHighlights.forEach((hl, index) => {
+        const li = document.createElement('li');
+        li.className = 'editable-list-item';
+        li.innerHTML = `
+          <div style="flex-grow: 1; font-weight:600;">${hl}</div>
+          <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
+        `;
+        listEl.appendChild(li);
+      });
+
+      // Bind delete buttons
+      listEl.querySelectorAll('.btn-remove-list-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.currentTarget.getAttribute('data-index'), 10);
+          tempHighlights.splice(idx, 1);
+          renderEditHighlights();
+        });
+      });
+    }
+
+    // Setup tab switching inside modal
+    const modalTabButtons = modal.querySelectorAll('.modal-tabs .tab-btn');
+    const modalTabPanes = modal.querySelectorAll('.tab-pane');
+
+    modalTabButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        modalTabButtons.forEach(b => b.classList.remove('active'));
+        modalTabPanes.forEach(p => p.classList.remove('active'));
+
+        btn.classList.add('active');
+        const tabTarget = btn.getAttribute('data-tab');
+        const activePane = document.getElementById(tabTarget);
+        if (activePane) {
+          activePane.classList.add('active');
+        }
+      });
+    });
+
+    // Add achievement
+    const addAchBtn = document.getElementById('btn-add-sch-ach');
+    if (addAchBtn) {
+      addAchBtn.addEventListener('click', () => {
+        const yearInput = document.getElementById('edit-sch-ach-year');
+        const titleInput = document.getElementById('edit-sch-ach-title');
+        const descInput = document.getElementById('edit-sch-ach-desc');
+
+        const year = yearInput.value.trim();
+        const title = titleInput.value.trim();
+        const desc = descInput.value.trim();
+
+        if (!year || !title) {
+          alert('Please enter at least Year and Title for the achievement.');
+          return;
+        }
+
+        tempAchievements.push({ year, title, desc });
+        renderEditAchievements();
+
+        // Clear inputs
+        yearInput.value = '';
+        titleInput.value = '';
+        descInput.value = '';
+      });
+    }
+
+    // Add highlight
+    const addHlBtn = document.getElementById('btn-add-sch-hl');
+    if (addHlBtn) {
+      addHlBtn.addEventListener('click', () => {
+        const hlInput = document.getElementById('edit-sch-hl-input');
+        const val = hlInput.value.trim();
+        if (!val) return;
+
+        tempHighlights.push(val);
+        renderEditHighlights();
+
+        hlInput.value = '';
+      });
+    }
+
+    // Open modal
+    editBtn.addEventListener('click', () => {
+      document.getElementById('edit-sch-name').value = dbSchool.name || '';
+      document.getElementById('edit-sch-board').value = dbSchool.board || '';
+      document.getElementById('edit-sch-city').value = dbSchool.city || '';
+      document.getElementById('edit-sch-address').value = dbSchool.address || '';
+      document.getElementById('edit-sch-email').value = dbSchool.contact_email || '';
+      document.getElementById('edit-sch-website').value = dbSchool.website || '';
+      document.getElementById('edit-sch-est').value = dbSchool.est_year || '';
+      document.getElementById('edit-sch-size').value = dbSchool.campus_size || '';
+      document.getElementById('edit-sch-logo-letter').value = dbSchool.logo_letter || '';
+      document.getElementById('edit-sch-color-class').value = dbSchool.color_class || 'color-1';
+      document.getElementById('edit-sch-about').value = currentProfile.about || '';
+
+      // Initialize lists
+      tempAchievements = [...(currentProfile.achievements || [])];
+      tempHighlights = [...(currentProfile.highlights || [])];
+      renderEditAchievements();
+      renderEditHighlights();
+
+      // Reset active tab to Basic
+      const basicTabBtn = modal.querySelector('.modal-tabs .tab-btn[data-tab="tab-sch-basic"]');
+      if (basicTabBtn) basicTabBtn.click();
+
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    });
+
+    // Close modal
+    const closeModal = () => {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    };
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // Submit form
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const supabase = window.CampusLink.supabase;
+        
+        showToast('Saving school details...', 'info');
+
+        const aboutJSON = JSON.stringify({
+          description: document.getElementById('edit-sch-about').value.trim(),
+          achievements: tempAchievements,
+          highlights: tempHighlights
+        });
+
+        const updateData = {
+          name: document.getElementById('edit-sch-name').value.trim(),
+          board: document.getElementById('edit-sch-board').value,
+          city: document.getElementById('edit-sch-city').value.trim(),
+          address: document.getElementById('edit-sch-address').value.trim() || null,
+          contact_email: document.getElementById('edit-sch-email').value.trim() || null,
+          website: document.getElementById('edit-sch-website').value.trim() || null,
+          est_year: document.getElementById('edit-sch-est').value.trim() || null,
+          campus_size: document.getElementById('edit-sch-size').value.trim() || null,
+          logo_letter: document.getElementById('edit-sch-logo-letter').value.trim().toUpperCase() || null,
+          color_class: document.getElementById('edit-sch-color-class').value,
+          about: aboutJSON
+        };
+
+        try {
+          const { error } = await supabase
+            .from('schools')
+            .update(updateData)
+            .eq('id', dbSchool.id);
+
+          if (error) throw error;
+
+          showToast('School profile updated successfully!');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+
+        } catch (err) {
+          console.error('Error updating school:', err);
+          showToast(err.message || 'Failed to save school details', 'error');
+        }
+      });
+    }
   }
 });

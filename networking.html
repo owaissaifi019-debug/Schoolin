@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Networking | CampusLink</title>
+  <meta name="description" content="Discover and connect with students, teachers, alumni, and schools on CampusLink. Build your academic network across India.">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css?v=1.1">
+</head>
+<body>
+
+  <!-- --- Header / Navigation --- -->
+  <header>
+    <div class="container">
+      <a href="index.html" class="logo" id="header-logo">
+        <span>CampusLink</span><span class="logo-dot"></span>
+      </a>
+      
+      <nav>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="schools.html">Schools</a></li>
+          <li><a href="networking.html" class="active">Networking</a></li>
+          <li><a href="events.html">Events</a></li>
+          <li><a href="admissions.html">Admissions</a></li>
+          <li class="mobile-only"><a href="login.html" id="mobile-nav-login">Login</a></li>
+          <li class="mobile-only"><a href="login.html#register" class="btn-modal-trigger" id="mobile-nav-register" style="color: var(--accent-hover); font-weight: 700;">Register School</a></li>
+        </ul>
+      </nav>
+      
+      <div class="nav-actions">
+        <a href="login.html" class="btn btn-secondary" id="nav-btn-signin" style="padding: 10px 20px; font-size: 0.9rem; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">Login</a>
+        <button class="btn btn-primary btn-modal-trigger" id="nav-btn-join" style="padding: 10px 20px; font-size: 0.9rem;">Register School</button>
+      </div>
+      
+      <button class="mobile-toggle" aria-label="Toggle menu" id="mobile-menu-toggle">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- --- Page Hero --- -->
+  <section class="net-hero">
+    <div class="container">
+      <div class="net-hero-content">
+        <h1>Build Your Campus Network</h1>
+        <p>Discover and connect with students, teachers, alumni, and schools across India. Grow your academic circle.</p>
+      </div>
+
+      <!-- Search Bar -->
+      <div class="net-search-wrapper">
+        <div class="net-search-bar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="net-search-input" placeholder="Search by name, school, city, or skill..." autocomplete="off">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- --- Main Content --- -->
+  <main class="net-main">
+    <div class="container">
+
+      <!-- Filter Tabs -->
+      <div class="net-filter-tabs" id="net-filter-tabs">
+        <button class="net-tab active" data-filter="all">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>All People</span>
+        </button>
+        <button class="net-tab" data-filter="student">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 4 3 6 3s6-1 6-3v-5"/></svg>
+          <span>Students</span>
+        </button>
+        <button class="net-tab" data-filter="teacher">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span>Teachers</span>
+        </button>
+        <button class="net-tab" data-filter="alumni">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+          <span>Alumni</span>
+        </button>
+        <button class="net-tab" data-filter="school">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Schools</span>
+        </button>
+      </div>
+
+      <!-- Results Stats -->
+      <div class="net-results-bar">
+        <span id="net-results-count">Loading...</span>
+      </div>
+
+      <!-- Card Grid -->
+      <div class="net-card-grid" id="net-card-grid">
+        <!-- Loading skeleton -->
+        <div class="net-card-skeleton animate-pulse">
+          <div class="skeleton-banner"></div>
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line"></div>
+        </div>
+        <div class="net-card-skeleton animate-pulse">
+          <div class="skeleton-banner"></div>
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line"></div>
+        </div>
+        <div class="net-card-skeleton animate-pulse">
+          <div class="skeleton-banner"></div>
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line"></div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="net-empty-state" id="net-empty-state" style="display: none;">
+        <div class="empty-icon">🔍</div>
+        <h3>No results found</h3>
+        <p>Try adjusting your search or filter to find more people and schools.</p>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- --- Footer --- -->
+  <footer id="about">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="logo"><span>CampusLink</span><span class="logo-dot"></span></a>
+          <p>India's leading network for academic connectivity, inter-school opportunities, fests, workshops, and school brand positioning.</p>
+        </div>
+        <div class="footer-links">
+          <h4>Platform</h4>
+          <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="schools.html">Schools</a></li>
+            <li><a href="networking.html">Networking</a></li>
+            <li><a href="events.html">Events</a></li>
+          </ul>
+        </div>
+        <div class="footer-links">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="#">Guides</a></li>
+            <li><a href="#">Support Center</a></li>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Use</a></li>
+          </ul>
+        </div>
+        <div class="footer-newsletter">
+          <h4>Get Newsletter Updates</h4>
+          <p>Receive bi-weekly opportunities summaries, fests notifications, and admission timeline updates.</p>
+          <form class="newsletter-form">
+            <input type="email" placeholder="Your work email..." required>
+            <button type="submit">Subscribe</button>
+          </form>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 CampusLink Network Inc. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Supabase CDN + Auth -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+
+  <!-- Page JS Script -->
+  <script src="networking.js"></script>
+
+</body>
+</html>

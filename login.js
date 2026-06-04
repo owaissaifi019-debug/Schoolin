@@ -1,6 +1,6 @@
 // login.js
-// CampusLink Login Page Logic
-// Handles form submissions, tab switching, password visibility, validation.
+// SchoolIn Login Page Logic
+// Handles form submissions, tab switching, password visibility, avatar upload, validation.
 
 document.addEventListener('DOMContentLoaded', async () => {
 
@@ -46,10 +46,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // If already logged in, redirect to dashboard
+  // If already logged in, redirect
   const existingSession = await auth.getSession();
   if (existingSession) {
-    window.location.href = 'dashboard.html';
+    const role = await auth.getUserRole();
+    if (role === 'school_admin') {
+      window.location.href = 'dashboard.html';
+    } else if (role === 'super_admin') {
+      window.location.href = 'admin/index.html';
+    } else {
+      window.location.href = 'index.html';
+    }
     return;
   }
 
@@ -90,7 +97,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorEl.style.display = 'block';
     }
     if (inputEl) {
-      inputEl.closest('.input-icon-wrapper').classList.add('input-error');
+      const wrapper = inputEl.closest('.input-icon-wrapper');
+      if (wrapper) wrapper.classList.add('input-error');
     }
   }
 
@@ -186,6 +194,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // ── Avatar Upload ───────────────────────────────────────
+  const avatarUploadArea = document.getElementById('avatar-upload-area');
+  const avatarInput = document.getElementById('reg-avatar');
+  const avatarPreview = document.getElementById('avatar-preview');
+  let selectedAvatarFile = null;
+
+  if (avatarUploadArea && avatarInput) {
+    avatarUploadArea.addEventListener('click', () => {
+      avatarInput.click();
+    });
+
+    avatarInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleAvatarFile(file);
+      }
+    });
+
+    // Drag and drop support
+    ['dragenter', 'dragover'].forEach(eventName => {
+      avatarUploadArea.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        avatarUploadArea.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      avatarUploadArea.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        avatarUploadArea.classList.remove('dragover');
+      }, false);
+    });
+
+    avatarUploadArea.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const file = dt.files[0];
+      if (file && file.type.startsWith('image/')) {
+        handleAvatarFile(file);
+      }
+    });
+  }
+
+  function handleAvatarFile(file) {
+    // Validate size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      showError('reg-avatar', 'Image must be under 2MB');
+      return;
+    }
+
+    // Validate type
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      showError('reg-avatar', 'Please upload a JPG, PNG, or WebP image');
+      return;
+    }
+
+    selectedAvatarFile = file;
+    clearError('reg-avatar');
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (avatarPreview) {
+        avatarPreview.innerHTML = `<img src="${e.target.result}" alt="Profile preview">`;
+        avatarUploadArea.classList.add('has-image');
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
   // Clear errors on input
   document.querySelectorAll('input, select').forEach(input => {
     input.addEventListener('input', () => {
@@ -210,17 +287,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     setLoading('btn-login', true);
 
     try {
-      await auth.signIn(email, password);
+      const loginData = await auth.signIn(email, password);
+
+      // Fetch profile to determine redirect
+      const profile = await auth.getProfile(loginData.user.id);
+      const platformRole = profile?.platform_role || 'user';
+      const userType = profile?.user_type || 'student';
+      const displayName = profile?.full_name || loginData.user.user_metadata?.full_name || 'User';
+
+      let redirectPage = 'index.html';
+      if (platformRole === 'super_admin') {
+        redirectPage = 'admin/index.html';
+      } else if (platformRole === 'school_admin') {
+        redirectPage = 'dashboard.html';
+      }
 
       // Show success and redirect
       loginForm.style.display = 'none';
       document.querySelector('.auth-tab-toggle').style.display = 'none';
       successState.style.display = 'flex';
       document.getElementById('success-title').textContent = 'Welcome Back!';
-      document.getElementById('success-message').textContent = 'Redirecting to your dashboard...';
+      document.getElementById('success-message').textContent = `Hello, ${displayName}! Redirecting...`;
 
       setTimeout(() => {
-        window.location.href = 'dashboard.html';
+        window.location.href = redirectPage;
       }, 1500);
     } catch (error) {
       setLoading('btn-login', false);
@@ -246,23 +336,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     e.preventDefault();
     clearAllErrors();
 
-    const schoolName = document.getElementById('reg-school-name').value.trim();
-    const board = document.getElementById('reg-board').value;
-    const city = document.getElementById('reg-city').value.trim();
+    const fullName = document.getElementById('reg-full-name').value.trim();
     const email = document.getElementById('reg-email').value.trim();
+    const userType = document.getElementById('reg-user-type').value;
     const password = document.getElementById('reg-password').value;
     const confirmPassword = document.getElementById('reg-confirm-password').value;
 
     // Validate
     let hasError = false;
 
-    if (!schoolName) { showError('reg-school-name', 'School name is required'); hasError = true; }
-    if (!board) { showError('reg-board', 'Please select a board'); hasError = true; }
-    if (!city) { showError('reg-city', 'City is required'); hasError = true; }
+    if (!fullName) { showError('reg-full-name', 'Full name is required'); hasError = true; }
+    else if (fullName.length < 2) { showError('reg-full-name', 'Name must be at least 2 characters'); hasError = true; }
+
     if (!email) { showError('reg-email', 'Email is required'); hasError = true; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('reg-email', 'Enter a valid email address'); hasError = true; }
+
+    if (!userType) { showError('reg-user-type', 'Please select how you want to join'); hasError = true; }
+
     if (!password) { showError('reg-password', 'Password is required'); hasError = true; }
     else if (password.length < 6) { showError('reg-password', 'Password must be at least 6 characters'); hasError = true; }
+
     if (password !== confirmPassword) { showError('reg-confirm-password', 'Passwords do not match'); hasError = true; }
 
     if (hasError) return;
@@ -270,30 +363,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     setLoading('btn-register', true);
 
     try {
-      const result = await auth.signUp(email, password, {
-        name: schoolName,
-        board: board,
-        city: city
-      });
+      const result = await auth.signUp(email, password, fullName, userType, selectedAvatarFile);
 
       // Show success and redirect
       registerForm.style.display = 'none';
       document.querySelector('.auth-tab-toggle').style.display = 'none';
       successState.style.display = 'flex';
 
+      // Get user type label
+      const typeLabel = auth.getUserTypeLabel(userType);
+
       if (result.emailConfirmationRequired) {
         document.getElementById('success-title').textContent = 'Verification Email Sent';
         document.getElementById('success-message').innerHTML = `
-          Account created! We've sent a verification email to <strong>${email}</strong>.<br><br>
+          Account created as <strong>${typeLabel}</strong>! We've sent a verification email to <strong>${email}</strong>.<br><br>
           Please check your inbox and click the verification link to activate your account.<br><br>
           <a href="login.html" class="btn btn-secondary" style="display: inline-block; margin-top: 15px; width: auto; padding: 8px 16px;">Return to Sign In</a>
         `;
       } else {
         document.getElementById('success-title').textContent = 'Account Created!';
-        document.getElementById('success-message').textContent = `Welcome, ${schoolName}! Redirecting to your dashboard...`;
+        document.getElementById('success-message').textContent = `Welcome, ${fullName}! You've joined SchoolIn as a ${typeLabel}. Redirecting...`;
 
         setTimeout(() => {
-          window.location.href = 'dashboard.html';
+          window.location.href = 'index.html';
         }, 2000);
       }
     } catch (error) {

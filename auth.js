@@ -1,5 +1,5 @@
 // auth.js
-// CampusLink Authentication Module
+// SchoolIn Authentication Module
 // Provides signup, login, logout, session management, and auth guards.
 // Depends on supabase.js being loaded first (sets window.CampusLink.supabase).
 
@@ -10,26 +10,59 @@
   const AUTH_REDIRECT_DASHBOARD = 'dashboard.html';
   const AUTH_REDIRECT_HOME = 'index.html';
 
+  // Valid user types that can be selected during signup
+  const VALID_USER_TYPES = ['student', 'teacher', 'parent', 'alumni', 'school_representative'];
+
   function getClient() {
     return window.CampusLink && window.CampusLink.supabase;
   }
 
   // ── Sign Up ──────────────────────────────────────────────
-  // Creates a Supabase auth user, then inserts a linked school row.
-  async function signUp(email, password, schoolData) {
+  // Creates a Supabase auth user with profile metadata.
+  // platform_role is NEVER sent from client — the DB trigger forces 'user'.
+  async function signUp(email, password, fullName, userType, avatarFile) {
     const sb = getClient();
     if (!sb) throw new Error('Supabase client not initialised');
 
-    // 1. Create auth user
+    // Validate user type
+    if (!VALID_USER_TYPES.includes(userType)) {
+      throw new Error('Invalid user type selected');
+    }
+
+    // 1. Upload avatar if provided
+    let avatarUrl = null;
+    if (avatarFile) {
+      const fileExt = avatarFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await sb.storage
+        .from('avatars')
+        .upload(filePath, avatarFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.warn('Avatar upload failed:', uploadError.message);
+        // Continue without avatar — don't block signup
+      } else {
+        const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
+        avatarUrl = urlData?.publicUrl || null;
+      }
+    }
+
+    // 2. Create auth user
     const { data: authData, error: authError } = await sb.auth.signUp({
       email,
       password,
       options: {
         data: {
-          school_name: schoolData.name,
-          school_city: schoolData.city,
-          school_board: schoolData.board || null,
-          role: 'school_admin'
+          full_name: fullName,
+          user_type: userType,
+          avatar_url: avatarUrl
+          // NOTE: platform_role is intentionally NOT sent here.
+          // The DB trigger always sets it to 'user'.
         }
       }
     });
@@ -39,31 +72,10 @@
     const user = authData.user;
     if (!user) throw new Error('Signup succeeded but no user returned');
 
-    // 2. Create school row linked to user
-    let schoolError = null;
-    // Only attempt insert if we have an active session (otherwise, it will fail due to RLS policies
-    // and will instead be auto-provisioned upon their first login / dashboard load).
-    if (authData.session) {
-      const { error } = await sb.from('schools').insert({
-        name: schoolData.name,
-        city: schoolData.city,
-        board: schoolData.board || null,
-        admin_user_id: user.id,
-        contact_email: email,
-        logo_letter: schoolData.name.charAt(0).toUpperCase(),
-        color_class: 'bg-gradient-1'
-      });
-      schoolError = error;
-    }
-
-    if (schoolError) {
-      console.error('School insert failed:', schoolError);
-    }
-
-    return { 
-      user, 
+    return {
+      user,
       session: authData.session,
-      emailConfirmationRequired: !authData.session 
+      emailConfirmationRequired: !authData.session
     };
   }
 
@@ -120,24 +132,49 @@
       return null;
     }
 
-    // Auto-provisioning fallback: if school row is missing (e.g. signup occurred without session due to email verification),
-    // we insert it now that the user is authenticated and RLS permits the insert.
+    if (data) {
+      try {
+        const { data: profile } = await sb
+          .from('profiles')
+          .select('school_id')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (profile && profile.school_id !== data.id) {
+          console.log('Syncing school_id on profile for user:', userId);
+          await sb
+            .from('profiles')
+            .update({ school_id: data.id })
+            .eq('id', userId);
+        }
+      } catch (syncErr) {
+        console.warn('Failed to sync school_id on profile:', syncErr);
+      }
+    }
+
+    // Auto-provisioning fallback: if school row is missing, insert it now
+    // Only for school_representative users with school_admin platform_role
     if (!data) {
       try {
+        const profile = await getProfile(userId);
         const { data: { user } } = await sb.auth.getUser();
-        if (user && user.id === userId && user.user_metadata) {
-          const meta = user.user_metadata;
-          if (meta.school_name) {
-            console.log('School row missing for authenticated user. Attempting to provision school from user metadata...');
+
+        if (user && user.id === userId && profile) {
+          // Only provision a school record for school_admin platform_role users
+          if (profile.platform_role === 'school_admin' && profile.user_type === 'school_representative') {
+            const meta = user.user_metadata;
+            const schoolName = meta?.school_name || profile.full_name || 'My School';
+            console.log('School row missing for authenticated school admin. Attempting to provision...');
+
             const { data: newSchool, error: insertError } = await sb
               .from('schools')
               .insert({
-                name: meta.school_name,
-                city: meta.school_city || '',
-                board: meta.school_board || null,
+                name: schoolName,
+                city: meta?.school_city || '',
+                board: meta?.school_board || null,
                 admin_user_id: userId,
                 contact_email: user.email,
-                logo_letter: meta.school_name.charAt(0).toUpperCase(),
+                logo_letter: schoolName.charAt(0).toUpperCase(),
                 color_class: 'bg-gradient-1'
               })
               .select()
@@ -145,6 +182,11 @@
 
             if (!insertError && newSchool) {
               console.log('Successfully provisioned school row:', newSchool);
+              // Associate the new school with the admin's profile
+              await sb
+                .from('profiles')
+                .update({ school_id: newSchool.id })
+                .eq('id', userId);
               return newSchool;
             } else {
               console.error('Failed to provision school row:', insertError);
@@ -180,6 +222,71 @@
     });
   }
 
+  // ── Get Role/Profile helpers ─────────────────────────────
+  async function getProfile(userId) {
+    const sb = getClient();
+    if (!sb) return null;
+    const { data, error } = await sb
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) {
+      console.warn('Could not fetch user profile:', error.message);
+      return null;
+    }
+    return data;
+  }
+
+  async function getUserRole() {
+    const session = await getSession();
+    if (!session || !session.user) return null;
+
+    // Fail-safe check for primary super admin
+    if (session.user.email === 'owaissaifi019@gmail.com') {
+      return 'super_admin';
+    }
+
+    // Attempt profile query for platform_role
+    const profile = await getProfile(session.user.id);
+    if (profile) return profile.platform_role;
+
+    // Fallback — all new users are 'user'
+    return 'user';
+  }
+
+  async function getUserType() {
+    const session = await getSession();
+    if (!session || !session.user) return null;
+
+    const profile = await getProfile(session.user.id);
+    if (profile) return profile.user_type;
+
+    // Fallback to metadata
+    return session.user.user_metadata?.user_type || 'student';
+  }
+
+  // ── User Type Display Helpers ────────────────────────────
+  function getUserTypeLabel(userType) {
+    const labels = {
+      student: 'Student',
+      teacher: 'Teacher',
+      parent: 'Parent',
+      alumni: 'Alumni',
+      school_representative: 'School Rep'
+    };
+    return labels[userType] || 'User';
+  }
+
+  function getPlatformRoleLabel(platformRole) {
+    const labels = {
+      user: 'Member',
+      school_admin: 'School Admin',
+      super_admin: 'Super Admin'
+    };
+    return labels[platformRole] || 'Member';
+  }
+
   // ── Update Nav for Auth State ────────────────────────────
   // Called on every public page to swap Login/Register buttons
   // based on whether the user is signed in.
@@ -193,13 +300,22 @@
     if (session && session.user) {
       // User is logged in
       const user = session.user;
-      const schoolName = user.user_metadata?.school_name || 'My School';
-      const initial = schoolName.charAt(0).toUpperCase();
+      const profile = await getProfile(user.id);
+      const platformRole = (user.email === 'owaissaifi019@gmail.com') ? 'super_admin' : (profile?.platform_role || 'user');
+      const userType = profile?.user_type || user.user_metadata?.user_type || 'student';
+      const displayName = profile?.full_name || user.user_metadata?.full_name || user.email;
+      const initial = displayName.charAt(0).toUpperCase();
+      const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
 
       // Desktop nav
       if (loginBtn) {
-        loginBtn.href = AUTH_REDIRECT_DASHBOARD;
-        loginBtn.textContent = 'Dashboard';
+        if (platformRole === 'school_admin' || platformRole === 'super_admin') {
+          loginBtn.style.display = 'inline-flex';
+          loginBtn.href = platformRole === 'super_admin' ? 'admin/index.html' : AUTH_REDIRECT_DASHBOARD;
+          loginBtn.textContent = 'Dashboard';
+        } else {
+          loginBtn.style.display = 'none';
+        }
         loginBtn.classList.remove('btn-secondary');
         loginBtn.classList.add('btn-primary');
       }
@@ -209,16 +325,32 @@
         const parent = joinBtn.parentElement;
         joinBtn.style.display = 'none';
 
-        const userPill = document.createElement('div');
-        userPill.className = 'nav-user-pill';
+        // Check if user pill already exists to avoid duplication
+        let userPill = parent.querySelector('.nav-user-pill');
+        if (!userPill) {
+          userPill = document.createElement('div');
+          userPill.className = 'nav-user-pill';
+          parent.appendChild(userPill);
+        }
+
+        const typeLabel = getUserTypeLabel(userType);
+        const avatarHtml = avatarUrl
+          ? `<img src="${avatarUrl}" alt="${displayName}" class="nav-user-avatar-img" title="${typeLabel}">`
+          : `<div class="nav-user-avatar" title="${typeLabel}">${initial}</div>`;
+
+        let profileUrl = `profile.html?id=${user.id}`;
+        if (userType === 'school_representative' || platformRole === 'school_admin') {
+          profileUrl = profile?.school_id ? `school-profile.html?id=${profile.school_id}` : `dashboard.html`;
+        }
         userPill.innerHTML = `
-          <div class="nav-user-avatar">${initial}</div>
-          <span class="nav-user-name">${schoolName}</span>
+          <a href="${profileUrl}" class="nav-profile-link" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
+            ${avatarHtml}
+            <span class="nav-user-name">${displayName} <span class="nav-role-badge ${userType}">${typeLabel}</span></span>
+          </a>
           <button class="nav-logout-btn" id="nav-logout-btn" title="Logout">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         `;
-        parent.appendChild(userPill);
 
         // Bind logout
         const logoutBtn = document.getElementById('nav-logout-btn');
@@ -232,8 +364,13 @@
 
       // Mobile nav
       if (mobileLogin) {
-        mobileLogin.href = AUTH_REDIRECT_DASHBOARD;
-        mobileLogin.textContent = 'Dashboard';
+        if (platformRole === 'school_admin' || platformRole === 'super_admin') {
+          mobileLogin.style.display = 'block';
+          mobileLogin.href = platformRole === 'super_admin' ? 'admin/index.html' : AUTH_REDIRECT_DASHBOARD;
+          mobileLogin.textContent = 'Dashboard';
+        } else {
+          mobileLogin.style.display = 'none';
+        }
       }
       if (mobileRegister) {
         mobileRegister.textContent = 'Logout';
@@ -247,10 +384,27 @@
     } else {
       // Not logged in — point Login to login.html
       if (loginBtn) {
+        loginBtn.style.display = 'inline-flex';
         loginBtn.href = AUTH_REDIRECT_LOGIN;
+        loginBtn.textContent = 'Login';
+        loginBtn.classList.remove('btn-primary');
+        loginBtn.classList.add('btn-secondary');
+      }
+      if (joinBtn) {
+        joinBtn.style.display = 'inline-flex';
+        // Remove user pill if any
+        const parent = joinBtn.parentElement;
+        const userPill = parent.querySelector('.nav-user-pill');
+        if (userPill) userPill.remove();
       }
       if (mobileLogin) {
+        mobileLogin.style.display = 'block';
         mobileLogin.href = AUTH_REDIRECT_LOGIN;
+      }
+      if (mobileRegister) {
+        mobileRegister.textContent = 'Register';
+        mobileRegister.classList.add('btn-modal-trigger');
+        mobileRegister.href = 'login.html#register';
       }
     }
   }
@@ -266,7 +420,12 @@
     getSchoolForUser,
     requireAuth,
     onAuthStateChange,
-    updateNavAuthState
+    updateNavAuthState,
+    getProfile,
+    getUserRole,
+    getUserType,
+    getUserTypeLabel,
+    getPlatformRoleLabel
   };
 
 })();

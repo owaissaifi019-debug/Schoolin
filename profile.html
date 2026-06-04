@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Profile | CampusLink</title>
+  <meta name="description" content="View and manage student profiles on CampusLink. Showcase academic records, skills, achievements, sports, and certifications.">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css?v=1.1">
+</head>
+<body class="profile-page-body">
+
+  <!-- --- Header / Navigation --- -->
+  <header>
+    <div class="container">
+      <a href="index.html" class="logo" id="header-logo">
+        <span>CampusLink</span><span class="logo-dot"></span>
+      </a>
+      
+      <nav>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="schools.html">Schools</a></li>
+          <li><a href="events.html">Events</a></li>
+          <li><a href="admissions.html">Admissions</a></li>
+          <li class="mobile-only"><a href="login.html" id="mobile-nav-login">Login</a></li>
+          <li class="mobile-only"><a href="login.html#register" class="btn-modal-trigger" id="mobile-nav-register" style="color: var(--accent-hover); font-weight: 700;">Register School</a></li>
+        </ul>
+      </nav>
+      
+      <div class="nav-actions">
+        <a href="login.html" class="btn btn-secondary" id="nav-btn-signin" style="padding: 10px 20px; font-size: 0.9rem; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">Login</a>
+        <button class="btn btn-primary btn-modal-trigger" id="nav-btn-join" style="padding: 10px 20px; font-size: 0.9rem;">Register School</button>
+      </div>
+      
+      <button class="mobile-toggle" aria-label="Toggle menu" id="mobile-menu-toggle">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- --- Profile Container --- -->
+  <main class="profile-wrapper">
+    <div class="container">
+      
+      <!-- Top Loading State / Error State -->
+      <div id="profile-loading" class="profile-loading-state">
+        <div class="spinner"></div>
+        <p>Loading profile details...</p>
+      </div>
+
+      <div id="profile-error" class="profile-error-state" style="display: none;">
+        <div class="error-icon">⚠️</div>
+        <h3>Profile Not Found</h3>
+        <p id="profile-error-msg">The student profile you are looking for does not exist or has been deleted.</p>
+        <a href="index.html" class="btn btn-primary" style="margin-top: 15px;">Go to Home</a>
+      </div>
+
+      <!-- Main Profile Section (hidden until loaded) -->
+      <div id="profile-main" class="profile-main-layout" style="display: none;">
+        
+        <!-- Profile Hero Card -->
+        <div class="profile-hero-card">
+          <div class="profile-hero-banner-wrap">
+            <div class="profile-hero-banner"></div>
+          </div>
+          
+          <div class="profile-hero-details">
+            <div class="profile-avatar-container">
+              <div id="profile-avatar-display" class="profile-avatar-large"></div>
+              <!-- Upload Avatar Button (Only visible to owner) -->
+              <label for="avatar-upload-input" id="avatar-upload-label" class="avatar-upload-trigger" style="display: none;" title="Change Avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </label>
+              <input type="file" id="avatar-upload-input" accept="image/*" style="display: none;">
+            </div>
+
+            <div class="profile-header-info">
+              <div class="profile-name-row">
+                <h1 id="profile-full-name" class="profile-name">Student Name</h1>
+                <div class="profile-badges-row">
+                  <span id="profile-type-badge" class="badge-type">Student</span>
+                  <span id="profile-role-badge" class="badge-role" style="display: none;">School Admin</span>
+                </div>
+              </div>
+              
+              <p id="profile-headline" class="profile-headline">Student</p>
+              
+              <div id="profile-school-meta" class="profile-school-meta">
+                <span class="meta-icon">🏫</span>
+                <span id="profile-school-name" class="profile-school-text">No School Linked</span>
+              </div>
+            </div>
+
+            <div class="profile-actions" id="profile-actions-area">
+              <!-- Edit Profile Trigger (Only visible to owner) -->
+              <button id="edit-profile-btn" class="btn btn-primary" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="14 2 18 6 7 17 3 17 3 13 14 2"/></svg>
+                <span>Edit Profile</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Column Layout grid -->
+        <div class="profile-grid">
+          
+          <!-- Left Column (Primary details) -->
+          <div class="profile-col-left">
+            
+            <!-- About Section -->
+            <section class="profile-section" id="section-bio-card">
+              <h2 class="section-title">About</h2>
+              <div id="profile-bio-content" class="bio-text">
+                No bio provided yet. Click edit to add a brief introduction.
+              </div>
+            </section>
+
+            <!-- Skills Section -->
+            <section class="profile-section" id="section-skills-card">
+              <h2 class="section-title">Skills</h2>
+              <div id="profile-skills-list" class="skills-list">
+                <!-- Skills injected here -->
+                <p class="empty-section-msg">No skills listed yet.</p>
+              </div>
+            </section>
+
+            <!-- Achievements Section -->
+            <section class="profile-section" id="section-achievements-card">
+              <h2 class="section-title">Achievements</h2>
+              <div id="profile-achievements-list" class="achievements-timeline">
+                <!-- Achievements injected here -->
+                <p class="empty-section-msg">No achievements added yet.</p>
+              </div>
+            </section>
+
+            <!-- Sports Section -->
+            <section class="profile-section" id="section-sports-card">
+              <h2 class="section-title">Sports & Games</h2>
+              <div id="profile-sports-list" class="sports-list">
+                <!-- Sports list injected here -->
+                <p class="empty-section-msg">No sports activities listed yet.</p>
+              </div>
+            </section>
+
+            <!-- Certificates Section -->
+            <section class="profile-section" id="section-certificates-card">
+              <h2 class="section-title">Certificates & Licenses</h2>
+              <div id="profile-certificates-list" class="certificates-grid">
+                <!-- Certificates injected here -->
+                <p class="empty-section-msg">No certificates added yet.</p>
+              </div>
+            </section>
+
+          </div>
+
+          <!-- Right Column (Sidebar details) -->
+          <div class="profile-col-right">
+            
+            <!-- School card -->
+            <div class="profile-sidebar-card">
+              <h3>School & Education</h3>
+              <div class="school-sidebar-info" id="sidebar-school-info">
+                <div class="school-logo-placeholder" id="sidebar-school-logo">🏫</div>
+                <div class="school-text-info">
+                  <h4 id="sidebar-school-name" class="sidebar-school-title">No School Joined</h4>
+                  <p id="sidebar-school-board" class="sidebar-school-sub">Select a school in your profile settings</p>
+                  <p id="sidebar-school-city" class="sidebar-school-city"></p>
+                </div>
+              </div>
+              <div class="sidebar-details-list">
+                <div class="sidebar-detail-item">
+                  <span class="detail-label">Class / Grade:</span>
+                  <span id="sidebar-class-val" class="detail-val">Not Specified</span>
+                </div>
+                <div class="sidebar-detail-item">
+                  <span class="detail-label">Email:</span>
+                  <span id="sidebar-email-val" class="detail-val">Not Specified</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Suggestion / Call to Action Card (Only shown to profile owner if they haven't joined a school) -->
+            <div class="profile-sidebar-card card-cta" id="sidebar-cta-card" style="display: none;">
+              <span class="cta-icon">🎓</span>
+              <h4>Complete Your Profile</h4>
+              <p>Link your account with your official school to display school badges, join inter-school events, and keep up with academic announcements.</p>
+              <button id="sidebar-join-school-btn" class="btn btn-accent btn-sm" style="width: 100%; margin-top: 10px;">Link School</button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- --- Edit Profile Modal --- -->
+  <div class="modal-overlay" id="edit-profile-modal" style="display: none;">
+    <div class="modal-content modal-large">
+      <button class="modal-close-btn" id="edit-modal-close" aria-label="Close modal">&times;</button>
+      
+      <div class="modal-title">
+        <h3>Edit Student Profile</h3>
+        <p>Keep your profile updated so other students and schools can connect with you.</p>
+      </div>
+
+      <!-- Tabbed Form Navigation -->
+      <div class="modal-tabs">
+        <button class="tab-btn active" data-tab="tab-basic">Basic Info</button>
+        <button class="tab-btn" data-tab="tab-skills-sports">Skills & Sports</button>
+        <button class="tab-btn" data-tab="tab-achievements">Achievements</button>
+        <button class="tab-btn" data-tab="tab-certs">Certificates</button>
+      </div>
+
+      <form id="edit-profile-form">
+        <!-- Tab 1: Basic Info -->
+        <div class="tab-pane active" id="tab-basic">
+          <div class="form-group">
+            <label for="edit-full-name">Full Name *</label>
+            <input type="text" id="edit-full-name" required placeholder="e.g. Owais Saifi">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="edit-school">School</label>
+              <select id="edit-school">
+                <option value="">Select your school...</option>
+                <!-- Schools dynamically populated -->
+              </select>
+            </div>
+            <div class="form-group col-6">
+              <label for="edit-class">Class / Grade</label>
+              <input type="text" id="edit-class" placeholder="e.g. 10th Grade, 12th Science">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-bio">Bio / About Me</label>
+            <textarea id="edit-bio" rows="4" placeholder="Tell the CampusLink community about yourself, your interests, and what you're working on..."></textarea>
+          </div>
+        </div>
+
+        <!-- Tab 2: Skills & Sports -->
+        <div class="tab-pane" id="tab-skills-sports">
+          <div class="form-group">
+            <label>Skills</label>
+            <p class="field-desc">Press Enter or comma to add a skill (e.g., Python, Debate, Painting)</p>
+            <div class="tag-input-container" id="skills-tag-container">
+              <input type="text" id="skills-tag-input" placeholder="Type a skill and press Enter...">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 25px;">
+            <label>Sports & Games</label>
+            <p class="field-desc">Press Enter or comma to add sports you play (e.g., Cricket, Basketball, Chess)</p>
+            <div class="tag-input-container" id="sports-tag-container">
+              <input type="text" id="sports-tag-input" placeholder="Type a sport and press Enter...">
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Achievements -->
+        <div class="tab-pane" id="tab-achievements">
+          <div class="form-group">
+            <label>Achievements</label>
+            <p class="field-desc">List your achievements, competitions won, or roles held. Press Enter or click Add.</p>
+            
+            <div class="achievement-input-row">
+              <input type="text" id="achievement-item-input" placeholder="e.g. 1st Place in Inter-School Science Fair 2026">
+              <button type="button" id="add-achievement-btn" class="btn btn-secondary btn-sm">Add</button>
+            </div>
+            
+            <ul class="editable-list-items" id="achievements-editable-list">
+              <!-- Dynamically populated -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- Tab 4: Certificates -->
+        <div class="tab-pane" id="tab-certs">
+          <div class="form-group">
+            <label>Certificates & Licenses</label>
+            <p class="field-desc">Add external courses, online certificates, or merit awards. Press Enter or click Add.</p>
+            
+            <div class="achievement-input-row">
+              <input type="text" id="certificate-item-input" placeholder="e.g. Google IT Support Professional Certificate">
+              <button type="button" id="add-certificate-btn" class="btn btn-secondary btn-sm">Add</button>
+            </div>
+            
+            <ul class="editable-list-items" id="certificates-editable-list">
+              <!-- Dynamically populated -->
+            </ul>
+          </div>
+        </div>
+
+        <div class="form-navigation form-actions-modal">
+          <button type="button" class="btn btn-secondary" id="edit-profile-cancel">Cancel</button>
+          <button type="submit" class="btn btn-accent">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Save Profile</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Supabase CDN + Auth -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+
+  <!-- Page JS Script -->
+  <script src="profile.js"></script>
+</body>
+</html>

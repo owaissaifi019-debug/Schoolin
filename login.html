@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login | CampusLink</title>
-  <meta name="description" content="Login or register your school on CampusLink — India's premier school networking platform.">
-  <link rel="stylesheet" href="style.css?v=1.1">
+  <title>Login | SchoolIn</title>
+  <meta name="description" content="Login or create your account on SchoolIn — India's premier school networking platform for students, teachers, parents, alumni, and schools.">
+  <link rel="stylesheet" href="style.css?v=1.2">
 </head>
 <body class="auth-page-body">
 
@@ -21,31 +21,31 @@
     <!-- Left Panel — Branding -->
     <div class="auth-brand-panel">
       <a href="index.html" class="logo" style="margin-bottom: 32px;">
-        <span>CampusLink</span><span class="logo-dot"></span>
+        <span>SchoolIn</span><span class="logo-dot"></span>
       </a>
       <h1>Welcome to India's Largest School Network</h1>
-      <p>Connect, collaborate, and grow with thousands of schools across the country. Publish events, manage admissions, and build your school's digital presence.</p>
+      <p>Connect, collaborate, and grow with thousands of schools across the country. Whether you're a student, teacher, parent, alumni, or school representative — there's a place for you.</p>
 
       <div class="auth-brand-features">
         <div class="auth-feature-item">
-          <div class="auth-feature-icon">📅</div>
+          <div class="auth-feature-icon">🎓</div>
           <div>
-            <h4>Publish Events</h4>
-            <p>Create and manage inter-school fests, workshops, and competitions</p>
+            <h4>For Students & Alumni</h4>
+            <p>Discover events, competitions, and connect with your school community</p>
           </div>
         </div>
         <div class="auth-feature-item">
-          <div class="auth-feature-icon">🎓</div>
+          <div class="auth-feature-icon">👩‍🏫</div>
           <div>
-            <h4>Manage Admissions</h4>
-            <p>Announce admission cycles and reach parents across India</p>
+            <h4>For Teachers</h4>
+            <p>Network with educators, find workshops, and share resources</p>
           </div>
         </div>
         <div class="auth-feature-item">
           <div class="auth-feature-icon">🏫</div>
           <div>
-            <h4>School Profile</h4>
-            <p>Build a verified public profile showcasing your achievements</p>
+            <h4>For Parents & Schools</h4>
+            <p>Track admissions, explore school profiles, and manage your school's presence</p>
           </div>
         </div>
       </div>
@@ -53,7 +53,7 @@
       <div class="auth-brand-stats">
         <div class="auth-stat"><strong>500+</strong><span>Schools</span></div>
         <div class="auth-stat"><strong>2,400+</strong><span>Events</span></div>
-        <div class="auth-stat"><strong>50k+</strong><span>Students</span></div>
+        <div class="auth-stat"><strong>50k+</strong><span>Users</span></div>
       </div>
     </div>
 
@@ -72,14 +72,14 @@
         <form class="auth-form active" id="login-form">
           <div class="auth-form-header">
             <h2>Welcome back</h2>
-            <p>Sign in to access your school dashboard</p>
+            <p>Sign in to access your SchoolIn account</p>
           </div>
 
           <div class="form-group">
             <label for="login-email">Email Address</label>
             <div class="input-icon-wrapper">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              <input type="email" id="login-email" placeholder="admin@school.edu.in" required autocomplete="email">
+              <input type="email" id="login-email" placeholder="you@example.com" required autocomplete="email">
             </div>
             <span class="error-msg" id="err-login-email"></span>
           </div>
@@ -111,53 +111,64 @@
         <!-- ── Register Form ── -->
         <form class="auth-form" id="register-form">
           <div class="auth-form-header">
-            <h2>Register Your School</h2>
-            <p>Join the CampusLink network in under a minute</p>
+            <h2>Join SchoolIn</h2>
+            <p>Create your account in under a minute</p>
           </div>
 
-          <div class="auth-form-row">
-            <div class="form-group">
-              <label for="reg-school-name">School Name *</label>
-              <div class="input-icon-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                <input type="text" id="reg-school-name" placeholder="e.g. Delhi Public School" required>
-              </div>
-              <span class="error-msg" id="err-reg-school-name"></span>
-            </div>
-            <div class="form-group">
-              <label for="reg-board">Board *</label>
-              <div class="input-icon-wrapper select-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                <select id="reg-board" required>
-                  <option value="">Select Board</option>
-                  <option value="CBSE">CBSE</option>
-                  <option value="ICSE">ICSE / ISC</option>
-                  <option value="State">State Board</option>
-                  <option value="IB">IB / Cambridge</option>
-                </select>
-              </div>
-              <span class="error-msg" id="err-reg-board"></span>
-            </div>
-          </div>
-
+          <!-- Full Name -->
           <div class="form-group">
-            <label for="reg-city">City / State *</label>
+            <label for="reg-full-name">Full Name *</label>
             <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              <input type="text" id="reg-city" placeholder="e.g. New Delhi, Delhi" required>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <input type="text" id="reg-full-name" placeholder="e.g. Aarav Sharma" required>
             </div>
-            <span class="error-msg" id="err-reg-city"></span>
+            <span class="error-msg" id="err-reg-full-name"></span>
           </div>
 
+          <!-- Email -->
           <div class="form-group">
             <label for="reg-email">Email Address *</label>
             <div class="input-icon-wrapper">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              <input type="email" id="reg-email" placeholder="admin@school.edu.in" required autocomplete="email">
+              <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email">
             </div>
             <span class="error-msg" id="err-reg-email"></span>
           </div>
 
+          <!-- User Type -->
+          <div class="form-group">
+            <label for="reg-user-type">I want to join as *</label>
+            <div class="input-icon-wrapper select-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <select id="reg-user-type" required>
+                <option value="">Select your role</option>
+                <option value="student">🎓 Student</option>
+                <option value="teacher">👩‍🏫 Teacher</option>
+                <option value="parent">👪 Parent</option>
+                <option value="alumni">🎖️ Alumni</option>
+                <option value="school_representative">🏫 School Representative</option>
+              </select>
+            </div>
+            <span class="error-msg" id="err-reg-user-type"></span>
+          </div>
+
+          <!-- Profile Photo Upload -->
+          <div class="form-group">
+            <label>Profile Photo <span style="color: var(--text-muted); font-weight: 400;">(optional)</span></label>
+            <div class="avatar-upload-area" id="avatar-upload-area">
+              <div class="avatar-preview" id="avatar-preview">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="avatar-upload-text">
+                <span class="avatar-upload-label">Upload photo</span>
+                <span class="avatar-upload-hint">JPG, PNG — max 2MB</span>
+              </div>
+              <input type="file" id="reg-avatar" accept="image/jpeg,image/png,image/webp" style="display: none;">
+            </div>
+            <span class="error-msg" id="err-reg-avatar"></span>
+          </div>
+
+          <!-- Password -->
           <div class="form-group">
             <label for="reg-password">Password *</label>
             <div class="input-icon-wrapper">
@@ -174,6 +185,7 @@
             </div>
           </div>
 
+          <!-- Confirm Password -->
           <div class="form-group">
             <label for="reg-confirm-password">Confirm Password *</label>
             <div class="input-icon-wrapper">
@@ -201,7 +213,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
           <h3 id="success-title">Account Created!</h3>
-          <p id="success-message">Welcome to CampusLink. Redirecting you to your dashboard...</p>
+          <p id="success-message">Welcome to SchoolIn. Redirecting you...</p>
         </div>
 
         <!-- ── Error Toast ── -->
@@ -220,5 +232,6 @@
   <script src="supabase.js"></script>
   <script src="auth.js"></script>
   <script src="login.js"></script>
+
 </body>
 </html>

@@ -73,9 +73,13 @@
           </div>
         </div>
 
-        <div class="profile-actions">
-          <button class="btn btn-secondary" id="btn-follow-school" style="padding: 10px 20px; font-size: 0.9rem;">Follow School</button>
+        <div class="profile-actions" id="profile-actions-area">
+          <button class="btn btn-secondary" id="btn-join-school" style="padding: 10px 20px; font-size: 0.9rem; transition: all 0.2s ease;">Join School</button>
           <button class="btn btn-primary btn-modal-trigger" id="btn-inquire-school" style="padding: 10px 20px; font-size: 0.9rem;">Inquire Now</button>
+          <button class="btn btn-primary" id="btn-edit-school" style="display: none; padding: 10px 20px; font-size: 0.9rem; gap: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="14 2 18 6 7 17 3 17 3 13 14 2"/></svg>
+            <span>Edit School</span>
+          </button>
         </div>
       </div>
     </div>
@@ -116,7 +120,7 @@
               </p>
               
               <h3 style="margin-bottom: 16px; font-size: 1.2rem;">Infrastructure Highlights</h3>
-              <ul style="list-style-position: inside; margin-bottom: 24px; color: var(--text-muted); display:flex; flex-direction:column; gap:8px;">
+              <ul id="profile-highlights-list" style="list-style-position: inside; margin-bottom: 24px; color: var(--text-muted); display:flex; flex-direction:column; gap:8px;">
                 <li>Science & Robotics Core Laboratories</li>
                 <li>Olympic-sized Swimming Pool & Tennis Courts</li>
                 <li>Fully air-conditioned boarding fests for Boys & Girls</li>
@@ -312,6 +316,156 @@
       </div>
     </div>
   </footer>
+
+  <!-- --- Edit School Profile Modal --- -->
+  <div class="modal-overlay" id="edit-school-modal" style="display: none;">
+    <div class="modal-content modal-large">
+      <button class="modal-close-btn" id="edit-school-close" aria-label="Close modal">&times;</button>
+      
+      <div class="modal-title">
+        <h3>Edit School Profile</h3>
+        <p>Update your school's information, contact details, curriculum highlights, and color themes.</p>
+      </div>
+
+      <!-- Tabbed Form Navigation -->
+      <div class="modal-tabs">
+        <button class="tab-btn active" data-tab="tab-sch-basic" type="button">Basic Info</button>
+        <button class="tab-btn" data-tab="tab-sch-contact" type="button">Location & Contact</button>
+        <button class="tab-btn" data-tab="tab-sch-achievements" type="button">Achievements</button>
+        <button class="tab-btn" data-tab="tab-sch-highlights" type="button">Highlights</button>
+      </div>
+
+      <form id="edit-school-form">
+        <!-- Tab 1: Basic Info -->
+        <div class="tab-pane active" id="tab-sch-basic">
+          <div class="form-group">
+            <label for="edit-sch-name">School Name *</label>
+            <input type="text" id="edit-sch-name" required placeholder="e.g. Delhi Public School">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="edit-sch-est">Established Year</label>
+              <input type="text" id="edit-sch-est" placeholder="e.g. 1972">
+            </div>
+            <div class="form-group col-6">
+              <label for="edit-sch-size">Campus Size</label>
+              <input type="text" id="edit-sch-size" placeholder="e.g. 12 Acres">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-sch-color-class">Theme Color Gradient</label>
+            <select id="edit-sch-color-class">
+              <option value="color-1">Gradient Blue & Purple (Theme 1)</option>
+              <option value="color-2">Gradient Cyan & Emerald (Theme 2)</option>
+              <option value="color-3">Gradient Orange & Pink (Theme 3)</option>
+              <option value="color-4">Gradient Royal Blue & Azure (Theme 4)</option>
+              <option value="color-5">Gradient Deep Violet & Fuchsia (Theme 5)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-sch-about">About / Description</label>
+            <textarea id="edit-sch-about" rows="5" placeholder="Describe your school's history, infrastructure, academic focus, and unique opportunities..."></textarea>
+          </div>
+        </div>
+
+        <!-- Tab 2: Location & Contact -->
+        <div class="tab-pane" id="tab-sch-contact">
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="edit-sch-board">Affiliation Board</label>
+              <select id="edit-sch-board">
+                <option value="">Select Board...</option>
+                <option value="CBSE">CBSE (Central Board of Secondary Education)</option>
+                <option value="ICSE">CISCE / ICSE (Indian School Certificate)</option>
+                <option value="State">State Board</option>
+                <option value="IB">IB (International Baccalaureate) / Cambridge</option>
+              </select>
+            </div>
+            <div class="form-group col-6">
+              <label for="edit-sch-city">City / State</label>
+              <input type="text" id="edit-sch-city" placeholder="e.g. New Delhi, Delhi">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="edit-sch-address">Full Address</label>
+              <input type="text" id="edit-sch-address" placeholder="e.g. Sector 12, RK Puram">
+            </div>
+            <div class="form-group col-6">
+              <label for="edit-sch-email">Official Contact Email</label>
+              <input type="email" id="edit-sch-email" placeholder="e.g. info@dpsrkpuram.in">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="edit-sch-website">Website URL</label>
+              <input type="url" id="edit-sch-website" placeholder="e.g. https://www.dpsrkpuram.in">
+            </div>
+            <div class="form-group col-6">
+              <label for="edit-sch-logo-letter">Logo Initial Letter</label>
+              <input type="text" id="edit-sch-logo-letter" maxlength="1" placeholder="e.g. D" style="text-transform: uppercase;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Achievements -->
+        <div class="tab-pane" id="tab-sch-achievements">
+          <div class="form-group">
+            <label>School Achievements</label>
+            <p class="field-desc">List achievements, ranks, or sports trophies won by the school.</p>
+            
+            <div class="achievement-input-block" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; background-color: var(--light-bg); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="edit-sch-ach-year" placeholder="Year (e.g. 2026)" style="width: 120px;">
+                <input type="text" id="edit-sch-ach-title" placeholder="Title (e.g. #1 Co-Ed School)" style="flex-grow: 1;">
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="edit-sch-ach-desc" placeholder="Brief description of the award..." style="flex-grow: 1;">
+                <button type="button" id="btn-add-sch-ach" class="btn btn-secondary btn-sm" style="padding: 10px 16px;">Add</button>
+              </div>
+            </div>
+            
+            <ul class="editable-list-items" id="sch-achievements-editable-list" style="max-height: 220px; overflow-y: auto;">
+              <!-- Populated dynamically -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- Tab 4: Highlights -->
+        <div class="tab-pane" id="tab-sch-highlights">
+          <div class="form-group">
+            <label>Infrastructure & Highlights</label>
+            <p class="field-desc">Add highlights like laboratories, pools, boarding houses, etc.</p>
+            
+            <div class="achievement-input-row" style="display: flex; gap: 8px; margin-bottom: 16px;">
+              <input type="text" id="edit-sch-hl-input" placeholder="e.g. Science & Robotics Labs">
+              <button type="button" id="btn-add-sch-hl" class="btn btn-secondary btn-sm" style="padding: 10px 16px;">Add</button>
+            </div>
+            
+            <ul class="editable-list-items" id="sch-highlights-editable-list" style="max-height: 220px; overflow-y: auto;">
+              <!-- Populated dynamically -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- Toast container for notifications inside page -->
+        <div id="toast-container" class="toast-container"></div>
+
+        <div class="form-navigation form-actions-modal">
+          <button type="button" class="btn btn-secondary" id="edit-school-cancel">Cancel</button>
+          <button type="submit" class="btn btn-accent">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Save School Profile</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- --- Onboarding Onboarding Modal --- -->
   <div class="modal-overlay" id="registration-modal">

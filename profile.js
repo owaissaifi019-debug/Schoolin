@@ -1,0 +1,835 @@
+// profile.js
+// CampusLink Student Profile Page Controller
+// Handles profile rendering, ownership verification, editing, tag inputs, and saves.
+
+(function () {
+  'use strict';
+
+  // State management
+  let profileUser = null;
+  let currentUser = null;
+  let isOwner = false;
+  let allSchools = [];
+  
+  // Tag & List edit states (temporary holding arrays during editing)
+  let editSkills = [];
+  let editSports = [];
+  let editAchievements = [];
+  let editCertificates = [];
+
+  // DOM Elements
+  const loadingDiv = document.getElementById('profile-loading');
+  const errorDiv = document.getElementById('profile-error');
+  const errorMsg = document.getElementById('profile-error-msg');
+  const mainDiv = document.getElementById('profile-main');
+
+  const toastContainer = document.getElementById('toast-container');
+
+  // Supabase Client and Auth references
+  function getSupabase() {
+    return window.CampusLink?.supabase;
+  }
+
+  function getAuth() {
+    return window.CampusLink?.auth;
+  }
+
+  // --- Toast Notifications ---
+  function showToast(message, type = 'success') {
+    if (!toastContainer) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-alert toast-alert-${type}`;
+    
+    let icon = '✓';
+    if (type === 'info') icon = 'ℹ';
+    if (type === 'error') icon = '⚠';
+
+    toast.innerHTML = `
+      <span style="font-weight:700; font-size:1.1rem; margin-right:8px;">${icon}</span>
+      <div>${message}</div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 50);
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        toast.remove();
+      }, 400);
+    }, 3500);
+  }
+
+  // --- Initialization ---
+  async function init() {
+    const sb = getSupabase();
+    const auth = getAuth();
+    if (!sb || !auth) {
+      console.error('Supabase or Auth module is not loaded.');
+      return;
+    }
+
+    // Refresh navbar authentication state
+    await auth.updateNavAuthState();
+
+    // Bind Mobile Navbar Toggle (for header toggle functionality on mobile viewport)
+    const mobileToggle = document.getElementById('mobile-menu-toggle');
+    const nav = document.querySelector('nav');
+    if (mobileToggle && nav) {
+      mobileToggle.addEventListener('click', () => {
+        mobileToggle.classList.toggle('active');
+        nav.classList.toggle('active');
+      });
+    }
+
+    // 1. Determine user profile ID from query param
+    const urlParams = new URLSearchParams(window.location.search);
+    let profileId = urlParams.get('id');
+
+    // 2. Fetch authenticated session
+    const session = await auth.getSession();
+    currentUser = session?.user || null;
+
+    if (!profileId) {
+      // If no ID in URL, redirect to own profile or login page
+      if (currentUser) {
+        window.location.href = `profile.html?id=${currentUser.id}`;
+        return;
+      } else {
+        window.location.href = 'login.html';
+        return;
+      }
+    }
+
+    // 3. Load Profile details
+    await loadProfileData(profileId);
+  }
+
+  // --- Load Profile Data ---
+  async function loadProfileData(profileId) {
+    const sb = getSupabase();
+    const auth = getAuth();
+
+    try {
+      // Fetch user profile info
+      const { data: profile, error: profileError } = await sb
+        .from('profiles')
+        .select('*')
+        .eq('id', profileId)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (!profile) {
+        showErrorState('Student Profile Not Found');
+        return;
+      }
+
+      profileUser = profile;
+      isOwner = currentUser && currentUser.id === profile.id;
+
+      // Redirect school representatives and school admins to their school profile or dashboard
+      if (profile.user_type === 'school_representative' || profile.platform_role === 'school_admin') {
+        if (profile.school_id) {
+          window.location.href = `school-profile.html?id=${profile.school_id}`;
+          return;
+        } else if (isOwner) {
+          window.location.href = 'dashboard.html';
+          return;
+        } else {
+          showErrorState('This user is a school representative / administrator and does not have a student profile.');
+          return;
+        }
+      }
+
+      // Fetch School details if linked
+      let school = null;
+      if (profile.school_id) {
+        const { data: schoolData, error: schoolError } = await sb
+          .from('schools')
+          .select('*')
+          .eq('id', profile.school_id)
+          .maybeSingle();
+        
+        if (!schoolError) {
+          school = schoolData;
+        }
+      }
+
+      // Render the profile views
+      renderProfileView(profile, school);
+      
+      // Setup edit capabilities if user is profile owner
+      if (isOwner) {
+        setupOwnerFeatures();
+      }
+
+      // Show profile container, hide loader
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      if (mainDiv) mainDiv.style.display = 'block';
+
+    } catch (err) {
+      console.error('Error loading profile data:', err);
+      showErrorState(err.message || 'An error occurred while loading profile details.');
+    }
+  }
+
+  // --- Show Error Screen ---
+  function showErrorState(msg) {
+    if (loadingDiv) loadingDiv.style.display = 'none';
+    if (mainDiv) mainDiv.style.display = 'none';
+    if (errorDiv) {
+      errorDiv.style.display = 'flex';
+      if (errorMsg) errorMsg.textContent = msg;
+    }
+  }
+
+  // --- Render Profile View Mode ---
+  function renderProfileView(profile, school) {
+    const auth = getAuth();
+
+    // 1. Profile Avatar & Name
+    const nameEl = document.getElementById('profile-full-name');
+    const headlineEl = document.getElementById('profile-headline');
+    const avatarEl = document.getElementById('profile-avatar-display');
+
+    if (nameEl) nameEl.textContent = profile.full_name || 'No Name Provided';
+    
+    // Headline e.g. "Student at Delhi Public School"
+    let headlineStr = auth.getUserTypeLabel(profile.user_type);
+    if (profile.class) {
+      headlineStr = `${profile.class} • ${headlineStr}`;
+    }
+    if (school) {
+      headlineStr = `${headlineStr} at ${school.name}`;
+    }
+    if (headlineEl) headlineEl.textContent = headlineStr;
+
+    // Avatar display
+    if (avatarEl) {
+      avatarEl.innerHTML = '';
+      if (profile.avatar_url) {
+        avatarEl.style.backgroundImage = `url(${profile.avatar_url})`;
+        avatarEl.style.backgroundSize = 'cover';
+        avatarEl.style.backgroundPosition = 'center';
+      } else {
+        avatarEl.style.backgroundImage = 'none';
+        const initial = (profile.full_name || '?').charAt(0).toUpperCase();
+        avatarEl.innerHTML = `<span class="avatar-initial">${initial}</span>`;
+      }
+    }
+
+    // Badges
+    const typeBadge = document.getElementById('profile-type-badge');
+    const roleBadge = document.getElementById('profile-role-badge');
+    if (typeBadge) {
+      typeBadge.textContent = auth.getUserTypeLabel(profile.user_type);
+      typeBadge.className = `badge-type ${profile.user_type || 'student'}`;
+    }
+    if (roleBadge) {
+      if (profile.platform_role && profile.platform_role !== 'user') {
+        roleBadge.textContent = auth.getPlatformRoleLabel(profile.platform_role);
+        roleBadge.className = `badge-role ${profile.platform_role}`;
+        roleBadge.style.display = 'inline-block';
+      } else {
+        roleBadge.style.display = 'none';
+      }
+    }
+
+    // School Badge (under name)
+    const schoolMetaEl = document.getElementById('profile-school-meta');
+    const schoolNameEl = document.getElementById('profile-school-name');
+    if (schoolNameEl) {
+      if (school) {
+        schoolNameEl.innerHTML = `<a href="school-profile.html?id=${school.id}">${school.name}</a>`;
+      } else {
+        schoolNameEl.textContent = 'No School Joined Yet';
+      }
+    }
+
+    // 2. About / Bio Card
+    const bioContent = document.getElementById('profile-bio-content');
+    if (bioContent) {
+      if (profile.bio && profile.bio.trim() !== '') {
+        bioContent.textContent = profile.bio;
+        bioContent.style.whiteSpace = 'pre-wrap';
+      } else {
+        bioContent.innerHTML = `<p class="empty-section-msg">${isOwner ? 'Click Edit Profile to add a bio and introduce yourself.' : 'No introduction provided yet.'}</p>`;
+      }
+    }
+
+    // 3. Skills Chips List
+    const skillsContainer = document.getElementById('profile-skills-list');
+    if (skillsContainer) {
+      skillsContainer.innerHTML = '';
+      const skillsArray = profile.skills || [];
+      if (skillsArray.length > 0) {
+        skillsArray.forEach(skill => {
+          const chip = document.createElement('span');
+          chip.className = 'profile-skill-chip';
+          chip.textContent = skill;
+          skillsContainer.appendChild(chip);
+        });
+      } else {
+        skillsContainer.innerHTML = `<p class="empty-section-msg">${isOwner ? 'Add skills (e.g. Coding, Debate) to showcase your strengths.' : 'No skills listed yet.'}</p>`;
+      }
+    }
+
+    // 4. Achievements Timeline
+    const achievementsContainer = document.getElementById('profile-achievements-list');
+    if (achievementsContainer) {
+      achievementsContainer.innerHTML = '';
+      const achArray = profile.achievements || [];
+      if (achArray.length > 0) {
+        achArray.forEach(ach => {
+          const item = document.createElement('div');
+          item.className = 'achievements-timeline-item';
+          item.innerHTML = `
+            <div class="timeline-dot">🏆</div>
+            <div class="timeline-content">
+              <p class="timeline-desc">${ach}</p>
+            </div>
+          `;
+          achievementsContainer.appendChild(item);
+        });
+      } else {
+        achievementsContainer.innerHTML = `<p class="empty-section-msg">${isOwner ? 'Add key achievements or competitions you won.' : 'No achievements added yet.'}</p>`;
+      }
+    }
+
+    // 5. Sports List
+    const sportsContainer = document.getElementById('profile-sports-list');
+    if (sportsContainer) {
+      sportsContainer.innerHTML = '';
+      const sportsArray = profile.sports || [];
+      if (sportsArray.length > 0) {
+        sportsArray.forEach(sport => {
+          const chip = document.createElement('span');
+          chip.className = 'profile-sport-chip';
+          chip.innerHTML = `<span class="sport-icon">⚽</span> ${sport}`;
+          sportsContainer.appendChild(chip);
+        });
+      } else {
+        sportsContainer.innerHTML = `<p class="empty-section-msg">${isOwner ? 'List sports or physical games you actively participate in.' : 'No sports listed yet.'}</p>`;
+      }
+    }
+
+    // 6. Certificates Cards Grid
+    const certificatesContainer = document.getElementById('profile-certificates-list');
+    if (certificatesContainer) {
+      certificatesContainer.innerHTML = '';
+      const certsArray = profile.certificates || [];
+      if (certsArray.length > 0) {
+        certsArray.forEach(cert => {
+          const card = document.createElement('div');
+          card.className = 'profile-cert-card';
+          card.innerHTML = `
+            <div class="cert-icon">📜</div>
+            <div class="cert-info">
+              <h4 class="cert-title">${cert}</h4>
+              <p class="cert-issuer">Verified Certificate</p>
+            </div>
+          `;
+          certificatesContainer.appendChild(card);
+        });
+      } else {
+        certificatesContainer.innerHTML = `<p class="empty-section-msg">${isOwner ? 'Add academic courses, workshops, or bootcamps certificates.' : 'No certificates added yet.'}</p>`;
+      }
+    }
+
+    // 7. Education Sidebar Details
+    const sbSchoolLogo = document.getElementById('sidebar-school-logo');
+    const sbSchoolTitle = document.getElementById('sidebar-school-name');
+    const sbSchoolSub = document.getElementById('sidebar-school-board');
+    const sbSchoolCity = document.getElementById('sidebar-school-city');
+    const sbClassVal = document.getElementById('sidebar-class-val');
+    const sbEmailVal = document.getElementById('sidebar-email-val');
+
+    if (school) {
+      if (sbSchoolLogo) {
+        sbSchoolLogo.textContent = school.logo_letter || school.name.charAt(0).toUpperCase();
+        sbSchoolLogo.className = `school-logo-placeholder ${school.color_class || 'bg-gradient-1'}`;
+      }
+      if (sbSchoolTitle) {
+        sbSchoolTitle.innerHTML = `<a href="school-profile.html?id=${school.id}">${school.name}</a>`;
+      }
+      if (sbSchoolSub) sbSchoolSub.textContent = school.board ? `${school.board} Affiliation` : 'Registered School';
+      if (sbSchoolCity) sbSchoolCity.textContent = school.city || '';
+    } else {
+      if (sbSchoolLogo) {
+        sbSchoolLogo.textContent = '🏫';
+        sbSchoolLogo.className = 'school-logo-placeholder';
+      }
+      if (sbSchoolTitle) sbSchoolTitle.textContent = 'No School Linked';
+      if (sbSchoolSub) sbSchoolSub.textContent = isOwner ? 'Select school in Edit Profile' : 'Not linked to any school';
+      if (sbSchoolCity) sbSchoolCity.textContent = '';
+    }
+
+    if (sbClassVal) sbClassVal.textContent = profile.class || 'Not Specified';
+    if (sbEmailVal) sbEmailVal.textContent = profile.email || 'Private';
+  }
+
+  // --- Setup Owner-Only Controls ---
+  function setupOwnerFeatures() {
+    const editBtn = document.getElementById('edit-profile-btn');
+    const avatarLabel = document.getElementById('avatar-upload-label');
+    const avatarInput = document.getElementById('avatar-upload-input');
+    const ctaCard = document.getElementById('sidebar-cta-card');
+    const linkSchoolBtn = document.getElementById('sidebar-join-school-btn');
+
+    // Show owner items
+    if (editBtn) editBtn.style.display = 'inline-flex';
+    if (avatarLabel) avatarLabel.style.display = 'flex';
+
+    // School Join CTA
+    if (ctaCard && !profileUser.school_id) {
+      ctaCard.style.display = 'block';
+    }
+
+    // Bind edit modal triggers
+    if (editBtn) editBtn.addEventListener('click', openEditModal);
+    if (linkSchoolBtn) linkSchoolBtn.addEventListener('click', openEditModal);
+
+    // Bind avatar uploader
+    if (avatarInput) {
+      avatarInput.addEventListener('change', handleAvatarUpload);
+    }
+
+    setupModalControls();
+  }
+
+  // --- Handle Avatar Upload ---
+  async function handleAvatarUpload(e) {
+    const sb = getSupabase();
+    if (!sb) return;
+
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Avatar file size must be less than 2MB', 'error');
+      return;
+    }
+
+    showToast('Uploading avatar...', 'info');
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `avatars/${profileUser.id}/${fileName}`;
+
+      // Upload avatar to Supabase bucket
+      const { error: uploadError } = await sb.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Retrieve public URL
+      const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = urlData?.publicUrl;
+
+      if (!publicUrl) throw new Error('Could not retrieve public URL for uploaded avatar');
+
+      // Update database profile record
+      const { error: dbError } = await sb
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', profileUser.id);
+
+      if (dbError) throw dbError;
+
+      // Successful update
+      showToast('Avatar updated successfully!');
+      
+      // Update page displays
+      profileUser.avatar_url = publicUrl;
+      const avatarDisplay = document.getElementById('profile-avatar-display');
+      if (avatarDisplay) {
+        avatarDisplay.innerHTML = '';
+        avatarDisplay.style.backgroundImage = `url(${publicUrl})`;
+        avatarDisplay.style.backgroundSize = 'cover';
+        avatarDisplay.style.backgroundPosition = 'center';
+      }
+
+      // Also trigger updating the navigation pill avatar
+      const auth = getAuth();
+      if (auth) {
+        await auth.updateNavAuthState();
+      }
+
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+      showToast(err.message || 'Avatar upload failed. Please try again.', 'error');
+    }
+  }
+
+  // --- Modal Open/Close Logic ---
+  async function openEditModal() {
+    const sb = getSupabase();
+    const modal = document.getElementById('edit-profile-modal');
+    if (!modal) return;
+
+    showToast('Loading settings...', 'info');
+
+    try {
+      // 1. Populate schools list (only verified schools or all? We select verified schools first)
+      if (allSchools.length === 0) {
+        const { data: schoolsData, error: schoolsError } = await sb
+          .from('schools')
+          .select('id, name, city')
+          .order('name');
+        
+        if (schoolsError) throw schoolsError;
+        allSchools = schoolsData || [];
+      }
+
+      const schoolDropdown = document.getElementById('edit-school');
+      if (schoolDropdown) {
+        schoolDropdown.innerHTML = '<option value="">Select your school...</option>';
+        allSchools.forEach(sch => {
+          const option = document.createElement('option');
+          option.value = sch.id;
+          option.textContent = `${sch.name} (${sch.city || ''})`;
+          schoolDropdown.appendChild(option);
+        });
+      }
+
+      // 2. Load inputs with current profile state
+      document.getElementById('edit-full-name').value = profileUser.full_name || '';
+      document.getElementById('edit-school').value = profileUser.school_id || '';
+      document.getElementById('edit-class').value = profileUser.class || '';
+      document.getElementById('edit-bio').value = profileUser.bio || '';
+
+      // Set array fields in state
+      editSkills = [...(profileUser.skills || [])];
+      editSports = [...(profileUser.sports || [])];
+      editAchievements = [...(profileUser.achievements || [])];
+      editCertificates = [...(profileUser.certificates || [])];
+
+      // 3. Render initial Tag Chips and Lists
+      renderSkillsChips();
+      renderSportsChips();
+      renderAchievementsList();
+      renderCertificatesList();
+
+      // Reset default tab to basic
+      const firstTabBtn = document.querySelector('.tab-btn[data-tab="tab-basic"]');
+      if (firstTabBtn) firstTabBtn.click();
+
+      // Display the modal
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden'; // block scrolling background
+
+    } catch (err) {
+      console.error('Failed to load edit modal settings:', err);
+      showToast('Could not open editor: ' + err.message, 'error');
+    }
+  }
+
+  function closeEditModal() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      document.body.style.overflow = 'auto'; // restore scrolling
+    }
+  }
+
+  function setupModalControls() {
+    const closeBtn = document.getElementById('edit-modal-close');
+    const cancelBtn = document.getElementById('edit-profile-cancel');
+    const form = document.getElementById('edit-profile-form');
+
+    if (closeBtn) closeBtn.addEventListener('click', closeEditModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeEditModal);
+
+    // Close on click outside modal content
+    const modal = document.getElementById('edit-profile-modal');
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeEditModal();
+        }
+      });
+    }
+
+    // Bind tab clicks
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetTab = btn.getAttribute('data-tab');
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanes.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(targetTab).classList.add('active');
+      });
+    });
+
+    // Tag Inputs bind
+    setupTagInputs();
+
+    // Form Submission
+    if (form) {
+      form.addEventListener('submit', handleFormSubmit);
+    }
+  }
+
+  // --- Tag and List Operations ---
+  function setupTagInputs() {
+    const skillsInput = document.getElementById('skills-tag-input');
+    const sportsInput = document.getElementById('sports-tag-input');
+
+    const addAchBtn = document.getElementById('add-achievement-btn');
+    const achInput = document.getElementById('achievement-item-input');
+
+    const addCertBtn = document.getElementById('add-certificate-btn');
+    const certInput = document.getElementById('certificate-item-input');
+
+    // Skills Enter / Comma
+    if (skillsInput) {
+      skillsInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const val = skillsInput.value.trim().replace(/,/g, '');
+          if (val && !editSkills.includes(val)) {
+            editSkills.push(val);
+            renderSkillsChips();
+            skillsInput.value = '';
+          }
+        }
+      });
+    }
+
+    // Sports Enter / Comma
+    if (sportsInput) {
+      sportsInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const val = sportsInput.value.trim().replace(/,/g, '');
+          if (val && !editSports.includes(val)) {
+            editSports.push(val);
+            renderSportsChips();
+            sportsInput.value = '';
+          }
+        }
+      });
+    }
+
+    // Achievements Add
+    if (addAchBtn && achInput) {
+      const addAch = () => {
+        const val = achInput.value.trim();
+        if (val && !editAchievements.includes(val)) {
+          editAchievements.push(val);
+          renderAchievementsList();
+          achInput.value = '';
+        }
+      };
+      addAchBtn.addEventListener('click', addAch);
+      achInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addAch();
+        }
+      });
+    }
+
+    // Certificates Add
+    if (addCertBtn && certInput) {
+      const addCert = () => {
+        const val = certInput.value.trim();
+        if (val && !editCertificates.includes(val)) {
+          editCertificates.push(val);
+          renderCertificatesList();
+          certInput.value = '';
+        }
+      };
+      addCertBtn.addEventListener('click', addCert);
+      certInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addCert();
+        }
+      });
+    }
+  }
+
+  // --- Tag Rendering Helpers ---
+  function renderSkillsChips() {
+    const container = document.getElementById('skills-tag-container');
+    const input = document.getElementById('skills-tag-input');
+    if (!container || !input) return;
+
+    // Clear chips but keep input
+    container.querySelectorAll('.tag-chip').forEach(el => el.remove());
+
+    editSkills.forEach((skill, index) => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.innerHTML = `${skill} <span class="tag-remove" data-index="${index}">&times;</span>`;
+      container.insertBefore(chip, input);
+    });
+
+    // Bind remove event
+    container.querySelectorAll('.tag-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+        editSkills.splice(idx, 1);
+        renderSkillsChips();
+      });
+    });
+  }
+
+  function renderSportsChips() {
+    const container = document.getElementById('sports-tag-container');
+    const input = document.getElementById('sports-tag-input');
+    if (!container || !input) return;
+
+    container.querySelectorAll('.tag-chip').forEach(el => el.remove());
+
+    editSports.forEach((sport, index) => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.innerHTML = `${sport} <span class="tag-remove" data-index="${index}">&times;</span>`;
+      container.insertBefore(chip, input);
+    });
+
+    container.querySelectorAll('.tag-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+        editSports.splice(idx, 1);
+        renderSportsChips();
+      });
+    });
+  }
+
+  function renderAchievementsList() {
+    const listEl = document.getElementById('achievements-editable-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    if (editAchievements.length === 0) {
+      listEl.innerHTML = '<li class="empty-list-msg">No achievements added yet.</li>';
+      return;
+    }
+
+    editAchievements.forEach((ach, index) => {
+      const li = document.createElement('li');
+      li.className = 'editable-list-item';
+      li.innerHTML = `
+        <span>${ach}</span>
+        <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
+      `;
+      listEl.appendChild(li);
+    });
+
+    listEl.querySelectorAll('.btn-remove-list-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+        editAchievements.splice(idx, 1);
+        renderAchievementsList();
+      });
+    });
+  }
+
+  function renderCertificatesList() {
+    const listEl = document.getElementById('certificates-editable-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+    if (editCertificates.length === 0) {
+      listEl.innerHTML = '<li class="empty-list-msg">No certificates added yet.</li>';
+      return;
+    }
+
+    editCertificates.forEach((cert, index) => {
+      const li = document.createElement('li');
+      li.className = 'editable-list-item';
+      li.innerHTML = `
+        <span>${cert}</span>
+        <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
+      `;
+      listEl.appendChild(li);
+    });
+
+    listEl.querySelectorAll('.btn-remove-list-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+        editCertificates.splice(idx, 1);
+        renderCertificatesList();
+      });
+    });
+  }
+
+  // --- Form Submission Save ---
+  async function handleFormSubmit(e) {
+    e.preventDefault();
+    const sb = getSupabase();
+    if (!sb) return;
+
+    showToast('Saving profile details...', 'info');
+
+    // Extract inputs
+    const fullName = document.getElementById('edit-full-name').value.trim();
+    const schoolId = document.getElementById('edit-school').value || null;
+    const gradeClass = document.getElementById('edit-class').value.trim() || null;
+    const bioText = document.getElementById('edit-bio').value.trim() || null;
+
+    if (!fullName) {
+      showToast('Full name is required.', 'error');
+      return;
+    }
+
+    try {
+      // Build update payload
+      const updateData = {
+        full_name: fullName,
+        school_id: schoolId,
+        class: gradeClass,
+        bio: bioText,
+        skills: editSkills,
+        sports: editSports,
+        achievements: editAchievements,
+        certificates: editCertificates
+      };
+
+      const { error: updateError } = await sb
+        .from('profiles')
+        .update(updateData)
+        .eq('id', profileUser.id);
+
+      if (updateError) throw updateError;
+
+      showToast('Profile updated successfully!');
+      closeEditModal();
+
+      // Reload profile data dynamically
+      await loadProfileData(profileUser.id);
+
+      // Trigger update of navigation state in case the name changed
+      const auth = getAuth();
+      if (auth) {
+        await auth.updateNavAuthState();
+      }
+
+    } catch (err) {
+      console.error('Failed to update student profile:', err);
+      showToast(err.message || 'Failed to update profile. Please try again.', 'error');
+    }
+  }
+
+  // Run on page load
+  document.addEventListener('DOMContentLoaded', init);
+
+})();

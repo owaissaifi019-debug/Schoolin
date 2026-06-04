@@ -52,7 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const supabase = window.CampusLink && window.CampusLink.supabase;
     if (supabase) {
       try {
-        const { data, error } = await supabase.from('schools').select('*');
+        // Only load approved schools publicly
+        const { data, error } = await supabase.from('schools').select('*').eq('status', 'approved');
         if (error) throw error;
         if (data && data.length > 0) {
           schools = data.map(s => ({
@@ -115,10 +116,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filtered.length === 0) {
       gridContainer.innerHTML = `
         <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
-          <p style="font-size: 1.2rem; color: var(--text-muted);">No verified partner schools match your search filters.</p>
-          <button class="btn btn-primary" id="btn-reset-not-found" style="margin-top: 16px; padding: 8px 20px; font-size: 0.9rem;">Reset Filters</button>
+          <p style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 8px;">No verified partner schools match your search filters.</p>
+          <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px;">Can't find your school? Suggest it to get it listed!</p>
+          <div style="display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-primary" id="btn-suggest-not-found" style="padding: 10px 24px; font-size: 0.9rem;">Suggest a School</button>
+            <button class="btn btn-secondary" id="btn-reset-not-found" style="padding: 10px 24px; font-size: 0.9rem;">Reset Filters</button>
+          </div>
         </div>
       `;
+      const suggestBtnNotFound = document.getElementById('btn-suggest-not-found');
+      if (suggestBtnNotFound) {
+        suggestBtnNotFound.addEventListener('click', () => {
+          openSuggestModal();
+        });
+      }
       const resetBtnNotFound = document.getElementById('btn-reset-not-found');
       if (resetBtnNotFound) {
         resetBtnNotFound.addEventListener('click', resetAllFilters);
@@ -212,6 +223,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Init
   loadSchools();
+
+  // Suggest School buttons click event listeners
+  const suggestBtnTop = document.getElementById('btn-suggest-school-top');
+  if (suggestBtnTop) {
+    suggestBtnTop.addEventListener('click', () => {
+      openSuggestModal();
+    });
+  }
+
+  const suggestBtnBanner = document.getElementById('btn-suggest-school-banner');
+  if (suggestBtnBanner) {
+    suggestBtnBanner.addEventListener('click', () => {
+      openSuggestModal();
+    });
+  }
 
   /* --- Multi-step Registration Modal Form Flow --- */
   const modalOverlay = document.getElementById('registration-modal');
@@ -357,4 +383,95 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+  /* --- Suggest School Modal Logic --- */
+  const suggestModal = document.getElementById('suggest-school-modal');
+  const suggestModalClose = document.getElementById('suggest-modal-close');
+  const suggestForm = document.getElementById('suggest-school-form');
+  const suggestSuccess = document.getElementById('suggest-success-screen');
+
+  function openSuggestModal() {
+    if (!suggestModal) return;
+    suggestModal.classList.add('active');
+    body.style.overflow = 'hidden';
+    suggestForm.style.display = 'flex';
+    suggestSuccess.style.display = 'none';
+    suggestForm.reset();
+  }
+
+  function closeSuggestModal() {
+    if (!suggestModal) return;
+    suggestModal.classList.remove('active');
+    body.style.overflow = 'auto';
+  }
+
+  if (suggestModalClose) {
+    suggestModalClose.addEventListener('click', closeSuggestModal);
+    suggestModal.addEventListener('click', (e) => {
+      if (e.target === suggestModal) closeSuggestModal();
+    });
+  }
+
+  if (suggestForm) {
+    suggestForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById('suggest-school-name').value.trim();
+      const city = document.getElementById('suggest-school-city').value.trim();
+      const board = document.getElementById('suggest-school-board').value;
+
+      const submitBtn = document.getElementById('btn-submit-suggest');
+      const btnText = submitBtn.querySelector('.btn-text');
+      const btnLoader = submitBtn.querySelector('.btn-loader');
+
+      if (btnText) btnText.style.display = 'none';
+      if (btnLoader) btnLoader.style.display = 'inline-flex';
+      submitBtn.disabled = true;
+
+      const supabase = window.CampusLink && window.CampusLink.supabase;
+      const auth = window.CampusLink && window.CampusLink.auth;
+
+      let userId = null;
+      if (auth) {
+        const session = await auth.getSession();
+        userId = session?.user?.id || null;
+      }
+
+      try {
+        if (supabase) {
+          const { error } = await supabase
+            .from('school_suggestions')
+            .insert({
+              name,
+              city,
+              board: board || null,
+              suggested_by: userId
+            });
+
+          if (error) throw error;
+        }
+
+        // Show success screen
+        suggestForm.style.display = 'none';
+        suggestSuccess.style.display = 'flex';
+
+        setTimeout(() => {
+          closeSuggestModal();
+        }, 3000);
+      } catch (err) {
+        console.error('Failed to submit school suggestion:', err);
+        let errorMsg = err.message;
+        if (err.code === 'PGRST205' || (err.message && err.message.includes('schema cache'))) {
+          errorMsg = "The 'school_suggestions' table does not exist in your database yet. Please run the SQL migration statements in 'supabase_schema.sql' in your Supabase SQL Editor.";
+        }
+        alert('Failed to submit suggestion: ' + errorMsg);
+      } finally {
+        if (btnText) btnText.style.display = 'inline';
+        if (btnLoader) btnLoader.style.display = 'none';
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  // Make openSuggestModal globally accessible
+  window.openSuggestModal = openSuggestModal;
 });

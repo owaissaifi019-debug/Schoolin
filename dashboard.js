@@ -14,6 +14,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    // Role-based authorization: redirect super_admin and block visitors
+    const role = await auth.getUserRole();
+    if (role === 'super_admin') {
+      window.location.href = 'admin/index.html';
+      return;
+    } else if (role === 'user') {
+      alert('Access Denied: Members do not have access to the School Admin Dashboard.');
+      window.location.href = 'index.html';
+      return;
+    }
+
     // Authenticated — hide loading overlay
     if (authOverlay) {
       authOverlay.classList.add('fade-out');
@@ -38,20 +49,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (auth && supabase && session) {
       try {
         const user = session.user;
-        const school = await auth.getSchoolForUser(user.id);
-        if (school) {
+        const role = await auth.getUserRole();
+
+        if (role === 'super_admin') {
           profile = {
-            id: school.id,
-            name: school.name,
-            city: school.city || '',
-            state: school.state || '',
-            board: school.board || '',
-            logoLetter: school.logo_letter || school.name.charAt(0).toUpperCase(),
-            about: school.about || ''
+            id: 'super-admin-global',
+            name: "Super Admin Portal",
+            city: "Global System",
+            state: "All India",
+            board: "Super Admin",
+            logoLetter: "A",
+            about: "Central control panel for managing the entire CampusLink platform."
           };
-          
-          // Fetch events
-          const { data: dbEvents, error: eErr } = await supabase.from('events').select('*').eq('school_id', school.id);
+
+          // Super admin gets global events
+          const { data: dbEvents, error: eErr } = await supabase.from('events').select('*');
           if (!eErr && dbEvents) {
             events = dbEvents.map(e => ({
               id: e.id,
@@ -62,13 +74,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               venue: e.venue,
               registrationLink: e.registration_link,
               description: e.description,
-              school: school.name,
+              school: e.school_name || 'Partner School',
               bannerImg: e.banner_url
             }));
           }
-          
-          // Fetch admissions
-          const { data: dbAdmissions, error: aErr } = await supabase.from('admissions').select('*').eq('school_id', school.id);
+
+          // Super admin gets global admissions
+          const { data: dbAdmissions, error: aErr } = await supabase.from('admissions').select('*');
           if (!aErr && dbAdmissions) {
             admissions = dbAdmissions.map(a => ({
               id: a.id,
@@ -78,10 +90,57 @@ document.addEventListener('DOMContentLoaded', async () => {
               academicYear: a.academic_year || '2026-27',
               applyLink: a.apply_link,
               details: a.details,
-              schoolName: school.name,
-              board: school.board,
-              city: school.city
+              schoolName: a.school_name || 'Partner School',
+              board: a.board || 'CBSE',
+              city: a.city || 'India'
             }));
+          }
+        } else {
+          const school = await auth.getSchoolForUser(user.id);
+          if (school) {
+            profile = {
+              id: school.id,
+              name: school.name,
+              city: school.city || '',
+              state: school.state || '',
+              board: school.board || '',
+              logoLetter: school.logo_letter || school.name.charAt(0).toUpperCase(),
+              about: school.about || ''
+            };
+            
+            // Fetch events
+            const { data: dbEvents, error: eErr } = await supabase.from('events').select('*').eq('school_id', school.id);
+            if (!eErr && dbEvents) {
+              events = dbEvents.map(e => ({
+                id: e.id,
+                title: e.title,
+                category: e.category,
+                date: e.event_date,
+                deadline: e.deadline || 'Varies',
+                venue: e.venue,
+                registrationLink: e.registration_link,
+                description: e.description,
+                school: school.name,
+                bannerImg: e.banner_url
+              }));
+            }
+            
+            // Fetch admissions
+            const { data: dbAdmissions, error: aErr } = await supabase.from('admissions').select('*').eq('school_id', school.id);
+            if (!aErr && dbAdmissions) {
+              admissions = dbAdmissions.map(a => ({
+                id: a.id,
+                classesOpen: a.classes_open,
+                startDate: a.start_date,
+                lastDate: a.last_date,
+                academicYear: a.academic_year || '2026-27',
+                applyLink: a.apply_link,
+                details: a.details,
+                schoolName: school.name,
+                board: school.board,
+                city: school.city
+              }));
+            }
           }
         }
       } catch (err) {

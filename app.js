@@ -190,6 +190,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (supabase) {
       try {
+        // Fetch approved schools first to filter public opportunities
+        const { data: approvedSchools, error: schoolsError } = await supabase
+          .from('schools')
+          .select('id')
+          .eq('status', 'approved');
+
+        if (schoolsError) throw schoolsError;
+        const approvedSchoolIds = new Set((approvedSchools || []).map(s => s.id));
+
         const { data: dbEvents, error: eventsError } = await supabase.from('events').select('*');
         const { data: dbAdmissions, error: admissionsError } = await supabase.from('admissions').select('*');
         if (eventsError) throw eventsError;
@@ -199,6 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (dbEvents) {
           dbEvents.forEach(e => {
+            // Only include event if its school is approved
+            if (!approvedSchoolIds.has(e.school_id)) return;
+
             let cat = 'competitions';
             if (e.category === 'cultural') cat = 'fests';
             if (e.category === 'workshop') cat = 'workshops';
@@ -219,6 +231,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (dbAdmissions) {
           dbAdmissions.forEach(a => {
+            // Only include admission if its school is approved
+            if (!approvedSchoolIds.has(a.school_id)) return;
+
             combined.push({
               id: a.id,
               title: `Admissions Open: ${a.classes_open}`,
@@ -572,4 +587,807 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  /* --- LinkedIn-Style Social Feed System --- */
+  const supabase = window.CampusLink?.supabase;
+  const auth = window.CampusLink?.auth;
+
+  let currentUser = null;
+  let currentUserProfile = null;
+
+  // Relative time helper
+  function formatRelativeTime(dateString) {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHr < 24) return `${diffHr}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  }
+
+  // Initials helper
+  function getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+  }
+
+  // Post type details helper
+  function getPostTypeDisplay(type) {
+    const displays = {
+      achievement: { label: 'Achievement', icon: '🏆', class: 'type-achievement' },
+      competition_win: { label: 'Competition Win', icon: '🥇', class: 'type-win' },
+      project: { label: 'Project', icon: '💻', class: 'type-project' },
+      event: { label: 'Event', icon: '📅', class: 'type-event' }
+    };
+    return displays[type] || { label: 'Post', icon: '📝', class: '' };
+  }
+
+  // Initialise Social Feed elements and load data
+  async function initSocialFeed() {
+    if (!supabase || !auth) return;
+
+    // Get current user session
+    currentUser = await auth.getUser();
+    if (currentUser) {
+      // Fetch profile with full school details
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*, schools(*)')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (!error && profile) {
+        currentUserProfile = profile;
+      }
+    }
+
+    // Render components
+    renderUserSidebar();
+    renderShareBox();
+    loadTrendingEventsWidget();
+    loadFeaturedSchoolsWidget();
+    loadFeed();
+
+    // Setup Create Post Form Submit
+    initCreatePostForm();
+  }
+
+  // Render Left Sidebar Card
+  function renderUserSidebar() {
+    const sidebarContainer = document.getElementById('user-sidebar-card');
+    if (!sidebarContainer) return;
+
+    if (currentUser && currentUserProfile) {
+      const p = currentUserProfile;
+      const displayName = p.full_name || currentUser.email;
+      
+      const isSchoolUser = (p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id;
+
+      if (isSchoolUser && p.schools) {
+        const s = p.schools;
+        const schoolName = s.name || 'My School';
+        const board = s.board || 'CBSE';
+        const city = s.city || '';
+        const colorClass = s.color_class || 'color-1';
+        
+        let logoHtml;
+        if (s.logo_url) {
+          logoHtml = `<img src="${s.logo_url}" alt="${schoolName}" class="feed-user-avatar">`;
+        } else {
+          const letter = s.logo_letter || schoolName.charAt(0).toUpperCase();
+          logoHtml = `<div class="feed-user-avatar-placeholder">${letter}</div>`;
+        }
+        
+        const profileUrl = `school-profile.html?id=${p.school_id}`;
+
+        sidebarContainer.innerHTML = `
+          <div class="feed-sidebar-card profile-sidebar-card">
+            <div class="profile-card-cover ${colorClass}"></div>
+            <div class="profile-card-info">
+              <a href="${profileUrl}" class="profile-card-avatar-link">
+                ${logoHtml}
+              </a>
+              <h3 class="profile-card-name">
+                <a href="${profileUrl}">${schoolName}</a>
+              </h3>
+              <span class="profile-card-badge school_representative">Verified School</span>
+              <p class="profile-card-headline">${board} Affiliated ${city ? `• ${city}` : ''}</p>
+              <p class="profile-card-school" style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); margin-top: 4px;">
+                👤 Admin: ${displayName}
+              </p>
+            </div>
+            <div class="profile-card-footer">
+              <a href="${profileUrl}" class="btn-profile-view">View School Profile</a>
+            </div>
+          </div>
+          
+          <div class="feed-sidebar-card shortcuts-sidebar-card">
+            <h4>Quick Links</h4>
+            <ul class="shortcuts-list">
+              <li><a href="schools.html">🏫 Schools Directory</a></li>
+              <li><a href="events.html">📅 Inter-School Events</a></li>
+              <li><a href="admissions.html">🎓 Admissions Updates</a></li>
+            </ul>
+          </div>
+        `;
+      } else {
+        const initial = displayName.charAt(0).toUpperCase();
+        const avatarHtml = p.avatar_url 
+          ? `<img src="${p.avatar_url}" alt="${displayName}" class="feed-user-avatar">`
+          : `<div class="feed-user-avatar-placeholder">${initial}</div>`;
+        
+        let headline = auth.getUserTypeLabel(p.user_type);
+        if (p.user_type === 'student' && p.class) {
+          headline += ` • Class ${p.class}`;
+        }
+        
+        const schoolName = p.schools?.name || '';
+        let profileUrl = `profile.html?id=${p.id}`;
+        if ((p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id) {
+          profileUrl = `school-profile.html?id=${p.school_id}`;
+        }
+
+        sidebarContainer.innerHTML = `
+          <div class="feed-sidebar-card profile-sidebar-card">
+            <div class="profile-card-cover"></div>
+            <div class="profile-card-info">
+              <a href="${profileUrl}" class="profile-card-avatar-link">
+                ${avatarHtml}
+              </a>
+              <h3 class="profile-card-name">
+                <a href="${profileUrl}">${displayName}</a>
+              </h3>
+              <span class="profile-card-badge ${p.user_type}">${auth.getUserTypeLabel(p.user_type)}</span>
+              <p class="profile-card-headline">${headline}</p>
+              ${schoolName ? `<p class="profile-card-school">🏫 ${schoolName}</p>` : ''}
+            </div>
+            <div class="profile-card-footer">
+              <a href="${profileUrl}" class="btn-profile-view">View Profile</a>
+            </div>
+          </div>
+          
+          <div class="feed-sidebar-card shortcuts-sidebar-card">
+            <h4>Quick Links</h4>
+            <ul class="shortcuts-list">
+              <li><a href="schools.html">🏫 Schools Directory</a></li>
+              <li><a href="events.html">📅 Inter-School Events</a></li>
+              <li><a href="admissions.html">🎓 Admissions Updates</a></li>
+            </ul>
+          </div>
+        `;
+      }
+    } else {
+      // Guest View
+      sidebarContainer.innerHTML = `
+        <div class="feed-sidebar-card guest-welcome-card">
+          <div class="guest-card-cover"></div>
+          <div class="guest-card-content">
+            <div class="guest-card-icon">🚀</div>
+            <h3>Join CampusLink</h3>
+            <p>Discover achievements, competition wins, and inter-school opportunities across India.</p>
+            <div class="guest-actions">
+              <a href="login.html" class="btn btn-primary btn-block">Log In</a>
+              <a href="login.html#register" class="btn btn-secondary btn-block">Register School</a>
+            </div>
+          </div>
+        </div>
+        
+        <div class="feed-sidebar-card shortcuts-sidebar-card">
+          <h4>Quick Links</h4>
+          <ul class="shortcuts-list">
+            <li><a href="schools.html">🏫 Schools Directory</a></li>
+            <li><a href="events.html">📅 Inter-School Events</a></li>
+            <li><a href="admissions.html">🎓 Admissions Updates</a></li>
+          </ul>
+        </div>
+      `;
+    }
+  }
+
+  // Render Share Box
+  function renderShareBox() {
+    const shareBoxContainer = document.getElementById('share-box-container');
+    if (!shareBoxContainer) return;
+
+    if (currentUser && currentUserProfile) {
+      const p = currentUserProfile;
+      const displayName = p.full_name || currentUser.email;
+      const initial = displayName.charAt(0).toUpperCase();
+      const avatarHtml = p.avatar_url 
+        ? `<img src="${p.avatar_url}" alt="${displayName}" class="share-box-avatar">`
+        : `<div class="share-box-avatar-placeholder">${initial}</div>`;
+
+      shareBoxContainer.innerHTML = `
+        <div class="create-post-box">
+          <div class="create-post-input-row">
+            ${avatarHtml}
+            <button id="trigger-create-post" class="btn-start-post">Start a post...</button>
+          </div>
+          <div class="create-post-actions-row">
+            <button class="btn-share-action" data-type="achievement">
+              <span class="action-icon">🏆</span>
+              <span class="action-text">Achievement</span>
+            </button>
+            <button class="btn-share-action" data-type="competition_win">
+              <span class="action-icon">🥇</span>
+              <span class="action-text">Competition Win</span>
+            </button>
+            <button class="btn-share-action" data-type="project">
+              <span class="action-icon">💻</span>
+              <span class="action-text">Project</span>
+            </button>
+            <button class="btn-share-action" data-type="event">
+              <span class="action-icon">📅</span>
+              <span class="action-text">Event</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Bind trigger click
+      document.getElementById('trigger-create-post').addEventListener('click', () => {
+        openCreatePostModal();
+      });
+
+      // Bind quick action clicks
+      document.querySelectorAll('.btn-share-action').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const type = e.currentTarget.getAttribute('data-type');
+          openCreatePostModal(type);
+        });
+      });
+    } else {
+      // Guest Share Box
+      shareBoxContainer.innerHTML = `
+        <div class="create-post-box guest-share-box">
+          <div class="guest-share-inner">
+            <span class="guest-share-emoji">🔑</span>
+            <p>Log in to share achievements, competition wins, or upcoming events with CampusLink.</p>
+            <a href="login.html" class="btn btn-primary" style="padding: 8px 20px; font-size: 0.85rem;">Sign In</a>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // Create Post Modal Controls
+  const createPostModal = document.getElementById('create-post-modal');
+  const createPostForm = document.getElementById('create-post-form');
+  const postTypeSelect = document.getElementById('post-type-select');
+  const postContentTextarea = document.getElementById('post-content-textarea');
+
+  function openCreatePostModal(type = 'achievement') {
+    if (!createPostModal) return;
+    if (postTypeSelect) {
+      postTypeSelect.value = type;
+    }
+    if (postContentTextarea) {
+      postContentTextarea.value = '';
+    }
+    createPostModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeCreatePostModal() {
+    if (!createPostModal) return;
+    createPostModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+  }
+
+  // Bind modal close buttons
+  const postModalClose = document.getElementById('post-modal-close');
+  const postModalCancel = document.getElementById('post-modal-cancel');
+  if (postModalClose) postModalClose.addEventListener('click', closeCreatePostModal);
+  if (postModalCancel) postModalCancel.addEventListener('click', closeCreatePostModal);
+  if (createPostModal) {
+    createPostModal.addEventListener('click', (e) => {
+      if (e.target === createPostModal) closeCreatePostModal();
+    });
+  }
+
+  // Form Submit Handler
+  function initCreatePostForm() {
+    if (!createPostForm) return;
+
+    // Remove any existing listeners
+    const newForm = createPostForm.cloneNode(true);
+    createPostForm.parentNode.replaceChild(newForm, createPostForm);
+
+    newForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!currentUser) {
+        alert('You must be logged in to post.');
+        return;
+      }
+
+      const type = newForm.querySelector('#post-type-select').value;
+      const content = newForm.querySelector('#post-content-textarea').value.trim();
+      const submitBtn = newForm.querySelector('#post-submit-btn');
+
+      if (!content) return;
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Posting...';
+        }
+
+        const { error } = await supabase
+          .from('posts')
+          .insert({
+            user_id: currentUser.id,
+            content: content,
+            post_type: type
+          });
+
+        if (error) throw error;
+
+        closeCreatePostModal();
+        loadFeed();
+      } catch (err) {
+        console.error('Error creating post:', err);
+        alert('Failed to submit post: ' + err.message);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Post';
+        }
+      }
+    });
+  }
+
+  // Load feed from Supabase
+  async function loadFeed() {
+    const feedContainer = document.getElementById('social-feed');
+    if (!feedContainer) return;
+
+    try {
+      const { data: posts, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles:profiles!posts_user_id_fkey (
+            full_name,
+            user_type,
+            avatar_url,
+            school_id,
+            schools (
+              name
+            )
+          ),
+          post_likes (
+            user_id
+          ),
+          comments (
+            id,
+            content,
+            created_at,
+            user_id,
+            profiles:profiles!comments_user_id_fkey (
+              full_name,
+              user_type,
+              avatar_url
+            )
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      renderFeed(posts || []);
+    } catch (err) {
+      console.error('Error loading feed:', err);
+      feedContainer.innerHTML = `
+        <div class="feed-error-state">
+          <p>Failed to load campus feed. Please refresh the page.</p>
+          <button class="btn btn-secondary btn-sm" id="btn-feed-retry">Retry</button>
+        </div>
+      `;
+      const retryBtn = document.getElementById('btn-feed-retry');
+      if (retryBtn) retryBtn.addEventListener('click', loadFeed);
+    }
+  }
+
+  // Render feed in HTML
+  function renderFeed(posts) {
+    const feedContainer = document.getElementById('social-feed');
+    if (!feedContainer) return;
+
+    if (posts.length === 0) {
+      feedContainer.innerHTML = `
+        <div class="feed-empty-state">
+          <div class="empty-icon">📣</div>
+          <h3>No posts yet</h3>
+          <p>Be the first to share an achievement, competition win, or project!</p>
+        </div>
+      `;
+      return;
+    }
+
+    feedContainer.innerHTML = '';
+
+    posts.forEach(post => {
+      const p = post.profiles || {};
+      const authorName = p.full_name || 'Anonymous User';
+      const authorInitials = getInitials(authorName);
+      const authorAvatar = p.avatar_url
+        ? `<img src="${p.avatar_url}" alt="${authorName}" class="post-avatar-img">`
+        : `<div class="post-avatar-placeholder">${authorInitials}</div>`;
+
+      // Profile url
+      let profileUrl = `profile.html?id=${post.user_id}`;
+      if ((p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id) {
+        profileUrl = `school-profile.html?id=${p.school_id}`;
+      }
+
+      // Headline construction
+      let headlineText = auth.getUserTypeLabel(p.user_type);
+      const schoolName = p.schools?.name;
+      if (p.user_type === 'student' && p.class) {
+        headlineText += ` • Class ${p.class}`;
+      }
+      if (schoolName) {
+        headlineText += ` at ${schoolName}`;
+      }
+
+      const typeDisplay = getPostTypeDisplay(post.post_type);
+
+      // Check if current user liked
+      const likes = post.post_likes || [];
+      const hasLiked = currentUser ? likes.some(l => l.user_id === currentUser.id) : false;
+
+      // Comments count & sorting
+      const comments = post.comments || [];
+      const sortedComments = [...comments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+      const card = document.createElement('article');
+      card.className = 'feed-post-card';
+      card.dataset.postId = post.id;
+
+      card.innerHTML = `
+        <div class="post-header">
+          <a href="${profileUrl}" class="post-avatar-link">
+            ${authorAvatar}
+          </a>
+          <div class="post-meta-info">
+            <div class="post-author-row">
+              <a href="${profileUrl}" class="post-author-name">${authorName}</a>
+              <span class="post-author-role ${p.user_type || 'student'}">${auth.getUserTypeLabel(p.user_type)}</span>
+            </div>
+            <p class="post-author-headline">${headlineText}</p>
+            <span class="post-time">${formatRelativeTime(post.created_at)}</span>
+          </div>
+          <span class="post-type-badge ${typeDisplay.class}">
+            <span class="badge-icon">${typeDisplay.icon}</span> ${typeDisplay.label}
+          </span>
+        </div>
+
+        <div class="post-body">
+          <p class="post-text-content">${post.content}</p>
+        </div>
+
+        <div class="post-stats-row">
+          <span class="likes-count-display">
+            <span class="likes-emoji">👍</span> <span class="likes-number">${likes.length}</span> ${likes.length === 1 ? 'like' : 'likes'}
+          </span>
+          <span class="comments-count-display">
+            <span class="comments-number">${comments.length}</span> ${comments.length === 1 ? 'comment' : 'comments'}
+          </span>
+        </div>
+
+        <div class="post-actions-row">
+          <button class="btn-post-action btn-like ${hasLiked ? 'liked' : ''}" data-post-id="${post.id}">
+            <svg class="action-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+            </svg>
+            <span>Like</span>
+          </button>
+          <button class="btn-post-action btn-comment" data-post-id="${post.id}">
+            <svg class="action-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>Comment</span>
+          </button>
+        </div>
+
+        <div class="post-comments-container" style="display: none;">
+          <div class="comments-divider"></div>
+          
+          <!-- Comment input form -->
+          ${currentUser ? `
+            <form class="post-comment-form" data-post-id="${post.id}">
+              ${currentUserProfile?.avatar_url
+                ? `<img src="${currentUserProfile.avatar_url}" alt="${currentUserProfile.full_name || 'Me'}" class="comment-input-avatar">`
+                : `<div class="comment-input-avatar-placeholder">${getInitials(currentUserProfile?.full_name || currentUser.email)}</div>`
+              }
+              <div class="comment-input-wrapper">
+                <input type="text" placeholder="Add a comment..." required class="comment-input-field">
+                <button type="submit" class="btn-comment-submit" title="Submit comment">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
+              </div>
+            </form>
+          ` : `
+            <div class="guest-comment-prompt">
+              <p><a href="login.html">Log in</a> to write a comment on this post.</p>
+            </div>
+          `}
+
+          <!-- Comments feed -->
+          <div class="post-comments-list">
+            ${sortedComments.length === 0 ? `
+              <p class="comments-empty-text">No comments yet. Start the conversation!</p>
+            ` : sortedComments.map(c => {
+              const cp = c.profiles || {};
+              const commenterName = cp.full_name || 'Anonymous';
+              const commenterInitials = getInitials(commenterName);
+              const commenterAvatar = cp.avatar_url
+                ? `<img src="${cp.avatar_url}" alt="${commenterName}" class="comment-item-avatar">`
+                : `<div class="comment-item-avatar-placeholder">${commenterInitials}</div>`;
+
+              let commenterProfileUrl = `profile.html?id=${c.user_id}`;
+              if ((cp.user_type === 'school_representative' || cp.platform_role === 'school_admin') && cp.school_id) {
+                commenterProfileUrl = `school-profile.html?id=${cp.school_id}`;
+              }
+
+              return `
+                <div class="comment-item">
+                  <a href="${commenterProfileUrl}">
+                    ${commenterAvatar}
+                  </a>
+                  <div class="comment-item-content-wrapper">
+                    <div class="comment-item-header">
+                      <div class="comment-item-author-info">
+                        <a href="${commenterProfileUrl}" class="comment-item-author-name">${commenterName}</a>
+                        <span class="comment-item-author-role ${cp.user_type || 'student'}">${auth.getUserTypeLabel(cp.user_type)}</span>
+                      </div>
+                      <span class="comment-item-time">${formatRelativeTime(c.created_at)}</span>
+                    </div>
+                    <p class="comment-item-text">${c.content}</p>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      feedContainer.appendChild(card);
+    });
+
+    // Bind Like clicks
+    feedContainer.querySelectorAll('.btn-like').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const postId = e.currentTarget.getAttribute('data-post-id');
+        await toggleLike(postId, e.currentTarget);
+      });
+    });
+
+    // Bind Comment section toggles
+    feedContainer.querySelectorAll('.btn-comment').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = e.currentTarget.closest('.feed-post-card');
+        const commentsContainer = card.querySelector('.post-comments-container');
+        if (commentsContainer.style.display === 'none') {
+          commentsContainer.style.display = 'block';
+        } else {
+          commentsContainer.style.display = 'none';
+        }
+      });
+    });
+
+    // Bind Comment submits
+    feedContainer.querySelectorAll('.post-comment-form').forEach(form => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const postId = e.currentTarget.getAttribute('data-post-id');
+        const inputField = e.currentTarget.querySelector('.comment-input-field');
+        const content = inputField.value.trim();
+        if (!content) return;
+
+        await submitComment(postId, content, inputField);
+      });
+    });
+  }
+
+  // Toggle Like Status
+  async function toggleLike(postId, btn) {
+    if (!currentUser) {
+      alert('Please log in to like posts.');
+      return;
+    }
+
+    const likeNumSpan = btn.closest('.feed-post-card').querySelector('.likes-number');
+    const likesCountDisplay = btn.closest('.feed-post-card').querySelector('.likes-count-display');
+    
+    let currentLikes = parseInt(likeNumSpan.textContent, 10);
+    const isLiked = btn.classList.contains('liked');
+
+    // Optimistic UI updates
+    if (isLiked) {
+      btn.classList.remove('liked');
+      currentLikes = Math.max(0, currentLikes - 1);
+    } else {
+      btn.classList.add('liked');
+      currentLikes++;
+    }
+    likeNumSpan.textContent = currentLikes;
+    likesCountDisplay.innerHTML = `<span class="likes-emoji">👍</span> <span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
+
+    try {
+      if (isLiked) {
+        // Delete like row
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', currentUser.id);
+
+        if (error) throw error;
+      } else {
+        // Insert like row
+        const { error } = await supabase
+          .from('post_likes')
+          .insert({
+            post_id: postId,
+            user_id: currentUser.id
+          });
+
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error('Error toggling like:', err);
+      // Revert Optimistic UI if failed
+      if (isLiked) {
+        btn.classList.add('liked');
+        currentLikes++;
+      } else {
+        btn.classList.remove('liked');
+        currentLikes = Math.max(0, currentLikes - 1);
+      }
+      likeNumSpan.textContent = currentLikes;
+      likesCountDisplay.innerHTML = `<span class="likes-emoji">👍</span> <span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
+      alert('Could not update like. Please try again.');
+    }
+  }
+
+  // Submit Comment
+  async function submitComment(postId, content, inputField) {
+    if (!currentUser) {
+      alert('Please log in to comment.');
+      return;
+    }
+
+    const submitBtn = inputField.nextElementSibling;
+    try {
+      if (submitBtn) submitBtn.disabled = true;
+
+      const { error } = await supabase
+        .from('comments')
+        .insert({
+          post_id: postId,
+          user_id: currentUser.id,
+          content: content
+        });
+
+      if (error) throw error;
+
+      inputField.value = '';
+      loadFeed();
+    } catch (err) {
+      console.error('Error submitting comment:', err);
+      alert('Failed to post comment: ' + err.message);
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  }
+
+  // Load Trending Events Sidebar Widget
+  async function loadTrendingEventsWidget() {
+    const list = document.getElementById('trending-events-list');
+    if (!list) return;
+
+    try {
+      // Fetch approved schools first to filter
+      const { data: approvedSchools } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('status', 'approved');
+
+      const approvedSchoolIds = new Set((approvedSchools || []).map(s => s.id));
+
+      const { data: dbEvents, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      const filteredEvents = (dbEvents || []).filter(e => approvedSchoolIds.has(e.school_id)).slice(0, 5);
+
+      list.innerHTML = '';
+      if (filteredEvents.length === 0) {
+        list.innerHTML = `<div class="widget-list-empty">No upcoming events listed.</div>`;
+        return;
+      }
+
+      filteredEvents.forEach(e => {
+        const item = document.createElement('div');
+        item.className = 'widget-item';
+        item.innerHTML = `
+          <div class="widget-item-logo">${e.logo_letter || '🎉'}</div>
+          <div class="widget-item-info">
+            <a href="event-detail.html?id=${e.id}" class="widget-item-title">${e.title}</a>
+            <span class="widget-item-subtitle">${e.school_name || 'Partner School'}</span>
+            <span class="widget-item-meta">${e.event_date || 'Upcoming'} • ${e.registrations || '0 Registered'}</span>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    } catch (err) {
+      console.warn('Error loading trending events widget:', err);
+      list.innerHTML = `<div class="widget-list-empty">Failed to load events.</div>`;
+    }
+  }
+
+  // Load Featured Schools Sidebar Widget
+  async function loadFeaturedSchoolsWidget() {
+    const list = document.getElementById('suggested-schools-list');
+    if (!list) return;
+
+    try {
+      const { data: dbSchools, error } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+
+      list.innerHTML = '';
+      if ((dbSchools || []).length === 0) {
+        list.innerHTML = `<div class="widget-list-empty">No featured schools found.</div>`;
+        return;
+      }
+
+      dbSchools.forEach(s => {
+        const letter = s.logo_letter || s.name.charAt(0).toUpperCase();
+        const colorClass = s.color_class || 'bg-gradient-1';
+        const item = document.createElement('div');
+        item.className = 'widget-item';
+        item.innerHTML = `
+          <div class="widget-item-school-logo ${colorClass}">${s.logo_url ? `<img src="${s.logo_url}" alt="${s.name}">` : letter}</div>
+          <div class="widget-item-info">
+            <a href="school-profile.html?id=${s.id}" class="widget-item-title">${s.name}</a>
+            <span class="widget-item-subtitle">${s.city || ''}${s.state ? `, ${s.state}` : ''}</span>
+            <span class="widget-item-meta">${s.board || 'CBSE/ICSE'} Board</span>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    } catch (err) {
+      console.warn('Error loading featured schools widget:', err);
+      list.innerHTML = `<div class="widget-list-empty">Failed to load schools.</div>`;
+    }
+  }
+
+  // Initialise Social Feed
+  if (document.getElementById('social-feed')) {
+    initSocialFeed();
+  }
 });
+

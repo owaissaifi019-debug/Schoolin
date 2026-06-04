@@ -1,0 +1,1071 @@
+document.addEventListener('DOMContentLoaded', async () => {
+  'use strict';
+
+  // ── Element References ──────────────────────────────────
+  const authOverlay = document.getElementById('auth-loading-overlay');
+  const goSchoolBtn = document.getElementById('go-to-schools-btn');
+  
+  // Tabs
+  const tabLinks = document.querySelectorAll('.dashboard-nav-link[data-tab]');
+  const tabPanels = document.querySelectorAll('.dashboard-tab-panel');
+  const topBarTitle = document.getElementById('top-bar-title');
+  const currentDateDisplay = document.getElementById('current-date-display');
+  
+  // Metrics
+  const statSchools = document.getElementById('stat-total-schools');
+  const statUsers = document.getElementById('stat-total-users');
+  const statEvents = document.getElementById('stat-total-events');
+  const statAdmissions = document.getElementById('stat-total-admissions');
+  const statSuggestions = document.getElementById('stat-total-suggestions');
+  
+  // Suggestions
+  const suggestionsTbody = document.getElementById('suggestions-tbody');
+  const suggestionSearch = document.getElementById('suggestion-search');
+  
+  // School Registry Table & Filters
+  const schoolsTbody = document.getElementById('schools-tbody');
+  const schoolSearch = document.getElementById('school-search');
+  const schoolCityFilter = document.getElementById('school-city-filter');
+
+  // Event Table & Filters
+  const eventsTbody = document.getElementById('events-tbody');
+  const eventSearch = document.getElementById('event-search');
+  const eventCategoryFilter = document.getElementById('event-category-filter');
+
+  // Admission Table & Filters
+  const admissionsTbody = document.getElementById('admissions-tbody');
+  const admissionSearch = document.getElementById('admission-search');
+  const admissionStatusFilter = document.getElementById('admission-status-filter');
+
+  // User Table & Filters
+  const usersTbody = document.getElementById('users-tbody');
+  const userSearch = document.getElementById('user-search');
+  
+  // Modal
+  const modal = document.getElementById('school-details-modal');
+  const modalCloseBtns = [
+    document.getElementById('modal-close'),
+    document.getElementById('modal-close-btn')
+  ];
+  
+  // Modal Fields
+  const modalName = document.getElementById('modal-school-name');
+  const modalBoard = document.getElementById('modal-school-board');
+  const modalCity = document.getElementById('modal-school-city');
+  const modalStatus = document.getElementById('modal-school-status');
+  const modalAbout = document.getElementById('modal-school-about');
+  const modalWebsite = document.getElementById('modal-school-website');
+  const modalEmail = document.getElementById('modal-school-email');
+  const modalAdminId = document.getElementById('modal-school-admin-id');
+  const modalCreated = document.getElementById('modal-school-created');
+  
+  // Logout
+  const logoutBtn = document.getElementById('sidebar-logout-btn');
+
+  // Global Caches
+  let allSchools = [];
+  let allEvents = [];
+  let allAdmissions = [];
+  let allUsers = [];
+  let allSuggestions = [];
+  
+  // ── Auth Page Guard ──────────────────────────────────────
+  const auth = window.CampusLink && window.CampusLink.auth;
+  const supabase = window.CampusLink && window.CampusLink.supabase;
+  let session = null;
+
+  if (auth && supabase) {
+    session = await auth.getSession();
+    if (!session) {
+      // Not authenticated — redirect to login
+      window.location.href = '../login.html';
+      return;
+    }
+
+    // Role Guard Check
+    const role = await auth.getUserRole();
+    if (role !== 'super_admin') {
+      alert('Access Denied: Unauthorised role.');
+      if (role === 'school_admin') {
+        window.location.href = '../dashboard.html';
+      } else {
+        window.location.href = '../index.html';
+      }
+      return;
+    }
+
+    // Authenticated and Authorized — hide loading overlay
+    if (authOverlay) {
+      authOverlay.classList.add('fade-out');
+      setTimeout(() => { authOverlay.style.display = 'none'; }, 400);
+    }
+  } else {
+    // Missing Supabase SDK modules
+    console.error('Supabase client modules not loaded');
+    if (authOverlay) authOverlay.style.display = 'none';
+  }
+
+  // ── Date Display ─────────────────────────────────────────
+  function displayCurrentDate() {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const today = new Date();
+    if (currentDateDisplay) {
+      currentDateDisplay.textContent = today.toLocaleDateString('en-US', options);
+    }
+  }
+  displayCurrentDate();
+
+  // ── Tab Navigation ───────────────────────────────────────
+  tabLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tabTarget = link.getAttribute('data-tab');
+      
+      tabLinks.forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+
+      tabPanels.forEach(panel => {
+        panel.classList.remove('active');
+        if (panel.id === `${tabTarget}-tab`) {
+          panel.classList.add('active');
+        }
+      });
+
+      let pageTitle = 'Super Admin Dashboard';
+      if (tabTarget === 'schools') pageTitle = 'School Registry Management';
+      if (tabTarget === 'suggestions') pageTitle = 'School Suggestions Inbox';
+      if (tabTarget === 'events') pageTitle = 'Event & Fest Registry';
+      if (tabTarget === 'admissions') pageTitle = 'Admission Management';
+      if (tabTarget === 'users') pageTitle = 'User Account Directory';
+      if (topBarTitle) topBarTitle.textContent = pageTitle;
+    });
+  });
+
+  if (goSchoolBtn) {
+    goSchoolBtn.addEventListener('click', () => {
+      const schoolsTabLink = document.getElementById('tab-link-schools');
+      if (schoolsTabLink) schoolsTabLink.click();
+    });
+  }
+
+  // ── Supabase Data Loading ────────────────────────────────
+  async function loadSystemStats() {
+    if (!supabase) return;
+
+    try {
+      // 1. Total Schools count
+      const { count: countSch, error: errSch } = await supabase
+        .from('schools')
+        .select('*', { count: 'exact', head: true });
+      if (!errSch && statSchools) statSchools.textContent = countSch;
+
+      // 2. Total Users count
+      const { count: countUsr, error: errUsr } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      if (!errUsr && statUsers) statUsers.textContent = countUsr;
+
+      // 3. Total Events count
+      const { count: countEvt, error: errEvt } = await supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true });
+      if (!errEvt && statEvents) statEvents.textContent = countEvt;
+
+      // 4. Total Admissions count
+      const { count: countAdm, error: errAdm } = await supabase
+        .from('admissions')
+        .select('*', { count: 'exact', head: true });
+      if (!errAdm && statAdmissions) statAdmissions.textContent = countAdm;
+
+      // 5. Total Suggestions count
+      const { count: countSug, error: errSug } = await supabase
+        .from('school_suggestions')
+        .select('*', { count: 'exact', head: true });
+      if (!errSug && statSuggestions) statSuggestions.textContent = countSug;
+
+    } catch (e) {
+      console.error('Failed to load metric counts from Supabase:', e);
+    }
+  }
+
+  async function loadSchoolsData() {
+    if (!supabase) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        allSchools = data;
+        populateCityFilter(data);
+        renderSchools(data);
+      }
+    } catch (e) {
+      console.error('Failed to load schools from Supabase:', e);
+      if (schoolsTbody) {
+        schoolsTbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #EF4444;">
+              Failed to fetch school records: ${e.message}
+            </td>
+          </tr>
+        `;
+      }
+    }
+  }
+
+  // ── Render School Management Table ──────────────────────
+  function renderSchools(schoolsList) {
+    if (!schoolsTbody) return;
+    schoolsTbody.innerHTML = '';
+
+    if (schoolsList.length === 0) {
+      schoolsTbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No school records found matching filters.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    schoolsList.forEach(school => {
+      const tr = document.createElement('tr');
+      const createdDate = new Date(school.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      let statusBadgeClass = 'status-pending';
+      if (school.status === 'approved') statusBadgeClass = 'status-approved';
+      if (school.status === 'rejected') statusBadgeClass = 'status-rejected';
+      
+      const statusLabel = (school.status || 'pending').toUpperCase();
+      const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+      const approveBtn = canChangeStatus 
+        ? `<button class="btn btn-primary btn-approve-school" data-id="${school.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); display: ${school.status === 'approved' ? 'none' : 'inline-block'};">Approve</button>` 
+        : '';
+      const rejectBtn = canChangeStatus 
+        ? `<button class="btn btn-secondary btn-reject-school" data-id="${school.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2); display: ${school.status === 'rejected' ? 'none' : 'inline-block'};">Reject</button>` 
+        : '';
+
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${school.name}</td>
+        <td>${school.city || 'N/A'}</td>
+        <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${school.board || 'CBSE'}</span></td>
+        <td><span class="badge-status ${statusBadgeClass}" style="font-weight:700;">${statusLabel}</span></td>
+        <td>${createdDate}</td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-view-details" data-id="${school.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm);">View</button>
+            ${approveBtn}
+            ${rejectBtn}
+          </div>
+        </td>
+      `;
+      schoolsTbody.appendChild(tr);
+    });
+
+    // Bind details buttons
+    schoolsTbody.querySelectorAll('.btn-view-details').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const schoolId = e.target.getAttribute('data-id');
+        openSchoolDetailsModal(schoolId);
+      });
+    });
+
+    // Bind approve buttons
+    schoolsTbody.querySelectorAll('.btn-approve-school').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const schoolId = e.target.getAttribute('data-id');
+        await updateSchoolStatus(schoolId, 'approved');
+      });
+    });
+
+    // Bind reject buttons
+    schoolsTbody.querySelectorAll('.btn-reject-school').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const schoolId = e.target.getAttribute('data-id');
+        await updateSchoolStatus(schoolId, 'rejected');
+      });
+    });
+  }
+
+  // ── Populate City Dropdown ───────────────────────────────
+  function populateCityFilter(schoolsList) {
+    if (!schoolCityFilter) return;
+    
+    // Extract unique cities
+    const cities = [...new Set(schoolsList.map(s => s.city).filter(Boolean))].sort();
+    
+    // Keep the default first "All Cities" option
+    schoolCityFilter.innerHTML = '<option value="">All Cities</option>';
+    
+    cities.forEach(city => {
+      const option = document.createElement('option');
+      option.value = city;
+      option.textContent = city;
+      schoolCityFilter.appendChild(option);
+    });
+  }
+
+  // ── Filtering Logic ──────────────────────────────────────
+  function filterSchools() {
+    const query = schoolSearch.value.trim().toLowerCase();
+    const city = schoolCityFilter.value;
+
+    const filtered = allSchools.filter(school => {
+      const matchesSearch = school.name.toLowerCase().includes(query);
+      const matchesCity = !city || school.city === city;
+      return matchesSearch && matchesCity;
+    });
+
+    renderSchools(filtered);
+  }
+
+  if (schoolSearch) schoolSearch.addEventListener('input', filterSchools);
+  if (schoolCityFilter) schoolCityFilter.addEventListener('change', filterSchools);
+
+  // ── Modal Handlers ───────────────────────────────────────
+  function openSchoolDetailsModal(schoolId) {
+    const school = allSchools.find(s => s.id === schoolId);
+    if (!school) return;
+
+    modalName.textContent = school.name;
+    modalBoard.textContent = `${school.board || 'CBSE'} Board`;
+    modalCity.textContent = school.city || 'N/A';
+    
+    const statusLabel = (school.status || 'pending').toUpperCase();
+    if (modalStatus) {
+      modalStatus.textContent = statusLabel;
+      let statusClass = 'status-pending';
+      if (school.status === 'approved') statusClass = 'status-approved';
+      if (school.status === 'rejected') statusClass = 'status-rejected';
+      modalStatus.className = `badge badge-status ${statusClass}`;
+    }
+
+    modalAbout.textContent = school.about || 'No description available for this school.';
+    
+    if (school.website) {
+      modalWebsite.style.display = 'inline-block';
+      modalWebsite.href = school.website.startsWith('http') ? school.website : `https://${school.website}`;
+      modalWebsite.textContent = school.website;
+    } else {
+      modalWebsite.style.display = 'none';
+    }
+    
+    modalEmail.textContent = school.contact_email || 'N/A';
+    modalAdminId.textContent = school.admin_user_id || 'N/A';
+    
+    modalCreated.textContent = new Date(school.created_at).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    if (modal) {
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeSchoolDetailsModal() {
+    if (modal) {
+      modal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+  }
+
+  modalCloseBtns.forEach(btn => {
+    if (btn) btn.addEventListener('click', closeSchoolDetailsModal);
+  });
+
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeSchoolDetailsModal();
+    });
+  }
+
+  // ── Update School Status & Toast ─────────────────────────
+  const toastContainer = document.getElementById('toast-container');
+  function showToast(message, type = 'success') {
+    if (!toastContainer) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-alert toast-alert-${type}`;
+    
+    let icon = '✓';
+    if (type === 'error') icon = '⚠';
+
+    toast.innerHTML = `
+      <span style="font-weight:700; font-size:1.1rem;">${icon}</span>
+      <div>${message}</div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 50);
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        toast.remove();
+      }, 400);
+    }, 3500);
+  }
+
+  async function updateSchoolStatus(schoolId, newStatus) {
+    if (!supabase) return;
+    const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+    if (!canChangeStatus) {
+      showToast('Access Denied: Only owaissaifi019@gmail.com can approve or reject schools.', 'error');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({ status: newStatus })
+        .eq('id', schoolId);
+
+      if (error) throw error;
+
+      showToast(`School successfully ${newStatus}!`, 'success');
+      
+      // Reload stats and data
+      await loadSystemStats();
+      await loadSchoolsData();
+    } catch (e) {
+      console.error(`Failed to update school status to ${newStatus}:`, e);
+      showToast(`Failed to update status: ${e.message}`, 'error');
+    }
+  }
+
+  // ── Event Management ──────────────────────────────────────
+  async function loadEventsData() {
+    if (!supabase) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        allEvents = data;
+        renderEvents(data);
+      }
+    } catch (e) {
+      console.error('Failed to load events from Supabase:', e);
+      if (eventsTbody) {
+        eventsTbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 40px; color: #EF4444;">
+              Failed to fetch event records: ${e.message}
+            </td>
+          </tr>
+        `;
+      }
+    }
+  }
+
+  function renderEvents(eventsList) {
+    if (!eventsTbody) return;
+    eventsTbody.innerHTML = '';
+
+    if (eventsList.length === 0) {
+      eventsTbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No event records found matching filters.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    eventsList.forEach(event => {
+      const tr = document.createElement('tr');
+      const eventDateStr = event.event_date || 'N/A';
+
+      let categoryLabel = 'Competition';
+      if (event.category === 'cultural') categoryLabel = 'Cultural Fest';
+      if (event.category === 'workshop') categoryLabel = 'Workshop';
+
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${event.title}</td>
+        <td>${event.school_name || 'Partner School'}</td>
+        <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${categoryLabel}</span></td>
+        <td>${eventDateStr}</td>
+        <td>${event.registrations || '0 Registered'}</td>
+        <td>
+          <button class="btn btn-secondary btn-delete-event" data-id="${event.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Delete</button>
+        </td>
+      `;
+      eventsTbody.appendChild(tr);
+    });
+
+    // Bind delete buttons
+    eventsTbody.querySelectorAll('.btn-delete-event').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const eventId = e.target.getAttribute('data-id');
+        if (confirm('Are you sure you want to delete this event opportunity?')) {
+          await deleteEvent(eventId);
+        }
+      });
+    });
+  }
+
+  function filterEvents() {
+    const query = eventSearch.value.trim().toLowerCase();
+    const category = eventCategoryFilter.value;
+
+    const filtered = allEvents.filter(event => {
+      const matchesSearch = event.title.toLowerCase().includes(query) || 
+                            (event.school_name && event.school_name.toLowerCase().includes(query));
+      
+      const matchesCategory = !category || event.category === category;
+      return matchesSearch && matchesCategory;
+    });
+
+    renderEvents(filtered);
+  }
+
+  async function deleteEvent(eventId) {
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      showToast('Event successfully deleted!', 'success');
+      await loadSystemStats();
+      await loadEventsData();
+    } catch (e) {
+      console.error('Failed to delete event:', e);
+      showToast(`Failed to delete event: ${e.message}`, 'error');
+    }
+  }
+
+  // ── Admission Management ──────────────────────────────────
+  async function loadAdmissionsData() {
+    if (!supabase) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('admissions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        allAdmissions = data;
+        renderAdmissions(data);
+      }
+    } catch (e) {
+      console.error('Failed to load admissions from Supabase:', e);
+      if (admissionsTbody) {
+        admissionsTbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 40px; color: #EF4444;">
+              Failed to fetch admission records: ${e.message}
+            </td>
+          </tr>
+        `;
+      }
+    }
+  }
+
+  function renderAdmissions(admissionsList) {
+    if (!admissionsTbody) return;
+    admissionsTbody.innerHTML = '';
+
+    if (admissionsList.length === 0) {
+      admissionsTbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No admission records found matching filters.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    admissionsList.forEach(adm => {
+      const tr = document.createElement('tr');
+      const isClosed = adm.status === 'closed';
+
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${adm.school_name || 'Partner School'}</td>
+        <td>${adm.classes_open || 'N/A'}</td>
+        <td>${adm.academic_year || '2026-27'}</td>
+        <td>${adm.last_date || 'N/A'}</td>
+        <td><span class="badge-status ${isClosed ? 'status-rejected' : 'status-approved'}" style="font-weight:700;">${(adm.status || 'open').toUpperCase()}</span></td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-toggle-admission" data-id="${adm.id}" data-status="${adm.status || 'open'}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm);">${isClosed ? 'Open' : 'Close'}</button>
+            <button class="btn btn-secondary btn-delete-admission" data-id="${adm.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Delete</button>
+          </div>
+        </td>
+      `;
+      admissionsTbody.appendChild(tr);
+    });
+
+    // Bind action buttons
+    admissionsTbody.querySelectorAll('.btn-toggle-admission').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        const currentStatus = e.target.getAttribute('data-status');
+        const nextStatus = currentStatus === 'closed' ? 'open' : 'closed';
+        await toggleAdmissionStatus(id, nextStatus);
+      });
+    });
+
+    admissionsTbody.querySelectorAll('.btn-delete-admission').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        if (confirm('Are you sure you want to delete this admission posting?')) {
+          await deleteAdmission(id);
+        }
+      });
+    });
+  }
+
+  function filterAdmissions() {
+    const query = admissionSearch.value.trim().toLowerCase();
+    const status = admissionStatusFilter.value;
+
+    const filtered = allAdmissions.filter(adm => {
+      const matchesSearch = (adm.school_name && adm.school_name.toLowerCase().includes(query)) ||
+                            (adm.classes_open && adm.classes_open.toLowerCase().includes(query));
+      
+      const matchesStatus = !status || adm.status === status;
+      return matchesSearch && matchesStatus;
+    });
+
+    renderAdmissions(filtered);
+  }
+
+  async function toggleAdmissionStatus(admissionId, newStatus) {
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase
+        .from('admissions')
+        .update({ status: newStatus })
+        .eq('id', admissionId);
+
+      if (error) throw error;
+
+      showToast(`Admission successfully ${newStatus === 'open' ? 'opened' : 'closed'}!`, 'success');
+      await loadSystemStats();
+      await loadAdmissionsData();
+    } catch (e) {
+      console.error('Failed to toggle admission status:', e);
+      showToast(`Failed to update status: ${e.message}`, 'error');
+    }
+  }
+
+  async function deleteAdmission(admissionId) {
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase
+        .from('admissions')
+        .delete()
+        .eq('id', admissionId);
+
+      if (error) throw error;
+
+      showToast('Admission posting successfully deleted!', 'success');
+      await loadSystemStats();
+      await loadAdmissionsData();
+    } catch (e) {
+      console.error('Failed to delete admission posting:', e);
+      showToast(`Failed to delete: ${e.message}`, 'error');
+    }
+  }
+
+  // ── User Management ───────────────────────────────────────
+  async function loadUsersData() {
+    if (!supabase) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        allUsers = data;
+        renderUsers(data);
+      }
+    } catch (e) {
+      console.error('Failed to load user profiles from Supabase:', e);
+      if (usersTbody) {
+        usersTbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #EF4444;">
+              Failed to fetch user accounts: ${e.message}
+            </td>
+          </tr>
+        `;
+      }
+    }
+  }
+
+  function renderUsers(usersList) {
+    if (!usersTbody) return;
+    usersTbody.innerHTML = '';
+
+    if (usersList.length === 0) {
+      usersTbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No user accounts found matching search filters.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    usersList.forEach(profile => {
+      const tr = document.createElement('tr');
+      const createdDate = new Date(profile.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      const userTypeLabel = auth ? auth.getUserTypeLabel(profile.user_type) : (profile.user_type || 'N/A');
+      const platformRoleLabel = auth ? auth.getPlatformRoleLabel(profile.platform_role) : (profile.platform_role || 'user');
+
+      let roleBadgeClass = 'status-pending'; // Member/user default
+      if (profile.platform_role === 'super_admin') roleBadgeClass = 'status-rejected';
+      if (profile.platform_role === 'school_admin') roleBadgeClass = 'status-approved';
+
+      const displayName = profile.full_name || 'N/A';
+      const displayEmail = profile.email || 'N/A';
+
+      const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+      const selectDisabledAttr = canChangeStatus ? '' : 'disabled';
+      const selectCursor = canChangeStatus ? 'pointer' : 'not-allowed';
+      const selectBackground = canChangeStatus ? 'white' : '#F1F5F9';
+      const selectColor = canChangeStatus ? 'inherit' : '#64748B';
+
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${displayName}</td>
+        <td>${displayEmail}</td>
+        <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${userTypeLabel}</span></td>
+        <td><span class="badge-status ${roleBadgeClass}" style="font-weight:700;">${platformRoleLabel.toUpperCase()}</span></td>
+        <td>${createdDate}</td>
+        <td>
+          <select class="select-role-change" data-id="${profile.id}" ${selectDisabledAttr} style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; background: ${selectBackground}; color: ${selectColor}; outline: none; cursor: ${selectCursor};">
+            <option value="user" ${profile.platform_role === 'user' ? 'selected' : ''}>Member</option>
+            <option value="school_admin" ${profile.platform_role === 'school_admin' ? 'selected' : ''}>School Admin</option>
+            <option value="super_admin" ${profile.platform_role === 'super_admin' ? 'selected' : ''}>Super Admin</option>
+          </select>
+        </td>
+        <td>
+          <button class="btn btn-secondary btn-delete-user" data-id="${profile.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Delete</button>
+        </td>
+      `;
+      usersTbody.appendChild(tr);
+    });
+
+    // Bind role change dropdowns
+    usersTbody.querySelectorAll('.select-role-change').forEach(select => {
+      select.addEventListener('change', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        const newRole = e.target.value;
+        await updateUserRole(id, newRole);
+      });
+    });
+
+    // Bind delete user profile buttons
+    usersTbody.querySelectorAll('.btn-delete-user').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        if (confirm('Are you sure you want to delete this user profile? Note: This deletes the public profile, but the underlying Auth user remains.')) {
+          await deleteUserProfile(id);
+        }
+      });
+    });
+  }
+
+  function filterUsers() {
+    const query = userSearch.value.trim().toLowerCase();
+
+    const filtered = allUsers.filter(user => {
+      const emailMatch = user.email && user.email.toLowerCase().includes(query);
+      const nameMatch = user.full_name && user.full_name.toLowerCase().includes(query);
+      return emailMatch || nameMatch;
+    });
+
+    renderUsers(filtered);
+  }
+
+  async function updateUserRole(userId, newRole) {
+    if (!supabase) return;
+    const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+    if (!canChangeStatus) {
+      showToast('Access Denied: Only owaissaifi019@gmail.com can change user platform roles.', 'error');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ platform_role: newRole })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      showToast(`User role successfully updated to ${newRole.replace('_', ' ')}!`, 'success');
+      await loadSystemStats();
+      await loadUsersData();
+    } catch (e) {
+      console.error('Failed to update user role:', e);
+      showToast(`Failed to update user role: ${e.message}`, 'error');
+    }
+  }
+
+  async function deleteUserProfile(userId) {
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      showToast('User profile successfully deleted!', 'success');
+      await loadSystemStats();
+      await loadUsersData();
+    } catch (e) {
+      console.error('Failed to delete user profile:', e);
+      showToast(`Failed to delete profile: ${e.message}`, 'error');
+    }
+  }
+
+  // Bind new filter listeners
+  if (eventSearch) eventSearch.addEventListener('input', filterEvents);
+  if (eventCategoryFilter) eventCategoryFilter.addEventListener('change', filterEvents);
+  if (admissionSearch) admissionSearch.addEventListener('input', filterAdmissions);
+  if (admissionStatusFilter) admissionStatusFilter.addEventListener('change', filterAdmissions);
+  if (userSearch) userSearch.addEventListener('input', filterUsers);
+
+  // ── School Suggestions Management ─────────────────────────
+  async function loadSuggestionsData() {
+    if (!supabase) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('school_suggestions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        allSuggestions = data;
+        renderSuggestions(data);
+      }
+    } catch (e) {
+      console.error('Failed to load suggestions from Supabase:', e);
+      if (suggestionsTbody) {
+        let errorMsg = e.message;
+        if (e.code === 'PGRST205' || (e.message && e.message.includes('schema cache'))) {
+          errorMsg = "Database table 'school_suggestions' not found. Please run the SQL migration statements in 'supabase_schema.sql' in your Supabase SQL Editor to create it.";
+        }
+        suggestionsTbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 40px; color: #EF4444; line-height: 1.5;">
+              <span style="font-weight: 700; display: block; margin-bottom: 8px;">Database Migration Required</span>
+              ${errorMsg}
+            </td>
+          </tr>
+        `;
+      }
+    }
+  }
+
+  function renderSuggestions(suggestionsList) {
+    if (!suggestionsTbody) return;
+    suggestionsTbody.innerHTML = '';
+
+    if (suggestionsList.length === 0) {
+      suggestionsTbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No school suggestions found.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    suggestionsList.forEach(sug => {
+      const tr = document.createElement('tr');
+      const createdDate = new Date(sug.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      // Find suggester email from allUsers cache
+      const suggesterProfile = allUsers.find(u => u.id === sug.suggested_by);
+      const suggestedByEmail = suggesterProfile ? suggesterProfile.email : (sug.suggested_by ? 'Registered User' : 'Guest Visitor');
+
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${sug.name}</td>
+        <td>${sug.city || 'N/A'}</td>
+        <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${sug.board || 'CBSE'}</span></td>
+        <td style="font-size: 0.85rem; color: var(--text-muted);">${suggestedByEmail}</td>
+        <td>${createdDate}</td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-primary btn-approve-suggestion" data-id="${sug.id}" data-name="${sug.name}" data-city="${sug.city}" data-board="${sug.board || ''}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm);">Approve & Register</button>
+            <button class="btn btn-secondary btn-delete-suggestion" data-id="${sug.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Reject</button>
+          </div>
+        </td>
+      `;
+      suggestionsTbody.appendChild(tr);
+    });
+
+    // Bind approve buttons
+    suggestionsTbody.querySelectorAll('.btn-approve-suggestion').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        const name = e.target.getAttribute('data-name');
+        const city = e.target.getAttribute('data-city');
+        const board = e.target.getAttribute('data-board');
+        if (confirm(`Approve suggestion and register "${name}" as a verified school?`)) {
+          await approveSuggestedSchool(id, name, city, board);
+        }
+      });
+    });
+
+    // Bind delete buttons
+    suggestionsTbody.querySelectorAll('.btn-delete-suggestion').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        if (confirm('Are you sure you want to reject and delete this suggestion?')) {
+          await deleteSuggestion(id);
+        }
+      });
+    });
+  }
+
+  function filterSuggestions() {
+    const query = suggestionSearch.value.trim().toLowerCase();
+
+    const filtered = allSuggestions.filter(sug => {
+      const nameMatch = sug.name && sug.name.toLowerCase().includes(query);
+      const cityMatch = sug.city && sug.city.toLowerCase().includes(query);
+      return nameMatch || cityMatch;
+    });
+
+    renderSuggestions(filtered);
+  }
+
+  async function approveSuggestedSchool(suggestionId, name, city, board) {
+    if (!supabase) return;
+
+    try {
+      // 1. Insert into schools table as approved
+      const { error: insertError } = await supabase
+        .from('schools')
+        .insert({
+          name,
+          city,
+          board: board || 'CBSE',
+          status: 'approved',
+          admin_user_id: null,
+          logo_letter: name.charAt(0).toUpperCase(),
+          color_class: 'bg-gradient-' + (Math.floor(Math.random() * 5) + 1)
+        });
+
+      if (insertError) throw insertError;
+
+      // 2. Delete from suggestions table
+      const { error: deleteError } = await supabase
+        .from('school_suggestions')
+        .delete()
+        .eq('id', suggestionId);
+
+      if (deleteError) throw deleteError;
+
+      showToast(`"${name}" successfully registered as a verified school!`, 'success');
+      
+      // Reload stats and datasets
+      await loadSystemStats();
+      await loadSchoolsData();
+      await loadSuggestionsData();
+    } catch (e) {
+      console.error('Failed to approve suggestion:', e);
+      showToast(`Failed to approve suggestion: ${e.message}`, 'error');
+    }
+  }
+
+  async function deleteSuggestion(suggestionId) {
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase
+        .from('school_suggestions')
+        .delete()
+        .eq('id', suggestionId);
+
+      if (error) throw error;
+
+      showToast('School suggestion successfully rejected and removed.', 'success');
+      await loadSystemStats();
+      await loadSuggestionsData();
+    } catch (e) {
+      console.error('Failed to delete suggestion:', e);
+      showToast(`Failed to reject suggestion: ${e.message}`, 'error');
+    }
+  }
+
+  if (suggestionSearch) suggestionSearch.addEventListener('input', filterSuggestions);
+
+  // ── Logout ───────────────────────────────────────────────
+  if (logoutBtn && auth) {
+    logoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await auth.signOut();
+    });
+  }
+
+  // ── Initial Data Load ────────────────────────────────────
+  if (supabase) {
+    await loadSystemStats();
+    await loadSchoolsData();
+    await loadUsersData(); // Loaded before suggestions so email lookup works
+    await loadSuggestionsData();
+    await loadEventsData();
+    await loadAdmissionsData();
+  }
+});
