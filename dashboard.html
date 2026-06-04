@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Admin Dashboard | CampusLink</title>
+  <meta name="description" content="Manage your school's events, admissions updates, registrations, and profile details on the CampusLink school network.">
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css?v=1.1">
+</head>
+<body style="overflow: hidden;">
+
+  <!-- Auth Loading Overlay -->
+  <div class="auth-loading-overlay" id="auth-loading-overlay">
+    <div class="auth-loading-spinner"></div>
+    <span class="auth-loading-text">Verifying authentication...</span>
+  </div>
+
+  <div class="dashboard-layout">
+    
+    <!-- --- Sidebar Navigation --- -->
+    <aside class="dashboard-sidebar">
+      <div class="dashboard-logo-section">
+        <a href="index.html" class="logo" style="margin-bottom: 0;">
+          <span>CampusLink</span><span class="logo-dot"></span>
+        </a>
+      </div>
+      
+      <nav class="dashboard-nav">
+        <a class="dashboard-nav-link active" data-tab="overview">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          </span>
+          Dashboard
+        </a>
+        <a class="dashboard-nav-link" data-tab="events">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          </span>
+          Events
+        </a>
+        <a class="dashboard-nav-link" data-tab="admissions">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </span>
+          Admissions
+        </a>
+        <a class="dashboard-nav-link" data-tab="profile">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </span>
+          Profile
+        </a>
+      </nav>
+      
+      <div class="dashboard-sidebar-footer">
+        <a href="#" class="dashboard-nav-link logout" id="sidebar-logout-btn" style="color: #EF4444;">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </span>
+          Logout
+        </a>
+      </div>
+    </aside>
+    
+    <!-- --- Main Content Workspace --- -->
+    <main class="dashboard-main-content">
+      
+      <!-- Top header bar -->
+      <header class="dashboard-top-bar">
+        <div>
+          <h2 style="font-size: 1.4rem; margin-bottom: 0;" id="top-bar-title">Dashboard Overview</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted);" id="current-date-display">Thursday, June 4, 2026</p>
+        </div>
+        
+        <div class="dashboard-user-info">
+          <a id="view-profile-btn" href="school-profile.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Public Profile</a>
+          <div class="dashboard-avatar" id="school-avatar-letter">S</div>
+          <div>
+            <div style="font-weight: 700; font-size: 0.9rem;" id="school-username">St. Joseph's Academy</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);" id="school-userboard">ICSE / ISC Board</div>
+          </div>
+        </div>
+      </header>
+      
+      <!-- Workspace Container -->
+      <div class="dashboard-workspace">
+        
+        <!-- ================= OVERVIEW TAB ================= -->
+        <section id="overview-tab" class="dashboard-tab-panel active">
+          <!-- Statistics Cards Grid -->
+          <div class="dash-stats-grid">
+            <div class="dash-stat-card">
+              <div class="dash-stat-info">
+                <h4>Total Events</h4>
+                <div class="stat-value" id="stat-total-events">0</div>
+              </div>
+              <div class="dash-stat-icon blue">📅</div>
+            </div>
+            
+            <div class="dash-stat-card">
+              <div class="dash-stat-info">
+                <h4>Registrations</h4>
+                <div class="stat-value" id="stat-registrations">0</div>
+              </div>
+              <div class="dash-stat-icon teal">👥</div>
+            </div>
+            
+            <div class="dash-stat-card">
+              <div class="dash-stat-info">
+                <h4>Admission Posts</h4>
+                <div class="stat-value" id="stat-admission-posts">0</div>
+              </div>
+              <div class="dash-stat-icon orange">🎓</div>
+            </div>
+          </div>
+          
+          <!-- Recent Registrations Table -->
+          <div class="dash-table-card">
+            <div class="dash-card-header">
+              <h3>Recent Student Registrations</h3>
+              <span style="font-size: 0.8rem; color: var(--text-muted);" id="pending-reg-count">0 pending requests</span>
+            </div>
+            
+            <div class="dash-table-wrapper">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>Class / Grade</th>
+                    <th>Event Applied</th>
+                    <th>Date Applied</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="registrations-tbody">
+                  <!-- Dynamic rows added by dashboard.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        
+        <!-- ================= EVENTS TAB ================= -->
+        <section id="events-tab" class="dashboard-tab-panel">
+          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
+            <h3 style="font-size: 1.3rem;">Manage Events</h3>
+            <div class="dash-header-actions">
+              <button class="btn btn-primary" id="btn-toggle-event-form" style="padding: 10px 20px; font-size: 0.85rem; border-radius: var(--radius-sm);">+ Create New Event</button>
+            </div>
+          </div>
+          
+          <!-- Collapsible Create Event Form -->
+          <div class="dash-form-card" id="create-event-form-container" style="display: none;">
+            <h3 style="margin-bottom: 20px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;" id="event-form-title">Create New Opportunity</h3>
+            
+            <form id="dashboard-event-form">
+              <input type="hidden" id="edit-event-id" value="">
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group">
+                  <label for="event-title">Event Title *</label>
+                  <input type="text" id="event-title" placeholder="e.g., Annual Science Exhibition 2026">
+                  <span class="error-msg" id="err-event-title" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="event-category">Category *</label>
+                  <select id="event-category">
+                    <option value="">Select Category</option>
+                    <option value="sports">Sports</option>
+                    <option value="science">Science</option>
+                    <option value="debate">Debate</option>
+                    <option value="cultural">Cultural</option>
+                    <option value="workshop">Workshop</option>
+                  </select>
+                  <span class="error-msg" id="err-event-category" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+              </div>
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group">
+                  <label for="event-date">Event Date *</label>
+                  <input type="text" id="event-date" placeholder="e.g., June 24 - 26, 2026">
+                  <span class="error-msg" id="err-event-date" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="event-venue">Venue *</label>
+                  <input type="text" id="event-venue" placeholder="e.g., Main Auditorium, Campus A">
+                  <span class="error-msg" id="err-event-venue" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+
+                <div class="dash-form-group">
+                  <label for="event-reg-link">Registration Link *</label>
+                  <input type="text" id="event-reg-link" placeholder="e.g., https://campuslink.in/apply">
+                  <span class="error-msg" id="err-event-reg-link" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+              </div>
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group full-width">
+                  <label for="event-description">Event Description *</label>
+                  <textarea id="event-description" rows="4" placeholder="Provide a detailed description of the event, guidelines, eligibility criteria..."></textarea>
+                  <span class="error-msg" id="err-event-description" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+              </div>
+
+              <div class="dash-form-row">
+                <div class="dash-form-group full-width">
+                  <label>Upload Banner *</label>
+                  <div class="upload-dropzone" id="banner-dropzone">
+                    <span class="upload-icon">📁</span>
+                    <span class="upload-text">Drag & drop your event banner image here, or <span class="upload-link" style="color: var(--primary); text-decoration: underline; font-weight:700;">browse files</span></span>
+                    <input type="file" id="event-banner" accept="image/*" style="display: none;">
+                  </div>
+                  <div class="upload-preview-container" id="banner-preview-container" style="display: none; margin-top: 12px; position: relative;">
+                    <img id="banner-preview-img" src="" alt="Event Banner Preview" style="width: 100%; max-height: 200px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <button type="button" id="btn-remove-banner" style="position: absolute; top: 10px; right: 10px; background-color: rgba(239, 68, 68, 0.9); color: var(--text-white); border: none; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.75rem; cursor: pointer; font-weight: 700;">Remove</button>
+                  </div>
+                  <span class="error-msg" id="err-event-banner" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+              </div>
+              
+              <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-event-form" style="padding: 10px 20px; font-size: 0.85rem; border-radius: var(--radius-sm);">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.85rem; border-radius: var(--radius-sm);" id="btn-submit-event">Publish Event</button>
+              </div>
+            </form>
+          </div>
+          
+          <!-- Event Grid -->
+          <div class="dash-grid" id="dashboard-events-grid">
+            <!-- Dynamic Event Cards added by JS -->
+          </div>
+        </section>
+        
+        <!-- ================= ADMISSIONS TAB ================= -->
+        <section id="admissions-tab" class="dashboard-tab-panel">
+          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
+            <h3 style="font-size: 1.3rem;">Admissions Announcements</h3>
+            <div class="dash-header-actions">
+              <button class="btn btn-primary" id="btn-toggle-admission-form" style="padding: 10px 20px; font-size: 0.85rem; border-radius: var(--radius-sm);">+ New Admission Post</button>
+            </div>
+          </div>
+          
+          <!-- Collapsible Create Admission Form -->
+          <div class="dash-form-card" id="create-admission-form-container" style="display: none;">
+            <h3 style="margin-bottom: 20px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;" id="admission-form-title">Post Admission Cycle</h3>
+            
+            <form id="dashboard-admission-form">
+              <input type="hidden" id="edit-admission-id" value="">
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group">
+                  <label for="admission-school-name">School Name *</label>
+                  <input type="text" id="admission-school-name" placeholder="e.g. St. Joseph's Academy" readonly>
+                  <span class="error-msg" id="err-admission-school-name" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="admission-classes">Classes Open *</label>
+                  <input type="text" id="admission-classes" placeholder="e.g., Nursery to Grade V, Grade XI">
+                  <span class="error-msg" id="err-admission-classes" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+              </div>
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group">
+                  <label for="admission-start-date">Admission Start Date *</label>
+                  <input type="text" id="admission-start-date" placeholder="e.g., June 15, 2026">
+                  <span class="error-msg" id="err-admission-start-date" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="admission-end-date">Admission End Date *</label>
+                  <input type="text" id="admission-end-date" placeholder="e.g., July 15, 2026">
+                  <span class="error-msg" id="err-admission-end-date" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+
+                <div class="dash-form-group">
+                  <label for="admission-apply-link">Apply Link *</label>
+                  <input type="text" id="admission-apply-link" placeholder="e.g., https://school.edu/apply">
+                  <span class="error-msg" id="err-admission-apply-link" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+              </div>
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group full-width">
+                  <label for="admission-eligibility">Eligibility Criteria *</label>
+                  <textarea id="admission-eligibility" rows="4" placeholder="e.g., Candidates must be 3+ years old for Nursery. Standard transcripts required for higher grades."></textarea>
+                  <span class="error-msg" id="err-admission-eligibility" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
+                </div>
+              </div>
+              
+              <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-admission-form" style="padding: 10px 20px; font-size: 0.85rem; border-radius: var(--radius-sm);">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.85rem; border-radius: var(--radius-sm);" id="btn-submit-admission">Publish Announcement</button>
+              </div>
+            </form>
+          </div>
+          
+          <!-- Admission Grid -->
+          <div class="dash-grid" id="dashboard-admissions-grid">
+            <!-- Dynamic Admission Cards added by JS -->
+          </div>
+        </section>
+        
+        <!-- ================= PROFILE TAB ================= -->
+        <section id="profile-tab" class="dashboard-tab-panel">
+          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
+            <h3 style="font-size: 1.3rem;">School Profile Settings</h3>
+          </div>
+          
+          <div class="dash-form-card">
+            <form id="dashboard-profile-form">
+              <div class="dash-form-row">
+                <div class="dash-form-group">
+                  <label for="profile-school-name">School Name *</label>
+                  <input type="text" id="profile-school-name" required placeholder="St. Joseph's Academy">
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="profile-city">City *</label>
+                  <input type="text" id="profile-city" required placeholder="Dehradun">
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="profile-state">State *</label>
+                  <input type="text" id="profile-state" required placeholder="Uttarakhand">
+                </div>
+              </div>
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group">
+                  <label for="profile-board">Board Affiliation *</label>
+                  <select id="profile-board" required>
+                    <option value="CBSE">CBSE (Central Board of Secondary Education)</option>
+                    <option value="ICSE">CISCE (ICSE / ISC)</option>
+                    <option value="IB">IB (International Baccalaureate)</option>
+                    <option value="IGCSE">Cambridge (IGCSE / A Levels)</option>
+                    <option value="State Board">State Board</option>
+                  </select>
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="profile-logo-char">School Logo Character (Used as Avatar Logo) *</label>
+                  <input type="text" id="profile-logo-char" required maxlength="1" placeholder="S" style="text-transform: uppercase;">
+                </div>
+              </div>
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group full-width">
+                  <label for="profile-about">About / School History</label>
+                  <textarea id="profile-about" rows="6" placeholder="Describe your school's vision, history, and achievements..."></textarea>
+                </div>
+              </div>
+              
+              <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-size: 0.9rem; border-radius: var(--radius-sm);">Save Profile Settings</button>
+              </div>
+            </form>
+          </div>
+        </section>
+        
+      </div>
+      
+    </main>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Supabase CDN + Auth -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+
+  <!-- Dashboard JavaScript Code -->
+  <script src="dashboard.js"></script>
+</body>
+</html>

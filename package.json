@@ -1,0 +1,12 @@
+{
+  "name": "campus-link-landing",
+  "version": "1.0.0",
+  "description": "Modern landing page for CampusLink network",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx -y http-server -p 3000 -c-1"
+  },
+  "keywords": [],
+  "author": "CampusLink",
+  "license": "ISC"
+}
