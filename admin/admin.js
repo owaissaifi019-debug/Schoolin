@@ -37,6 +37,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const admissionSearch = document.getElementById('admission-search');
   const admissionStatusFilter = document.getElementById('admission-status-filter');
 
+  // Admission Applications Table & Filters
+  const applicationsTbody = document.getElementById('applications-tbody');
+  const applicationSearch = document.getElementById('application-search');
+  const applicationStatusFilter = document.getElementById('application-status-filter');
+
   // User Table & Filters
   const usersTbody = document.getElementById('users-tbody');
   const userSearch = document.getElementById('user-search');
@@ -74,6 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let allUsers = [];
   let allSuggestions = [];
   let allPosts = [];
+  let allApplications = [];
   
   // ── Auth Page Guard ──────────────────────────────────────
   const auth = window.CampusLink && window.CampusLink.auth;
@@ -142,6 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tabTarget === 'suggestions') pageTitle = 'School Suggestions Inbox';
       if (tabTarget === 'events') pageTitle = 'Event & Fest Registry';
       if (tabTarget === 'admissions') pageTitle = 'Admission Management';
+      if (tabTarget === 'applications') pageTitle = 'Global Admission Applications';
       if (tabTarget === 'users') pageTitle = 'User Account Directory';
       if (tabTarget === 'posts') pageTitle = 'Feed Posts Management';
       if (topBarTitle) topBarTitle.textContent = pageTitle;
@@ -1445,6 +1452,170 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // ── Admission Applications Management ─────────────────────
+  async function loadApplicationsData() {
+    if (!supabase) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('admission_applications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        allApplications = data;
+        renderApplications(data);
+      }
+    } catch (e) {
+      console.error('Failed to load admission applications from Supabase:', e);
+      // Fallback to LocalStorage
+      const localApps = localStorage.getItem('campuslink_admission_applications');
+      if (localApps) {
+        allApplications = JSON.parse(localApps);
+        renderApplications(allApplications);
+      } else if (applicationsTbody) {
+        applicationsTbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 40px; color: #EF4444;">
+              Failed to fetch admission applications: ${e.message}
+            </td>
+          </tr>
+        `;
+      }
+    }
+  }
+
+  function renderApplications(appsList) {
+    if (!applicationsTbody) return;
+    applicationsTbody.innerHTML = '';
+
+    if (appsList.length === 0) {
+      applicationsTbody.innerHTML = `
+        <tr>
+          <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No admission applications found.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    appsList.forEach(app => {
+      const tr = document.createElement('tr');
+      const createdDate = app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A';
+
+      let statusBadgeClass = 'status-pending';
+      if (app.status === 'approved') statusBadgeClass = 'status-approved';
+      if (app.status === 'rejected') statusBadgeClass = 'status-rejected';
+
+      const statusLabel = (app.status || 'pending').toUpperCase();
+
+      let actionsHtml = '';
+      if (app.status === 'pending') {
+        actionsHtml = `
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-primary btn-approve-app" data-id="${app.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm);">Approve</button>
+            <button class="btn btn-secondary btn-reject-app" data-id="${app.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Reject</button>
+          </div>
+        `;
+      } else {
+        actionsHtml = `<span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Processed</span>`;
+      }
+
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${app.school_name || 'N/A'}</td>
+        <td style="font-weight: 600;">${app.student_name}</td>
+        <td>${app.parent_name}</td>
+        <td>${app.grade_applied}</td>
+        <td>${app.email}</td>
+        <td>${app.phone}</td>
+        <td>${createdDate}</td>
+        <td><span class="badge-status ${statusBadgeClass}" style="font-weight:700;">${statusLabel}</span></td>
+        <td>${actionsHtml}</td>
+      `;
+      applicationsTbody.appendChild(tr);
+    });
+
+    // Bind action buttons
+    applicationsTbody.querySelectorAll('.btn-approve-app').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        await updateApplicationStatus(id, 'approved');
+      });
+    });
+
+    applicationsTbody.querySelectorAll('.btn-reject-app').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        await updateApplicationStatus(id, 'rejected');
+      });
+    });
+  }
+
+  async function updateApplicationStatus(appId, newStatus) {
+    showToast('Updating status...', 'info');
+
+    // 1. Update in Supabase
+    if (supabase && String(appId).length > 8) {
+      try {
+        const { error } = await supabase
+          .from('admission_applications')
+          .update({ status: newStatus })
+          .eq('id', appId);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to update application status in Supabase:', err);
+      }
+    }
+
+    // 2. Update in LocalStorage fallback
+    const localApps = localStorage.getItem('campuslink_admission_applications');
+    if (localApps) {
+      let apps = JSON.parse(localApps);
+      apps = apps.map(app => {
+        if (String(app.id) === String(appId)) {
+          return { ...app, status: newStatus };
+        }
+        return app;
+      });
+      localStorage.setItem('campuslink_admission_applications', JSON.stringify(apps));
+    }
+
+    // Update local state and re-render
+    allApplications = allApplications.map(app => {
+      if (String(app.id) === String(appId)) {
+        return { ...app, status: newStatus };
+      }
+      return app;
+    });
+
+    filterApplications();
+    showToast(`Application successfully ${newStatus}!`, 'success');
+  }
+
+  function filterApplications() {
+    if (!applicationSearch || !applicationStatusFilter) return;
+    const query = applicationSearch.value.trim().toLowerCase();
+    const status = applicationStatusFilter.value;
+
+    const filtered = allApplications.filter(app => {
+      const studentMatch = app.student_name && app.student_name.toLowerCase().includes(query);
+      const parentMatch = app.parent_name && app.parent_name.toLowerCase().includes(query);
+      const schoolMatch = app.school_name && app.school_name.toLowerCase().includes(query);
+      const matchesSearch = studentMatch || parentMatch || schoolMatch;
+      
+      const matchesStatus = !status || app.status === status;
+      return matchesSearch && matchesStatus;
+    });
+
+    renderApplications(filtered);
+  }
+
+  if (applicationSearch) applicationSearch.addEventListener('input', filterApplications);
+  if (applicationStatusFilter) applicationStatusFilter.addEventListener('change', filterApplications);
+
   // ── Logout ───────────────────────────────────────────────
   if (logoutBtn && auth) {
     logoutBtn.addEventListener('click', async (e) => {
@@ -1461,6 +1632,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadSuggestionsData();
     await loadEventsData();
     await loadAdmissionsData();
+    await loadApplicationsData();
     await loadPostsData();
     renderAnalytics();
   }

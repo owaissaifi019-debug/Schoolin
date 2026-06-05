@@ -5,6 +5,44 @@ document.addEventListener('DOMContentLoaded', () => {
     window.CampusLink.auth.updateNavAuthState();
   }
 
+  // Bind Share School Button
+  const shareSchoolBtn = document.getElementById('btn-share-school');
+  console.log('Share button element:', shareSchoolBtn);
+  if (shareSchoolBtn) {
+    shareSchoolBtn.addEventListener('click', () => {
+      console.log('Share button clicked');
+      const shareUrl = window.location.href;
+      
+      function fallbackCopy(url) {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          showToast('School profile link copied to clipboard!');
+        } catch (e) {
+          console.error('Failed fallback copy:', e);
+          alert('Failed to copy link: ' + url);
+        }
+        document.body.removeChild(textarea);
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          showToast('School profile link copied to clipboard!');
+        }).catch(err => {
+          console.error('Failed to copy school link:', err);
+          fallbackCopy(shareUrl);
+        });
+      } else {
+        fallbackCopy(shareUrl);
+      }
+    });
+  }
+
   
   /* --- Sticky Header Logic --- */
   const header = document.querySelector('header');
@@ -20,6 +58,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const mobileToggle = document.querySelector('.mobile-toggle');
   const navLinks = document.querySelector('.nav-links');
   const body = document.body;
+
+  // Loading functions
+  function showLoading() {
+    const loader = document.getElementById('loader-container');
+    if (loader) loader.style.display = 'flex';
+  }
+
+  function hideLoading() {
+    const loader = document.getElementById('loader-container');
+    if (loader) {
+      loader.style.opacity = '0';
+      setTimeout(() => loader.style.display = 'none', 500);
+    }
+  }
 
   mobileToggle.addEventListener('click', () => {
     navLinks.classList.toggle('active');
@@ -216,16 +268,13 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         let dbSchool = null;
 
-        // Fetch school record — by UUID or by index
+        // Fetch school record — by UUID
         if (schoolId.length > 8) { // UUID
           const { data } = await supabase.from('schools').select('*').eq('id', schoolId).maybeSingle();
           dbSchool = data;
-        } else { // Index based fallback
-          const { data } = await supabase.from('schools').select('*');
-          if (data && data.length > 0) {
-            const idx = parseInt(schoolId, 10) - 1;
-            dbSchool = data[idx] || data[0];
-          }
+        } else {
+          // Mock ID fallback — do not fetch database record.
+          dbSchool = null;
         }
 
         // Build currentProfile from the fetched school record
@@ -428,6 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const aboutPara = document.getElementById('about-intro-para');
     const metaEst = document.getElementById('meta-est');
     const metaBoard = document.getElementById('meta-board');
+    const metaSize = document.getElementById('meta-size');
     
     if (aboutPara) {
       aboutPara.textContent = currentProfile.about;
@@ -438,11 +488,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (metaBoard) {
       metaBoard.textContent = currentProfile.board;
     }
+    if (metaSize) {
+      metaSize.textContent = currentProfile.size || '10 Acres';
+    }
 
-    // Admissions status box text
+    // Admissions status box text & Apply Now button
     const statusBox = document.getElementById('admission-status-box');
+    const applyBtn = document.getElementById('btn-profile-apply-admission');
     if (statusBox) {
       statusBox.textContent = currentProfile.admissionText;
+    }
+    if (applyBtn) {
+      const showApply = currentProfile.admissionText && !currentProfile.admissionText.toLowerCase().includes('no active admission');
+      if (showApply) {
+        applyBtn.href = `apply-admission.html?school_id=${currentProfile.id}`;
+        applyBtn.style.display = 'inline-flex';
+      } else {
+        applyBtn.style.display = 'none';
+      }
     }
 
     // Achievements Timeline loading
@@ -757,7 +820,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      if (isValid && currentStep < formSteps.length - 1) {
+      // Ensure loading overlay is shown when loading profile data
+showLoading();
+
+if (isValid && currentStep < formSteps.length - 1) {
         showStep(currentStep + 1);
       }
     });
@@ -821,9 +887,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- School Profile Edit Features ---
-  const toastContainer = document.getElementById('toast-container');
-  function showToast(message, type = 'success') {
-    if (!toastContainer) return;
+  function showLoading() {
+  const overlay = document.getElementById('loader-overlay');
+  if (overlay) overlay.classList.remove('hidden');
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loader-overlay');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+function showToast(message, type = 'success') {
+    let activeContainer = document.getElementById('toast-container');
+  // Ensure loading overlay is hidden after any toast (optional)
+  hideLoading();
+    if (!activeContainer) {
+      activeContainer = document.createElement('div');
+      activeContainer.id = 'toast-container';
+      activeContainer.className = 'toast-container';
+      document.body.appendChild(activeContainer);
+    }
     
     const toast = document.createElement('div');
     toast.className = `toast-alert toast-alert-${type}`;
@@ -837,7 +920,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div>${message}</div>
     `;
     
-    toastContainer.appendChild(toast);
+    activeContainer.appendChild(toast);
     
     setTimeout(() => {
       toast.classList.add('show');
@@ -1140,6 +1223,37 @@ document.addEventListener('DOMContentLoaded', () => {
           isFollowing = true;
           count++;
           showToast('Following school');
+
+          // Trigger notification to school representative / admin
+          if (window.CampusLink && window.CampusLink.notifications) {
+            try {
+              const { data: schoolData } = await supabase
+                .from('schools')
+                .select('admin_user_id, name')
+                .eq('id', schoolId)
+                .maybeSingle();
+
+              if (schoolData && schoolData.admin_user_id) {
+                // Fetch current user name
+                const { data: followerProfile } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', currentUser.id)
+                  .single();
+                const actorName = followerProfile?.full_name || 'Someone';
+                await window.CampusLink.notifications.createNotification(
+                  schoolData.admin_user_id,
+                  'follow',
+                  `${actorName} started following ${schoolData.name}`,
+                  `Click to view their profile`,
+                  `profile.html?id=${currentUser.id}`,
+                  currentUser.id
+                );
+              }
+            } catch (notifErr) {
+              console.warn('Error sending school follow notification:', notifErr);
+            }
+          }
         }
 
         updateSchoolFollowButtonState(newFollowBtn, isFollowing);
@@ -1153,6 +1267,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } finally {
         newFollowBtn.disabled = false;
       }
+    });
   }
 
   function setupContactSchoolButton(dbSchool) {

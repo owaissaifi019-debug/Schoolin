@@ -59,14 +59,24 @@
     await auth.updateNavAuthState();
 
     // Bind Mobile menu toggle
-    const mobileToggle = document.getElementById('mobile-menu-toggle');
-    const nav = document.querySelector('nav');
-    if (mobileToggle && nav) {
+    const mobileToggle = document.querySelector('.mobile-toggle');
+    const navLinks = document.querySelector('.nav-links');
+    const body = document.body;
+    if (mobileToggle && navLinks) {
       mobileToggle.addEventListener('click', () => {
-        mobileToggle.classList.toggle('active');
-        nav.classList.toggle('active');
+        navLinks.classList.toggle('active');
+        body.classList.toggle('mobile-nav-active');
       });
     }
+
+    // Close mobile nav when clicking a link
+    const navAnchors = document.querySelectorAll('.nav-links a');
+    navAnchors.forEach(anchor => {
+      anchor.addEventListener('click', () => {
+        if (navLinks) navLinks.classList.remove('active');
+        body.classList.remove('mobile-nav-active');
+      });
+    });
 
     // Verify session
     const session = await auth.getSession();
@@ -826,7 +836,6 @@
 
             if (partError) throw partError;
 
-            // 3. Send message
             const { error: msgError } = await sb
               .from('messages')
               .insert({
@@ -838,6 +847,23 @@
               });
 
             if (msgError) throw msgError;
+
+            // Trigger notification
+            if (window.CampusLink && window.CampusLink.notifications) {
+              try {
+                const senderName = currentUserProfile?.full_name || 'Someone';
+                await window.CampusLink.notifications.createNotification(
+                  newRecipientId,
+                  'message',
+                  `New message from ${senderName}`,
+                  messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+                  `messaging.html?chat_id=${conv.id}`,
+                  currentUser.id
+                );
+              } catch (notifErr) {
+                console.warn('Error sending message notification:', notifErr);
+              }
+            }
 
             // Clear datasets, reload conversations, and activate chat
             delete chatSendForm.dataset.newChatRecipient;
@@ -880,6 +906,26 @@
               .insert(msgPayload);
 
             if (msgError) throw msgError;
+
+            // Trigger notification
+            if (window.CampusLink && window.CampusLink.notifications) {
+              try {
+                const senderName = currentUserProfile?.full_name || 'Someone';
+                const recipientId = msgPayload.receiver_id;
+                if (recipientId) {
+                  await window.CampusLink.notifications.createNotification(
+                    recipientId,
+                    'message',
+                    `New message from ${senderName}`,
+                    messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+                    `messaging.html?chat_id=${activeChatId}`,
+                    currentUser.id
+                  );
+                }
+              } catch (notifErr) {
+                console.warn('Error sending message notification:', notifErr);
+              }
+            }
 
             // Update conversations updated_at timestamp to float it to top of sidebar
             await sb

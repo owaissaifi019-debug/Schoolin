@@ -273,19 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <div style="display: flex; gap: 12px; margin-top: auto;">
             <a href="school-profile.html?id=${item.schoolId}#admissions" class="btn btn-secondary" style="flex-grow: 1; padding: 10px 16px; font-size: 0.85rem; text-align: center;">View Details</a>
-            <button class="btn btn-primary btn-apply-action" style="flex-grow: 1; padding: 10px 16px; font-size: 0.85rem;" data-school="${item.schoolName}">Apply Now</button>
+            <a href="apply-admission.html?school_id=${item.schoolId}" class="btn btn-primary btn-apply-action" style="flex-grow: 1; padding: 10px 16px; font-size: 0.85rem; text-align: center; text-decoration: none;">Apply Now</a>
           </div>
         </div>
       `;
       gridContainer.appendChild(card);
-    });
-
-    // Rebind newly created Apply Now buttons
-    gridContainer.querySelectorAll('.btn-apply-action').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const name = e.currentTarget.getAttribute('data-school');
-        openRegistrationModal(`Apply for: ${name} Admissions`);
-      });
     });
   }
 

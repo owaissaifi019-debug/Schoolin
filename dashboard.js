@@ -95,6 +95,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               city: a.city || 'India'
             }));
           }
+
+          // Super admin gets global applications
+          const { data: dbApps, error: appErr } = await supabase.from('admission_applications').select('*');
+          if (!appErr && dbApps) {
+            admissionApplications = dbApps;
+            saveState('campuslink_admission_applications', admissionApplications);
+          }
         } else {
           const school = await auth.getSchoolForUser(user.id);
           if (school) {
@@ -141,6 +148,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 city: school.city
               }));
             }
+
+            // Fetch admission applications
+            const { data: dbApps, error: appErr } = await supabase.from('admission_applications').select('*').eq('school_id', school.id);
+            if (!appErr && dbApps) {
+              admissionApplications = dbApps;
+              saveState('campuslink_admission_applications', admissionApplications);
+            }
           }
         }
       } catch (err) {
@@ -155,6 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderRegistrations();
     renderEvents();
     renderAdmissions();
+    renderApplications();
   }
 
   // --- Seed Data Configuration ---
@@ -265,6 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let events = getStoredData('campuslink_events', DEFAULT_EVENTS);
   let admissions = getStoredData('campuslink_admissions', DEFAULT_ADMISSIONS);
   let registrations = getStoredData('campuslink_registrations', DEFAULT_REGISTRATIONS);
+  let admissionApplications = getStoredData('campuslink_admission_applications', []);
 
   // Helper to persist data
   function saveState(key, data) {
@@ -354,6 +370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       let tabName = 'Dashboard Overview';
       if (tabTarget === 'events') tabName = 'Manage Events';
       if (tabTarget === 'admissions') tabName = 'Admissions Announcements';
+      if (tabTarget === 'applications') tabName = 'Admissions Applications Received';
       if (tabTarget === 'profile') tabName = 'School Profile Settings';
       if (topBarTitle) topBarTitle.textContent = tabName;
     });
@@ -1388,6 +1405,119 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast("School profile settings updated!");
       }
     });
+  }
+
+  // --- Render Admission Applications Received ---
+  const appsTbody = document.getElementById('applications-tbody');
+  function renderApplications() {
+    if (!appsTbody) return;
+    appsTbody.innerHTML = '';
+
+    const myApps = admissionApplications.filter(app => {
+      // If school admin, profile.id holds the school id
+      if (profile && profile.id !== 'super-admin-global') {
+        return String(app.school_id) === String(profile.id);
+      }
+      return true;
+    });
+
+    if (myApps.length === 0) {
+      appsTbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 30px; color: var(--text-muted);">
+            No admission applications received yet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    // Sort: pending first
+    const sortedApps = [...myApps].sort((a, b) => {
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+      return 0;
+    });
+
+    sortedApps.forEach(app => {
+      const tr = document.createElement('tr');
+      
+      let statusClass = 'status-pending';
+      if (app.status === 'approved') statusClass = 'status-approved';
+      if (app.status === 'rejected') statusClass = 'status-rejected';
+
+      let actionsHtml = '';
+      if (app.status === 'pending') {
+        actionsHtml = `
+          <div class="btn-action-group">
+            <button class="btn-action btn-approve-app" data-id="${app.id}">Approve</button>
+            <button class="btn-action btn-reject-app" data-id="${app.id}">Reject</button>
+          </div>
+        `;
+      } else {
+        actionsHtml = `<span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Processed</span>`;
+      }
+
+      const dateStr = app.created_at ? new Date(app.created_at).toLocaleDateString() : '-';
+
+      tr.innerHTML = `
+        <td style="font-weight: 600; color: var(--dark-bg);">${app.student_name}</td>
+        <td>${app.parent_name}</td>
+        <td>${app.grade_applied}</td>
+        <td>${app.email}</td>
+        <td>${app.phone}</td>
+        <td>${dateStr}</td>
+        <td>
+          <span class="badge-status ${statusClass}">${app.status}</span>
+        </td>
+        <td>${actionsHtml}</td>
+      `;
+      appsTbody.appendChild(tr);
+    });
+
+    // Attach Action Listeners
+    appsTbody.querySelectorAll('.btn-approve-app').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const appId = e.target.getAttribute('data-id');
+        updateApplicationStatus(appId, 'approved');
+      });
+    });
+
+    appsTbody.querySelectorAll('.btn-reject-app').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const appId = e.target.getAttribute('data-id');
+        updateApplicationStatus(appId, 'rejected');
+      });
+    });
+  }
+
+  async function updateApplicationStatus(id, newStatus) {
+    showToast('Updating status...', 'info');
+
+    // 1. Update in Supabase if uuid
+    if (supabase && String(id).length > 8) {
+      try {
+        const { error } = await supabase
+          .from('admission_applications')
+          .update({ status: newStatus })
+          .eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to update status in Supabase:', err);
+      }
+    }
+
+    // 2. Update in LocalStorage fallback
+    admissionApplications = admissionApplications.map(app => {
+      if (String(app.id) === String(id)) {
+        return { ...app, status: newStatus };
+      }
+      return app;
+    });
+
+    saveState('campuslink_admission_applications', admissionApplications);
+    renderApplications();
+    showToast(`Application successfully ${newStatus}!`, newStatus === 'approved' ? 'success' : 'info');
   }
 
   // --- Init Dashboard Rendering ---

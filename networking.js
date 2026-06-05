@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const auth = window.CampusLink && window.CampusLink.auth;
   let currentUser = null;
   let allProfiles = [];
-  let allSchools = [];
   let userFollows = { users: new Set(), schools: new Set() };
   let userConnections = new Map();
   let pendingIncomingRequests = [];
@@ -49,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     await Promise.all([
       loadProfiles(),
-      loadSchools(),
       loadFollows(),
       loadConnections()
     ]);
@@ -82,20 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function loadSchools() {
-    if (!supabase) return;
-    try {
-      const { data, error } = await supabase
-        .from('schools')
-        .select('*')
-        .order('name');
 
-      if (error) throw error;
-      allSchools = data || [];
-    } catch (err) {
-      console.warn('Error loading schools:', err);
-    }
-  }
 
   async function loadFollows() {
     if (!supabase || !currentUser) return;
@@ -222,17 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function getFilteredResults() {
     const q = searchQuery.toLowerCase().trim();
     let people = [];
-    let schools = [];
 
-    if (activeFilter === 'school') {
-      // Only schools
-      schools = allSchools.filter(s => {
-        if (!q) return true;
-        return (s.name || '').toLowerCase().includes(q) ||
-               (s.city || '').toLowerCase().includes(q) ||
-               (s.board || '').toLowerCase().includes(q);
-      });
-    } else if (activeFilter === 'connections') {
+    if (activeFilter === 'connections') {
       // Accepted connections only
       people = allProfiles.filter(p => {
         if (currentUser && p.id === currentUser.id) return false;
@@ -242,18 +218,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!q) return true;
         return matchProfile(p, q);
       });
-      schools = [];
     } else if (activeFilter === 'all') {
-      // People + schools
+      // People
       people = allProfiles.filter(p => {
         if (currentUser && p.id === currentUser.id) return false;
         if (!q) return true;
         return matchProfile(p, q);
-      });
-      schools = allSchools.filter(s => {
-        if (!q) return true;
-        return (s.name || '').toLowerCase().includes(q) ||
-               (s.city || '').toLowerCase().includes(q);
       });
     } else {
       // Specific user type
@@ -265,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    return { people, schools };
+    return { people };
   }
 
   function matchProfile(p, q) {
@@ -284,15 +254,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const countEl = document.getElementById('net-results-count');
     if (!grid) return;
 
-    const { people, schools } = getFilteredResults();
-    const totalCount = people.length + schools.length;
+    const { people } = getFilteredResults();
+    const totalCount = people.length;
 
     // Count label
     if (countEl) {
-      if (activeFilter === 'school') {
-        countEl.textContent = `${schools.length} school${schools.length !== 1 ? 's' : ''} found`;
-      } else if (activeFilter === 'all') {
-        countEl.textContent = `${people.length} people and ${schools.length} schools found`;
+      if (activeFilter === 'all') {
+        countEl.textContent = `${people.length} people found`;
       } else {
         const label = activeFilter === 'alumni' ? 'alumni' : `${activeFilter}${people.length !== 1 ? 's' : ''}`;
         countEl.textContent = `${people.length} ${label} found`;
@@ -308,13 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (emptyState) emptyState.style.display = 'none';
 
     grid.innerHTML = '';
-
-    // Render school cards (if applicable)
-    if (activeFilter === 'all' || activeFilter === 'school') {
-      schools.forEach(school => {
-        grid.appendChild(createSchoolCard(school));
-      });
-    }
 
     // Render people cards
     people.forEach(profile => {
@@ -439,51 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return card;
   }
 
-  function createSchoolCard(s) {
-    const card = document.createElement('div');
-    card.className = 'net-card net-school-card';
-    card.dataset.schoolId = s.id;
 
-    const logoLetter = s.logo_letter || s.name.charAt(0).toUpperCase();
-    const colorClass = s.color_class || 'color-1';
-    const isFollowing = userFollows.schools.has(s.id);
-    const profileUrl = `school-profile.html?id=${s.id}`;
-
-    const logoHtml = s.logo_url
-      ? `<img src="${s.logo_url}" alt="${s.name}" class="net-card-avatar-img">`
-      : `<div class="net-card-avatar-placeholder school-logo">${logoLetter}</div>`;
-
-    card.innerHTML = `
-      <div class="net-card-banner ${colorClass}"></div>
-      <div class="net-card-body">
-        <a href="${profileUrl}" class="net-card-avatar-link">
-          ${logoHtml}
-        </a>
-        <a href="${profileUrl}" class="net-card-name">${s.name}</a>
-        <span class="net-card-type-badge school_representative">Verified School</span>
-        ${s.city ? `<p class="net-card-school">📍 ${s.city}</p>` : ''}
-        ${s.board ? `<p class="net-card-bio">${s.board} Affiliated</p>` : ''}
-      </div>
-      <div class="net-card-footer">
-        ${currentUser ? `
-          <button class="btn ${isFollowing ? 'btn-following' : 'btn-follow'}"
-                  data-follow-type="school" data-follow-id="${s.id}">
-            ${isFollowing ? `
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span>Following</span>
-            ` : `
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              <span>Follow</span>
-            `}
-          </button>
-        ` : `
-          <a href="${profileUrl}" class="btn btn-secondary btn-view-profile">View School</a>
-        `}
-      </div>
-    `;
-
-    return card;
-  }
 
   /* --- Follow/Unfollow --- */
   async function toggleFollow(btn) {
@@ -586,6 +503,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (error) throw error;
         showToast('Connection request sent');
+
+        // Trigger notification
+        if (window.CampusLink && window.CampusLink.notifications) {
+          try {
+            const { data: requesterProfile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', currentUser.id)
+              .single();
+            const actorName = requesterProfile?.full_name || 'Someone';
+            await window.CampusLink.notifications.createNotification(
+              targetUserId,
+              'connection_request',
+              `${actorName} sent you a connection request`,
+              `Click to view networking requests`,
+              `networking.html`,
+              currentUser.id
+            );
+          } catch (notifErr) {
+            console.warn('Error sending connection request notification:', notifErr);
+          }
+        }
       } else if (currentStatus === 'pending_sent') {
         // Withdraw request
         const { error } = await supabase
@@ -606,6 +545,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (error) throw error;
         showToast('Connection request accepted! You are now connected.');
+
+        // Trigger notification
+        if (window.CampusLink && window.CampusLink.notifications) {
+          try {
+            const { data: accepterProfile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', currentUser.id)
+              .single();
+            const actorName = accepterProfile?.full_name || 'Someone';
+            await window.CampusLink.notifications.createNotification(
+              targetUserId,
+              'connection_accepted',
+              `${actorName} accepted your connection request`,
+              `You are now connected!`,
+              `profile.html?id=${currentUser.id}`,
+              currentUser.id
+            );
+          } catch (notifErr) {
+            console.warn('Error sending connection accepted notification:', notifErr);
+          }
+        }
       } else if (currentStatus === 'accepted') {
         // Disconnect
         if (confirm('Are you sure you want to disconnect?')) {
@@ -703,6 +664,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (error) throw error;
             showToast('Connection request accepted!');
+
+            // Trigger notification
+            if (window.CampusLink && window.CampusLink.notifications) {
+              try {
+                const { data: accepterProfile } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', currentUser.id)
+                  .single();
+                const actorName = accepterProfile?.full_name || 'Someone';
+                await window.CampusLink.notifications.createNotification(
+                  targetUserId,
+                  'connection_accepted',
+                  `${actorName} accepted your connection request`,
+                  `You are now connected!`,
+                  `profile.html?id=${currentUser.id}`,
+                  currentUser.id
+                );
+              } catch (notifErr) {
+                console.warn('Error sending connection accepted notification:', notifErr);
+              }
+            }
           } else {
             const { error } = await supabase
               .from('connections')

@@ -288,126 +288,204 @@
   }
 
   // ── Update Nav for Auth State ────────────────────────────
-  // Called on every public page to swap Login/Register buttons
-  // based on whether the user is signed in.
   async function updateNavAuthState() {
-    const session = await getSession();
-    const loginBtn = document.getElementById('nav-btn-signin');
-    const joinBtn = document.getElementById('nav-btn-join');
-    const mobileLogin = document.getElementById('mobile-nav-login');
-    const mobileRegister = document.getElementById('mobile-nav-register');
+    try {
+      const session = await getSession();
+      
+      // Toggle guest-only and member-only visibility
+      const memberOnlyEls = document.querySelectorAll('.member-only');
+      const guestOnlyEls = document.querySelectorAll('.guest-only');
+      
+      if (session && session.user) {
+        // User is logged in
+        memberOnlyEls.forEach(el => { 
+          if (el.tagName === 'LI') {
+            el.style.setProperty('display', 'inline-flex', 'important');
+          } else {
+            el.style.setProperty('display', 'block', 'important');
+          }
+        });
+        guestOnlyEls.forEach(el => { el.style.setProperty('display', 'none', 'important'); });
 
-    if (session && session.user) {
-      // User is logged in
-      const user = session.user;
-      const profile = await getProfile(user.id);
-      const platformRole = (user.email === 'owaissaifi019@gmail.com') ? 'super_admin' : (profile?.platform_role || 'user');
-      const userType = profile?.user_type || user.user_metadata?.user_type || 'student';
-      const displayName = profile?.full_name || user.user_metadata?.full_name || user.email;
-      const initial = displayName.charAt(0).toUpperCase();
-      const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
-
-      // Desktop nav
-      if (loginBtn) {
-        if (platformRole === 'school_admin' || platformRole === 'super_admin') {
-          loginBtn.style.display = 'inline-flex';
-          loginBtn.href = platformRole === 'super_admin' ? 'admin/index.html' : AUTH_REDIRECT_DASHBOARD;
-          loginBtn.textContent = 'Dashboard';
-        } else {
-          loginBtn.style.display = 'none';
-        }
-        loginBtn.classList.remove('btn-secondary');
-        loginBtn.classList.add('btn-primary');
-      }
-
-      if (joinBtn) {
-        // Replace Register button with avatar + logout
-        const parent = joinBtn.parentElement;
-        joinBtn.style.display = 'none';
-
-        // Check if user pill already exists to avoid duplication
-        let userPill = parent.querySelector('.nav-user-pill');
-        if (!userPill) {
-          userPill = document.createElement('div');
-          userPill.className = 'nav-user-pill';
-          parent.appendChild(userPill);
-        }
-
+        const user = session.user;
+        const profile = await getProfile(user.id);
+        const platformRole = (user.email === 'owaissaifi019@gmail.com') ? 'super_admin' : (profile?.platform_role || 'user');
+        const userType = profile?.user_type || user.user_metadata?.user_type || 'student';
+        const displayName = profile?.full_name || user.user_metadata?.full_name || user.email || 'User';
+        const initial = displayName ? displayName.charAt(0).toUpperCase() : 'U';
+        const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
         const typeLabel = getUserTypeLabel(userType);
-        const avatarHtml = avatarUrl
-          ? `<img src="${avatarUrl}" alt="${displayName}" class="nav-user-avatar-img" title="${typeLabel}">`
-          : `<div class="nav-user-avatar" title="${typeLabel}">${initial}</div>`;
+
+        // Update Me Button and Dropdown elements if they exist
+        const meAvatar = document.getElementById('nav-me-avatar-img');
+        const meDropdownAvatar = document.getElementById('me-dropdown-avatar-img');
+        const meName = document.getElementById('me-dropdown-name');
+        const meHeadline = document.getElementById('me-dropdown-headline');
+        const meProfileLink = document.getElementById('me-dropdown-profile-link');
+        const meDashboardLink = document.getElementById('me-dropdown-dashboard-link');
+        
+        if (meAvatar) {
+          if (avatarUrl) {
+            meAvatar.style.backgroundImage = `url(${avatarUrl})`;
+            meAvatar.textContent = '';
+          } else {
+            meAvatar.style.backgroundImage = 'none';
+            meAvatar.textContent = initial;
+          }
+        }
+
+        if (meDropdownAvatar) {
+          if (avatarUrl) {
+            meDropdownAvatar.style.backgroundImage = `url(${avatarUrl})`;
+            meDropdownAvatar.textContent = '';
+          } else {
+            meDropdownAvatar.style.backgroundImage = 'none';
+            meDropdownAvatar.textContent = initial;
+          }
+        }
+
+        if (meName) meName.textContent = displayName;
+        if (meHeadline) meHeadline.textContent = typeLabel;
 
         let profileUrl = `profile.html?id=${user.id}`;
         if (userType === 'school_representative' || platformRole === 'school_admin') {
           profileUrl = profile?.school_id ? `school-profile.html?id=${profile.school_id}` : `dashboard.html`;
         }
-        userPill.innerHTML = `
-          <a href="${profileUrl}" class="nav-profile-link" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit;">
-            ${avatarHtml}
-            <span class="nav-user-name">${displayName} <span class="nav-role-badge ${userType}">${typeLabel}</span></span>
-          </a>
-          <button class="nav-logout-btn" id="nav-logout-btn" title="Logout">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
-        `;
+        if (meProfileLink) meProfileLink.href = profileUrl;
 
-        // Bind logout
-        const logoutBtn = document.getElementById('nav-logout-btn');
-        if (logoutBtn) {
-          logoutBtn.addEventListener('click', async (e) => {
+        if (meDashboardLink) {
+          if (platformRole === 'school_admin' || platformRole === 'super_admin') {
+            meDashboardLink.style.display = 'block';
+            meDashboardLink.href = platformRole === 'super_admin' ? 'admin/index.html' : 'dashboard.html';
+          } else {
+            meDashboardLink.style.display = 'none';
+          }
+        }
+
+        // Bind dropdown toggle
+        const meBtn = document.getElementById('nav-me-btn');
+        const meDropdown = document.getElementById('me-dropdown');
+        if (meBtn && meDropdown && !meBtn.dataset.listenerBound) {
+          meBtn.dataset.listenerBound = 'true';
+          meBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            meDropdown.classList.toggle('active');
+          });
+
+          document.addEventListener('click', (e) => {
+            if (!meDropdown.contains(e.target) && !meBtn.contains(e.target)) {
+              meDropdown.classList.remove('active');
+            }
+          });
+        }
+
+        // Bind signout button
+        const signoutBtn = document.getElementById('me-dropdown-signout-btn');
+        if (signoutBtn && !signoutBtn.dataset.listenerBound) {
+          signoutBtn.dataset.listenerBound = 'true';
+          signoutBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             await signOut();
           });
         }
-      }
 
-      // Mobile nav
-      if (mobileLogin) {
-        if (platformRole === 'school_admin' || platformRole === 'super_admin') {
-          mobileLogin.style.display = 'block';
-          mobileLogin.href = platformRole === 'super_admin' ? 'admin/index.html' : AUTH_REDIRECT_DASHBOARD;
-          mobileLogin.textContent = 'Dashboard';
-        } else {
-          mobileLogin.style.display = 'none';
+        // Backward compatibility for legacy elements if present on some pages
+        const loginBtn = document.getElementById('nav-btn-signin');
+        const joinBtn = document.getElementById('nav-btn-join');
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (joinBtn) joinBtn.style.display = 'none';
+
+      } else {
+        // User is not logged in
+        memberOnlyEls.forEach(el => { el.style.setProperty('display', 'none', 'important'); });
+        guestOnlyEls.forEach(el => { 
+          if (el.tagName === 'LI') {
+            el.style.setProperty('display', 'inline-flex', 'important');
+          } else {
+            el.style.setProperty('display', 'block', 'important');
+          }
+        });
+
+        // Backward compatibility for legacy elements
+        const loginBtn = document.getElementById('nav-btn-signin');
+        const joinBtn = document.getElementById('nav-btn-join');
+        if (loginBtn) {
+          loginBtn.style.display = 'inline-flex';
+          loginBtn.href = AUTH_REDIRECT_LOGIN;
+          if (!loginBtn.querySelector('svg')) {
+            loginBtn.textContent = 'Sign In';
+          }
+        }
+        if (joinBtn) {
+          joinBtn.style.display = 'inline-flex';
         }
       }
-      if (mobileRegister) {
-        mobileRegister.textContent = 'Logout';
-        mobileRegister.classList.remove('btn-modal-trigger');
-        mobileRegister.href = '#';
-        mobileRegister.addEventListener('click', async (e) => {
-          e.preventDefault();
-          await signOut();
-        });
-      }
-    } else {
-      // Not logged in — point Login to login.html
-      if (loginBtn) {
-        loginBtn.style.display = 'inline-flex';
-        loginBtn.href = AUTH_REDIRECT_LOGIN;
-        loginBtn.textContent = 'Login';
-        loginBtn.classList.remove('btn-primary');
-        loginBtn.classList.add('btn-secondary');
-      }
-      if (joinBtn) {
-        joinBtn.style.display = 'inline-flex';
-        // Remove user pill if any
-        const parent = joinBtn.parentElement;
-        const userPill = parent.querySelector('.nav-user-pill');
-        if (userPill) userPill.remove();
-      }
-      if (mobileLogin) {
-        mobileLogin.style.display = 'block';
-        mobileLogin.href = AUTH_REDIRECT_LOGIN;
-      }
-      if (mobileRegister) {
-        mobileRegister.textContent = 'Register';
-        mobileRegister.classList.add('btn-modal-trigger');
-        mobileRegister.href = 'login.html#register';
-      }
+    } catch (err) {
+      console.error('Error updating auth nav state:', err);
     }
   }
+  // Global search input handling
+  document.addEventListener('DOMContentLoaded', () => {
+    const globalSearch = document.getElementById('global-search-input');
+    if (globalSearch) {
+      // Check if there is a 'search' parameter in the URL on load
+      const urlParams = new URLSearchParams(window.location.search);
+      const searchParam = urlParams.get('search');
+      if (searchParam) {
+        globalSearch.value = searchParam;
+        
+        // Auto-populate local page search inputs if they exist
+        const pageSearchInputs = [
+          'net-search-input',
+          'school-search-input',
+          'event-search-input',
+          'admission-search-input'
+        ];
+        
+        for (const id of pageSearchInputs) {
+          const localInput = document.getElementById(id);
+          if (localInput) {
+            localInput.value = searchParam;
+            // Let the local page script load and bind first
+            setTimeout(() => {
+              localInput.value = searchParam;
+              localInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 100);
+            break; // assume one search page input per page
+          }
+        }
+      }
+
+      globalSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const query = globalSearch.value.trim();
+          
+          // Determine if we are on a page that already has search
+          const pageSearchInputs = [
+            'net-search-input',
+            'school-search-input',
+            'event-search-input',
+            'admission-search-input'
+          ];
+          let localInputFound = false;
+          for (const id of pageSearchInputs) {
+            const localInput = document.getElementById(id);
+            if (localInput) {
+              localInput.value = query;
+              localInput.dispatchEvent(new Event('input', { bubbles: true }));
+              localInputFound = true;
+              break;
+            }
+          }
+          
+          if (!localInputFound) {
+            // If we are not on a search page, redirect to networking.html with search query
+            window.location.href = `networking.html?search=${encodeURIComponent(query)}`;
+          }
+        }
+      });
+    }
+  });
 
   // ── Expose API ───────────────────────────────────────────
   window.CampusLink = window.CampusLink || {};

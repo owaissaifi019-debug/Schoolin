@@ -36,7 +36,13 @@
 
   // --- Toast Notifications ---
   function showToast(message, type = 'success') {
-    if (!toastContainer) return;
+    let activeContainer = document.getElementById('toast-container');
+    if (!activeContainer) {
+      activeContainer = document.createElement('div');
+      activeContainer.id = 'toast-container';
+      activeContainer.className = 'toast-container';
+      document.body.appendChild(activeContainer);
+    }
     
     const toast = document.createElement('div');
     toast.className = `toast-alert toast-alert-${type}`;
@@ -50,7 +56,7 @@
       <div>${message}</div>
     `;
     
-    toastContainer.appendChild(toast);
+    activeContainer.appendChild(toast);
     
     setTimeout(() => {
       toast.classList.add('show');
@@ -77,14 +83,24 @@
     await auth.updateNavAuthState();
 
     // Bind Mobile Navbar Toggle (for header toggle functionality on mobile viewport)
-    const mobileToggle = document.getElementById('mobile-menu-toggle');
-    const nav = document.querySelector('nav');
-    if (mobileToggle && nav) {
+    const mobileToggle = document.querySelector('.mobile-toggle');
+    const navLinks = document.querySelector('.nav-links');
+    const body = document.body;
+    if (mobileToggle && navLinks) {
       mobileToggle.addEventListener('click', () => {
-        mobileToggle.classList.toggle('active');
-        nav.classList.toggle('active');
+        navLinks.classList.toggle('active');
+        body.classList.toggle('mobile-nav-active');
       });
     }
+
+    // Close mobile nav when clicking a link
+    const navAnchors = document.querySelectorAll('.nav-links a');
+    navAnchors.forEach(anchor => {
+      anchor.addEventListener('click', () => {
+        if (navLinks) navLinks.classList.remove('active');
+        body.classList.remove('mobile-nav-active');
+      });
+    });
 
     // 1. Determine user profile ID from query param
     const urlParams = new URLSearchParams(window.location.search);
@@ -103,6 +119,42 @@
         window.location.href = 'login.html';
         return;
       }
+    }
+
+    // Bind Share Button
+    const shareBtn = document.getElementById('share-profile-btn');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', () => {
+        const shareUrl = window.location.href;
+        
+        function fallbackCopy(url) {
+          const textarea = document.createElement('textarea');
+          textarea.value = url;
+          textarea.style.position = 'fixed';
+          textarea.style.left = '-9999px';
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            document.execCommand('copy');
+            showToast('Profile link copied to clipboard!');
+          } catch (e) {
+            console.error('Failed fallback copy:', e);
+            alert('Failed to copy link: ' + url);
+          }
+          document.body.removeChild(textarea);
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            showToast('Profile link copied to clipboard!');
+          }).catch(err => {
+            console.error('Failed to copy profile link:', err);
+            fallbackCopy(shareUrl);
+          });
+        } else {
+          fallbackCopy(shareUrl);
+        }
+      });
     }
 
     // 3. Load Profile details
@@ -134,8 +186,15 @@
 
       // Redirect school representatives and school admins to their school profile or dashboard
       if (profile.user_type === 'school_representative' || profile.platform_role === 'school_admin') {
-        if (profile.school_id) {
-          window.location.href = `school-profile.html?id=${profile.school_id}`;
+        let redirectSchoolId = profile.school_id;
+        if (!redirectSchoolId) {
+          const { data: sch } = await sb.from('schools').select('id').eq('admin_user_id', profile.id).maybeSingle();
+          if (sch) {
+            redirectSchoolId = sch.id;
+          }
+        }
+        if (redirectSchoolId) {
+          window.location.href = `school-profile.html?id=${redirectSchoolId}`;
           return;
         } else if (isOwner) {
           window.location.href = 'dashboard.html';
@@ -504,7 +563,7 @@
     }
 
     if (sbClassVal) sbClassVal.textContent = profile.class || 'Not Specified';
-    if (sbEmailVal) sbEmailVal.textContent = profile.email || 'Private';
+    if (sbEmailVal) sbEmailVal.textContent = isOwner ? (profile.email || 'Private') : 'Private';
   }
 
   // --- Follow Actions ---
@@ -581,6 +640,28 @@
           isFollowing = true;
           count++;
           showToast('Following user');
+
+          // Trigger notification
+          if (window.CampusLink && window.CampusLink.notifications) {
+            try {
+              const { data: followerProfile } = await sb
+                .from('profiles')
+                .select('full_name')
+                .eq('id', currentUser.id)
+                .single();
+              const actorName = followerProfile?.full_name || 'Someone';
+              await window.CampusLink.notifications.createNotification(
+                profileId,
+                'follow',
+                `${actorName} started following you`,
+                `Click to view their profile`,
+                `profile.html?id=${currentUser.id}`,
+                currentUser.id
+              );
+            } catch (notifErr) {
+              console.warn('Error sending follow notification:', notifErr);
+            }
+          }
         }
 
         updateFollowButtonState(newFollowBtn, isFollowing);
@@ -732,6 +813,28 @@
 
           status = 'pending_sent';
           showToast('Connection request sent');
+
+          // Trigger notification
+          if (window.CampusLink && window.CampusLink.notifications) {
+            try {
+              const { data: requesterProfile } = await sb
+                .from('profiles')
+                .select('full_name')
+                .eq('id', currentUser.id)
+                .single();
+              const actorName = requesterProfile?.full_name || 'Someone';
+              await window.CampusLink.notifications.createNotification(
+                profileId,
+                'connection_request',
+                `${actorName} sent you a connection request`,
+                `Click to view networking requests`,
+                `networking.html`,
+                currentUser.id
+              );
+            } catch (notifErr) {
+              console.warn('Error sending connection request notification:', notifErr);
+            }
+          }
         } else if (status === 'pending_sent') {
           // Withdraw request
           const { error } = await sb
@@ -757,6 +860,28 @@
           status = 'accepted';
           count++;
           showToast('Connection request accepted! You are now connected.');
+
+          // Trigger notification
+          if (window.CampusLink && window.CampusLink.notifications) {
+            try {
+              const { data: accepterProfile } = await sb
+                .from('profiles')
+                .select('full_name')
+                .eq('id', currentUser.id)
+                .single();
+              const actorName = accepterProfile?.full_name || 'Someone';
+              await window.CampusLink.notifications.createNotification(
+                profileId,
+                'connection_accepted',
+                `${actorName} accepted your connection request`,
+                `You are now connected!`,
+                `profile.html?id=${currentUser.id}`,
+                currentUser.id
+              );
+            } catch (notifErr) {
+              console.warn('Error sending connection accepted notification:', notifErr);
+            }
+          }
         } else if (status === 'accepted') {
           // Disconnect
           if (confirm('Are you sure you want to disconnect? This will remove the connection for both of you.')) {

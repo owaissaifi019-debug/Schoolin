@@ -5,6 +5,42 @@ document.addEventListener('DOMContentLoaded', () => {
     window.CampusLink.auth.updateNavAuthState();
   }
 
+  // --- Reusable Toast Alert helper ---
+  function showToast(message, type = 'success') {
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toast-container';
+      toastContainer.className = 'toast-container';
+      document.body.appendChild(toastContainer);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-alert toast-alert-${type}`;
+    
+    let icon = '✓';
+    if (type === 'info') icon = 'ℹ';
+    if (type === 'error') icon = '⚠';
+
+    toast.innerHTML = `
+      <span style="font-weight:700; font-size:1.1rem; margin-right:8px;">${icon}</span>
+      <div>${message}</div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 50);
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        toast.remove();
+      }, 400);
+    }, 3500);
+  }
+
   
   /* --- Sticky Header Logic --- */
   const header = document.querySelector('header');
@@ -1040,6 +1076,7 @@ document.addEventListener('DOMContentLoaded', () => {
           profiles:profiles!posts_user_id_fkey (
             full_name,
             user_type,
+            platform_role,
             avatar_url,
             school_id,
             is_verified,
@@ -1085,7 +1122,75 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
+      // Check for specific post in URL query params
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetPostId = urlParams.get('post');
+      if (targetPostId) {
+        const hasTargetPost = filteredPosts.some(p => p.id === targetPostId);
+        if (!hasTargetPost) {
+          try {
+            const { data: specificPost, error: specificPostError } = await supabase
+              .from('posts')
+              .select(`
+                *,
+                profiles:profiles!posts_user_id_fkey (
+                  full_name,
+                  user_type,
+                  platform_role,
+                  avatar_url,
+                  school_id,
+                  is_verified,
+                  schools (
+                    name
+                  )
+                ),
+                post_likes (
+                  user_id
+                ),
+                comments (
+                  id,
+                  content,
+                  created_at,
+                  user_id,
+                  profiles:profiles!comments_user_id_fkey (
+                    full_name,
+                    user_type,
+                    avatar_url,
+                    is_verified
+                  )
+                )
+              `)
+              .eq('id', targetPostId)
+              .maybeSingle();
+
+            if (!specificPostError && specificPost) {
+              filteredPosts.unshift(specificPost);
+            }
+          } catch (spErr) {
+            console.warn('Could not load target post:', spErr);
+          }
+        }
+      }
+
       renderFeed(filteredPosts);
+
+      if (targetPostId) {
+        setTimeout(() => {
+          const postEl = feedContainer.querySelector(`[data-post-id="${targetPostId}"]`);
+          if (postEl) {
+            postEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            postEl.classList.add('highlighted-post');
+            
+            // Remove highlight class after animation finishes
+            setTimeout(() => {
+              postEl.classList.add('fade-highlight');
+              setTimeout(() => {
+                postEl.classList.remove('highlighted-post', 'fade-highlight');
+              }, 2000);
+            }, 3000);
+          }
+        }, 300);
+      }
     } catch (err) {
       console.error('Error loading feed:', err);
       feedContainer.innerHTML = `
@@ -1214,6 +1319,12 @@ document.addEventListener('DOMContentLoaded', () => {
             </svg>
             <span>Comment</span>
           </button>
+          <button class="btn-post-action btn-share-post" data-post-id="${post.id}">
+            <svg class="action-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            <span>Share</span>
+          </button>
         </div>
 
         <div class="post-comments-container" style="display: none;">
@@ -1323,6 +1434,43 @@ document.addEventListener('DOMContentLoaded', () => {
         await submitComment(postId, content, inputField);
       });
     });
+
+    // Bind Share clicks
+    feedContainer.querySelectorAll('.btn-share-post').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const postId = e.currentTarget.getAttribute('data-post-id');
+        const shareUrl = `${window.location.origin}${window.location.pathname}?post=${postId}`;
+        
+        function fallbackCopy(url) {
+          const textarea = document.createElement('textarea');
+          textarea.value = url;
+          textarea.style.position = 'fixed';
+          textarea.style.left = '-9999px';
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            document.execCommand('copy');
+            showToast('Post link copied to clipboard!');
+          } catch (copyErr) {
+            console.error('Failed fallback copy:', copyErr);
+            alert('Failed to copy link: ' + url);
+          }
+          document.body.removeChild(textarea);
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            showToast('Post link copied to clipboard!');
+          }).catch(err => {
+            console.error('Failed to copy post link:', err);
+            fallbackCopy(shareUrl);
+          });
+        } else {
+          fallbackCopy(shareUrl);
+        }
+      });
+    });
   }
 
   // Toggle Like Status
@@ -1369,6 +1517,31 @@ document.addEventListener('DOMContentLoaded', () => {
           });
 
         if (error) throw error;
+
+        // Trigger notification
+        if (window.CampusLink && window.CampusLink.notifications) {
+          try {
+            const { data: post } = await supabase
+              .from('posts')
+              .select('user_id, content')
+              .eq('id', postId)
+              .single();
+            if (post && post.user_id !== currentUser.id) {
+              const actorName = currentUserProfile?.full_name || 'Someone';
+              const postTitle = post.content ? post.content.substring(0, 30) + '...' : 'your post';
+              await window.CampusLink.notifications.createNotification(
+                post.user_id,
+                'like',
+                `${actorName} liked your post`,
+                `"${postTitle}"`,
+                `index.html`,
+                currentUser.id
+              );
+            }
+          } catch (notifErr) {
+            console.warn('Error sending like notification:', notifErr);
+          }
+        }
       }
     } catch (err) {
       console.error('Error toggling like:', err);
@@ -1406,6 +1579,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
       if (error) throw error;
+
+      // Trigger notification
+      if (window.CampusLink && window.CampusLink.notifications) {
+        try {
+          const { data: post } = await supabase
+            .from('posts')
+            .select('user_id, content')
+            .eq('id', postId)
+            .single();
+          if (post && post.user_id !== currentUser.id) {
+            const actorName = currentUserProfile?.full_name || 'Someone';
+            const postTitle = post.content ? post.content.substring(0, 30) + '...' : 'your post';
+            await window.CampusLink.notifications.createNotification(
+              post.user_id,
+              'comment',
+              `${actorName} commented on your post`,
+              `"${content.substring(0, 40)}${content.length > 40 ? '...' : ''}"`,
+              `index.html`,
+              currentUser.id
+            );
+          }
+        } catch (notifErr) {
+          console.warn('Error sending comment notification:', notifErr);
+        }
+      }
 
       inputField.value = '';
       loadFeed();

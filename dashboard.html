@@ -45,6 +45,12 @@
           </span>
           Admissions
         </a>
+        <a class="dashboard-nav-link" data-tab="applications">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><path d="M12 11v6"></path><path d="M9 14h6"></path></svg>
+          </span>
+          Applications
+        </a>
         <a class="dashboard-nav-link" data-tab="profile">
           <span class="icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -310,6 +316,39 @@
           <!-- Admission Grid -->
           <div class="dash-grid" id="dashboard-admissions-grid">
             <!-- Dynamic Admission Cards added by JS -->
+          </div>
+        </section>
+        
+        <!-- ================= APPLICATIONS TAB ================= -->
+        <section id="applications-tab" class="dashboard-tab-panel">
+          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
+            <h3 style="font-size: 1.3rem;">Admissions Applications Received</h3>
+          </div>
+          
+          <div class="dash-table-card" style="padding: 24px;">
+            <div class="dash-table-wrapper">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>Parent Name</th>
+                    <th>Grade</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Date Applied</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="applications-tbody">
+                  <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                      Loading admission applications...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
         
