@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages | CampusLink</title>
+  <meta name="description" content="Connect and message in real-time with students, teachers, alumni, and schools on the CampusLink Network.">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="style.css?v=1.1">
+  <link rel="stylesheet" href="messaging.css">
+</head>
+<body class="messaging-page-body">
+
+  <!-- --- Header / Navigation --- -->
+  <header>
+    <div class="container">
+      <a href="index.html" class="logo" id="header-logo">
+        <span>CampusLink</span><span class="logo-dot"></span>
+      </a>
+      
+      <nav>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="schools.html">Schools</a></li>
+          <li><a href="networking.html">Networking</a></li>
+          <li><a href="events.html">Events</a></li>
+          <li><a href="admissions.html">Admissions</a></li>
+          <li>
+            <a href="messaging.html" class="nav-msg-link active" title="Messages" aria-label="Messages">
+              <svg class="msg-icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span class="nav-msg-text">Messages</span>
+            </a>
+          </li>
+          <li class="mobile-only"><a href="login.html" id="mobile-nav-login">Login</a></li>
+          <li class="mobile-only"><a href="login.html#register" class="btn-modal-trigger" id="mobile-nav-register" style="color: var(--accent-hover); font-weight: 700;">Register School</a></li>
+        </ul>
+      </nav>
+      
+      <div class="nav-actions">
+        <a href="login.html" class="btn btn-secondary" id="nav-btn-signin" style="padding: 10px 20px; font-size: 0.9rem; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">Login</a>
+        <button class="btn btn-primary btn-modal-trigger" id="nav-btn-join" style="padding: 10px 20px; font-size: 0.9rem;">Register School</button>
+      </div>
+      
+      <button class="mobile-toggle" aria-label="Toggle menu" id="mobile-menu-toggle">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- --- Main Messaging Layout --- -->
+  <main class="messaging-container">
+    <div class="messaging-card">
+      
+      <!-- --- Left Column: Inbox Sidebar --- -->
+      <aside class="inbox-sidebar" id="inbox-sidebar">
+        <!-- Sidebar Header -->
+        <div class="inbox-header">
+          <h3>Messaging</h3>
+          <!-- Search Conversations -->
+          <div class="inbox-search">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <input type="text" id="conversation-search" placeholder="Search messages...">
+          </div>
+        </div>
+
+        <!-- Inbox Tabs Toggle (Active Chats vs Pending Requests) -->
+        <div class="inbox-tabs">
+          <button class="inbox-tab-btn active" id="tab-active-chats">
+            <span>Chats</span>
+          </button>
+          <button class="inbox-tab-btn" id="tab-message-requests">
+            <span>Requests</span>
+            <span class="request-badge" id="requests-count-badge" style="display: none;">0</span>
+          </button>
+        </div>
+
+        <!-- Conversations List -->
+        <div class="conversation-list" id="conversation-list">
+          <!-- Loading Spinner -->
+          <div class="list-loading">
+            <div class="spinner"></div>
+            <p>Loading messages...</p>
+          </div>
+          <!-- Filled dynamically by messaging.js -->
+        </div>
+      </aside>
+
+      <!-- --- Right Column: Active Chat Window --- -->
+      <section class="chat-viewport" id="chat-viewport">
+        
+        <!-- Empty State View -->
+        <div class="chat-empty-state" id="chat-empty-state">
+          <div class="empty-illustration">💬</div>
+          <h3>Select a conversation</h3>
+          <p>Choose a contact from the inbox list or visit profiles to start messaging instantly.</p>
+        </div>
+
+        <!-- Active Chat Interface (hidden initially) -->
+        <div class="chat-active-interface" id="chat-active-interface" style="display: none;">
+          
+          <!-- Chat Header -->
+          <div class="chat-header">
+            <button class="btn-chat-back" id="btn-chat-back" aria-label="Go back to list">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            </button>
+            <div class="chat-recipient-avatar" id="chat-recipient-avatar"></div>
+            <div class="chat-recipient-info">
+              <h4 id="chat-recipient-name">Recipient Name</h4>
+              <p id="chat-recipient-headline">Recipient Headline details</p>
+            </div>
+            <div class="chat-header-actions" id="chat-header-actions">
+              <!-- Rendered dynamically e.g. inquiry label -->
+            </div>
+          </div>
+
+          <!-- Message Requests Bar (shown if conversation status is 'pending') -->
+          <div class="message-request-bar" id="message-request-bar" style="display: none;">
+            <div class="request-bar-content">
+              <p id="request-bar-text">Would you like to accept this message request?</p>
+              <div class="request-actions">
+                <button class="btn btn-sm btn-accent" id="btn-accept-request">Accept</button>
+                <button class="btn btn-sm btn-secondary" id="btn-ignore-request">Ignore</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Message History Board -->
+          <div class="message-history" id="message-history">
+            <!-- Messages render here -->
+          </div>
+
+          <!-- Message Input Panel -->
+          <div class="chat-input-panel" id="chat-input-panel">
+            <form id="chat-send-form" style="display: flex; gap: 12px; align-items: flex-end;">
+              <textarea id="chat-message-input" placeholder="Write a message..." rows="1" required></textarea>
+              <button type="submit" class="btn btn-primary btn-icon" id="btn-send-message" aria-label="Send message">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Supabase CDN + Auth -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+
+  <!-- Messaging Logic -->
+  <script src="messaging.js"></script>
+</body>
+</html>

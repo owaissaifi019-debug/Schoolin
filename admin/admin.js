@@ -774,6 +774,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const displayName = profile.full_name || 'N/A';
       const displayEmail = profile.email || 'N/A';
+      const verifiedBadge = profile.is_verified ? `
+        <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
+          <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+          <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+        </svg>
+      ` : '';
 
       const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
       const selectDisabledAttr = canChangeStatus ? '' : 'disabled';
@@ -782,7 +788,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const selectColor = canChangeStatus ? 'inherit' : '#64748B';
 
       tr.innerHTML = `
-        <td style="font-weight: 700; color: var(--dark-bg);">${displayName}</td>
+        <td style="font-weight: 700; color: var(--dark-bg);">${displayName}${verifiedBadge}</td>
         <td>${displayEmail}</td>
         <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${userTypeLabel}</span></td>
         <td><span class="badge-status ${roleBadgeClass}" style="font-weight:700;">${platformRoleLabel.toUpperCase()}</span></td>
@@ -795,7 +801,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           </select>
         </td>
         <td>
-          <button class="btn btn-secondary btn-delete-user" data-id="${profile.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Delete</button>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-toggle-verify" data-id="${profile.id}" data-verified="${profile.is_verified ? 'true' : 'false'}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); ${profile.is_verified ? 'border-color: #D1D5DB; color: #374151; background: transparent;' : 'background-color: #10B981; border-color: #10B981; color: white;'}">
+              ${profile.is_verified ? 'Unverify' : 'Verify'}
+            </button>
+            <button class="btn btn-secondary btn-delete-user" data-id="${profile.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Delete</button>
+          </div>
         </td>
       `;
       usersTbody.appendChild(tr);
@@ -817,6 +828,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (confirm('Are you sure you want to delete this user profile? Note: This deletes the public profile, but the underlying Auth user remains.')) {
           await deleteUserProfile(id);
         }
+      });
+    });
+
+    // Bind verify toggle buttons
+    usersTbody.querySelectorAll('.btn-toggle-verify').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        const isVerified = e.currentTarget.getAttribute('data-verified') === 'true';
+        await toggleUserVerification(id, isVerified);
       });
     });
   }
@@ -875,6 +895,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
       console.error('Failed to delete user profile:', e);
       showToast(`Failed to delete profile: ${e.message}`, 'error');
+    }
+  }
+
+  async function toggleUserVerification(userId, currentVerifiedState) {
+    if (!supabase) return;
+    const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+    if (!canChangeStatus) {
+      showToast('Access Denied: Only owaissaifi019@gmail.com can verify or unverify users.', 'error');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_verified: !currentVerifiedState })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      showToast(`User successfully ${!currentVerifiedState ? 'verified' : 'unverified'}!`, 'success');
+      await loadSystemStats();
+      await loadUsersData();
+    } catch (e) {
+      console.error('Failed to update user verification:', e);
+      showToast(`Failed to update verification: ${e.message}`, 'error');
     }
   }
 

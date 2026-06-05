@@ -237,11 +237,17 @@
       if (!isOwner) {
         setupFollowButton(profileId, isFollowing, followersCount);
         setupConnectButton(profileId, connectionStatus, connectionsCount);
+        setupMessageButton(profileId);
       }
       
       // Setup edit capabilities if user is profile owner
       if (isOwner) {
         setupOwnerFeatures();
+      }
+
+      // Setup super admin verification control
+      if (currentUser && currentUser.email === 'owaissaifi019@gmail.com') {
+        setupVerifyButton(profileId, profile.is_verified);
       }
 
       // Show profile container, hide loader
@@ -273,7 +279,15 @@
     const headlineEl = document.getElementById('profile-headline');
     const avatarEl = document.getElementById('profile-avatar-display');
 
-    if (nameEl) nameEl.textContent = profile.full_name || 'No Name Provided';
+    if (nameEl) {
+      const verifiedBadge = profile.is_verified ? `
+        <svg class="verified-badge verified-badge-lg" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
+          <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+          <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+        </svg>
+      ` : '';
+      nameEl.innerHTML = (profile.full_name || 'No Name Provided') + verifiedBadge;
+    }
     
     // Headline e.g. "Student at Delhi Public School"
     let headlineStr = auth.getUserTypeLabel(profile.user_type);
@@ -356,6 +370,18 @@
         connectBtn.style.display = 'inline-flex';
       } else {
         connectBtn.style.display = 'none';
+      }
+    }
+
+    // Message Button display
+    const messageBtn = document.getElementById('message-profile-btn');
+    if (messageBtn) {
+      if (currentUser && !isOwner) {
+        messageBtn.style.display = 'inline-flex';
+      } else if (!currentUser) {
+        messageBtn.style.display = 'inline-flex';
+      } else {
+        messageBtn.style.display = 'none';
       }
     }
 
@@ -760,6 +786,145 @@
         newConnectBtn.disabled = false;
       }
     });
+  }
+
+  // --- Message Actions ---
+  function setupMessageButton(profileId) {
+    const messageBtn = document.getElementById('message-profile-btn');
+    if (!messageBtn) return;
+
+    // Clone to remove previous listeners
+    const newMessageBtn = messageBtn.cloneNode(true);
+    messageBtn.parentNode.replaceChild(newMessageBtn, messageBtn);
+
+    newMessageBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      const sb = getSupabase();
+      if (!sb) return;
+
+      newMessageBtn.disabled = true;
+      const originalHtml = newMessageBtn.innerHTML;
+      newMessageBtn.textContent = 'Connecting...';
+
+      try {
+        // Fetch all conversations of the current user
+        const { data: myPart, error: err1 } = await sb
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', currentUser.id);
+
+        if (err1) throw err1;
+
+        let existingId = null;
+        if (myPart && myPart.length > 0) {
+          const convIds = myPart.map(p => p.conversation_id);
+          
+          const { data: otherPart, error: err2 } = await sb
+            .from('conversation_participants')
+            .select('conversation_id, conversation:conversations(school_id)')
+            .in('conversation_id', convIds)
+            .eq('user_id', profileId);
+
+          if (!err2 && otherPart && otherPart.length > 0) {
+            // Filter to find direct chat with the profile user (no school_id)
+            const directConv = otherPart.find(p => p.conversation && p.conversation.school_id === null);
+            if (directConv) {
+              existingId = directConv.conversation_id;
+            }
+          }
+        }
+
+        if (existingId) {
+          window.location.href = `messaging.html?chat_id=${existingId}`;
+        } else {
+          window.location.href = `messaging.html?new_chat_with=${profileId}`;
+        }
+      } catch (err) {
+        console.error('Failed to initiate message:', err);
+        showToast('Failed to start chat: ' + err.message, 'error');
+        newMessageBtn.disabled = false;
+        newMessageBtn.innerHTML = originalHtml;
+      }
+    });
+  }
+
+  // --- Super Admin Verification Control ---
+  function setupVerifyButton(profileId, isVerified) {
+    const verifyBtn = document.getElementById('verify-profile-btn');
+    if (!verifyBtn) return;
+
+    verifyBtn.style.display = 'inline-flex';
+    updateVerifyButtonState(verifyBtn, isVerified);
+
+    // Clone to remove previous listeners
+    const newVerifyBtn = verifyBtn.cloneNode(true);
+    verifyBtn.parentNode.replaceChild(newVerifyBtn, verifyBtn);
+
+    newVerifyBtn.addEventListener('click', async () => {
+      const sb = getSupabase();
+      if (!sb) return;
+
+      newVerifyBtn.disabled = true;
+      const targetState = !isVerified;
+
+      try {
+        const { error } = await sb
+          .from('profiles')
+          .update({ is_verified: targetState })
+          .eq('id', profileId);
+
+        if (error) throw error;
+
+        isVerified = targetState;
+        updateVerifyButtonState(newVerifyBtn, isVerified);
+        
+        // Update local state
+        profileUser.is_verified = isVerified;
+        
+        // Update the header name display with badge
+        const nameEl = document.getElementById('profile-full-name');
+        if (nameEl) {
+          const verifiedBadge = isVerified ? `
+            <svg class="verified-badge verified-badge-lg" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>
+          ` : '';
+          nameEl.innerHTML = (profileUser.full_name || 'No Name Provided') + verifiedBadge;
+        }
+
+        showToast(isVerified ? 'Profile verified successfully!' : 'Profile unverified successfully!');
+      } catch (err) {
+        console.error('Failed to toggle verification:', err);
+        showToast(err.message || 'Failed to update verification state', 'error');
+      } finally {
+        newVerifyBtn.disabled = false;
+      }
+    });
+  }
+
+  function updateVerifyButtonState(btn, isVerified) {
+    if (isVerified) {
+      btn.style.backgroundColor = 'transparent';
+      btn.style.color = '#DC2626'; // Red
+      btn.style.border = '2px solid #DC2626';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span>Remove Verify</span>
+      `;
+    } else {
+      btn.style.backgroundColor = '#16A34A'; // Green
+      btn.style.color = 'var(--white)';
+      btn.style.border = 'none';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span>Verify User</span>
+      `;
+    }
   }
 
   // --- Setup Owner-Only Controls ---

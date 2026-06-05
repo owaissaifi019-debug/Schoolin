@@ -286,6 +286,7 @@ header .container {
   display: flex;
   gap: 32px;
   list-style: none;
+  align-items: center;
 }
 
 .nav-links a {
@@ -314,6 +315,38 @@ header .container {
 .nav-links a:hover::after, .nav-links a.active::after {
   width: 100%;
 }
+
+/* Header Messages Link Icon */
+.nav-msg-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px !important;
+  border-radius: 50%;
+  transition: var(--transition-smooth);
+  position: relative;
+  vertical-align: middle;
+}
+
+.nav-msg-link:hover {
+  background-color: var(--primary-light);
+  color: var(--primary) !important;
+  transform: scale(1.05);
+}
+
+.nav-msg-link.active {
+  background-color: var(--primary-light);
+  color: var(--primary) !important;
+}
+
+.nav-msg-link::after {
+  display: none !important; /* Remove the underline animation for the icon */
+}
+
+.nav-msg-text {
+  display: none;
+}
+
 
 .nav-actions {
   display: flex;
@@ -1363,6 +1396,22 @@ footer {
   
   .nav-links a {
     font-size: 1.25rem;
+  }
+  
+  .nav-msg-link {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    border-radius: var(--radius-md) !important;
+    padding: 10px 20px !important;
+    background: rgba(var(--primary-rgb), 0.05);
+    width: fit-content;
+  }
+  
+  .nav-msg-text {
+    display: inline !important;
+    font-size: 1.25rem;
+    font-weight: 500;
   }
   
   .nav-actions {
@@ -5187,6 +5236,39 @@ footer {
 .badge-role.school_admin {
   background-color: #E0F2FE;
   color: #0369A1;
+}
+
+.verified-badge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+  color: #1D9BF0; /* X/Twitter Electric Blue */
+  fill: currentColor;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.25s ease;
+}
+
+.verified-badge:hover {
+  transform: scale(1.2) rotate(8deg);
+  filter: drop-shadow(0 0 6px rgba(29, 155, 240, 0.7));
+}
+
+/* Badge Size Modifiers */
+.verified-badge-lg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.verified-badge-md {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.verified-badge-sm {
+  width: 13px !important;
+  height: 13px !important;
 }
 
 .profile-headline {

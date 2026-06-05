@@ -337,6 +337,17 @@ document.addEventListener('DOMContentLoaded', () => {
               followBtn.style.display = 'none';
             }
           }
+
+          // Update Contact School Button display and state
+          const contactBtn = document.getElementById('btn-contact-school');
+          if (contactBtn) {
+            if (!isSchoolAdmin) {
+              contactBtn.style.display = 'inline-flex';
+              setupContactSchoolButton(dbSchool);
+            } else {
+              contactBtn.style.display = 'none';
+            }
+          }
           
           // Load admissions data
           const { data: dbAdmissions } = await supabase.from('admissions').select('*').eq('school_id', dbSchool.id).eq('status', 'open').maybeSingle();
@@ -1141,6 +1152,105 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(err.message || 'Failed to update follow state', 'error');
       } finally {
         newFollowBtn.disabled = false;
+      }
+  }
+
+  function setupContactSchoolButton(dbSchool) {
+    const contactBtn = document.getElementById('btn-contact-school');
+    const modal = document.getElementById('contact-school-modal');
+    const closeBtn = document.getElementById('contact-modal-close');
+    const form = document.getElementById('contact-school-form');
+    
+    if (!contactBtn || !modal || !form) return;
+
+    // Clone to remove previous listeners
+    const newContactBtn = contactBtn.cloneNode(true);
+    contactBtn.parentNode.replaceChild(newContactBtn, contactBtn);
+
+    newContactBtn.addEventListener('click', () => {
+      if (!currentUser) {
+        window.location.href = 'login.html';
+        return;
+      }
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    });
+
+    const closeModal = () => {
+      modal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+      form.reset();
+    };
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeModal);
+    }
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const inquiryType = document.getElementById('contact-inquiry-type').value;
+      const messageText = document.getElementById('contact-message').value.trim();
+
+      if (!inquiryType || !messageText) return;
+
+      const submitBtn = document.getElementById('btn-submit-contact');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending Inquiry...';
+
+      try {
+        const sb = window.CampusLink.supabase;
+        
+        // 1. Create a conversation
+        const { data: conv, error: convError } = await sb
+          .from('conversations')
+          .insert({
+            status: 'pending',
+            initiator_id: currentUser.id,
+            school_id: dbSchool.id,
+            inquiry_type: inquiryType
+          })
+          .select()
+          .single();
+
+        if (convError) throw convError;
+
+        // 2. Add participants: the initiator (user) and the school
+        const { error: partError } = await sb
+          .from('conversation_participants')
+          .insert([
+            { conversation_id: conv.id, user_id: currentUser.id },
+            { conversation_id: conv.id, school_id: dbSchool.id }
+          ]);
+
+        if (partError) throw partError;
+
+        // 3. Send the message
+        const { error: msgError } = await sb
+          .from('messages')
+          .insert({
+            conversation_id: conv.id,
+            sender_id: currentUser.id,
+            receiver_school_id: dbSchool.id,
+            receiver_id: dbSchool.admin_user_id || null,
+            message: `[Inquiry: ${inquiryType.toUpperCase()}] ${messageText}`,
+            read_status: false
+          });
+
+        if (msgError) throw msgError;
+
+        closeModal();
+        alert('Inquiry sent successfully! Redirecting to messaging page...');
+        window.location.href = `messaging.html?chat_id=${conv.id}`;
+      } catch (err) {
+        console.error('Failed to send inquiry:', err);
+        alert('Failed to send inquiry: ' + err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message Request';
       }
     });
   }
