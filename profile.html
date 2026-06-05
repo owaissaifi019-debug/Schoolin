@@ -22,6 +22,7 @@
         <ul class="nav-links">
           <li><a href="index.html">Home</a></li>
           <li><a href="schools.html">Schools</a></li>
+          <li><a href="networking.html">Networking</a></li>
           <li><a href="events.html">Events</a></li>
           <li><a href="admissions.html">Admissions</a></li>
           <li class="mobile-only"><a href="login.html" id="mobile-nav-login">Login</a></li>
@@ -89,13 +90,27 @@
               
               <p id="profile-headline" class="profile-headline">Student</p>
               
-              <div id="profile-school-meta" class="profile-school-meta">
+              <div id="profile-school-meta" class="profile-school-meta" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <span class="meta-icon">🏫</span>
                 <span id="profile-school-name" class="profile-school-text">No School Linked</span>
+                <span class="meta-separator" style="color: var(--text-muted);">•</span>
+                <span id="profile-followers-count" class="profile-followers-text" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">0 followers</span>
+                <span class="meta-separator" style="color: var(--text-muted);">•</span>
+                <span id="profile-connections-count" class="profile-connections-text" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">0 connections</span>
               </div>
             </div>
 
-            <div class="profile-actions" id="profile-actions-area">
+            <div class="profile-actions" id="profile-actions-area" style="display: flex; gap: 8px;">
+              <!-- Connect Button -->
+              <button id="connect-profile-btn" class="btn-connect" style="display: none; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; font-size: 0.9rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                <span>Connect</span>
+              </button>
+              <!-- Follow Button -->
+              <button id="follow-profile-btn" class="btn btn-follow" style="display: none; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; font-size: 0.9rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Follow</span>
+              </button>
               <!-- Edit Profile Trigger (Only visible to owner) -->
               <button id="edit-profile-btn" class="btn btn-primary" style="display: none;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="14 2 18 6 7 17 3 17 3 13 14 2"/></svg>

@@ -268,14 +268,32 @@ document.addEventListener('DOMContentLoaded', () => {
             admissionText: "No active admissions at the moment."
           };
           
-          // Check if current user is authorized to edit
+          // Check if current user is authorized to edit or is following
           const auth = window.CampusLink && window.CampusLink.auth;
+          let followersCount = 0;
+          let isFollowing = false;
+          let currentUser = null;
+          let isSchoolAdmin = false;
+
+          // Fetch Followers count from DB
+          try {
+            const { count: countVal, error: countError } = await supabase
+              .from('follows')
+              .select('*', { count: 'exact', head: true })
+              .eq('following_school_id', dbSchool.id);
+            if (!countError) {
+              followersCount = countVal || 0;
+            }
+          } catch (followersErr) {
+            console.warn('Error fetching followers count:', followersErr);
+          }
+
           if (auth) {
             try {
               const session = await auth.getSession();
-              const currentUser = session?.user;
+              currentUser = session?.user || null;
               if (currentUser) {
-                const isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
+                isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
                 const isSuperAdmin = currentUser.email === 'owaissaifi019@gmail.com';
                 
                 if (isSchoolAdmin || isSuperAdmin) {
@@ -285,9 +303,38 @@ document.addEventListener('DOMContentLoaded', () => {
                     setupSchoolEditFeatures(dbSchool);
                   }
                 }
+
+                // Check if currently following
+                const { data: followData, error: followCheckError } = await supabase
+                  .from('follows')
+                  .select('*')
+                  .eq('follower_id', currentUser.id)
+                  .eq('following_school_id', dbSchool.id)
+                  .maybeSingle();
+                if (!followCheckError && followData) {
+                  isFollowing = true;
+                }
               }
             } catch (authErr) {
               console.warn('Error loading auth states for school editor:', authErr);
+            }
+          }
+
+          // Update Followers count text
+          const followersEl = document.getElementById('profile-followers-count');
+          if (followersEl) {
+            followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
+          }
+
+          // Update Follow Button display and state
+          const followBtn = document.getElementById('btn-follow-school');
+          if (followBtn) {
+            if (!isSchoolAdmin) {
+              followBtn.style.display = 'inline-flex';
+              updateSchoolFollowButtonState(followBtn, isFollowing);
+              setupSchoolFollowButton(dbSchool.id, isFollowing, followersCount, currentUser);
+            } else {
+              followBtn.style.display = 'none';
             }
           }
           
@@ -1007,5 +1054,94 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     }
+  }
+
+  // --- School Follow Functions ---
+  function updateSchoolFollowButtonState(btn, following) {
+    if (following) {
+      btn.className = 'btn btn-following';
+      btn.style.backgroundColor = 'transparent';
+      btn.style.color = 'var(--primary)';
+      btn.style.border = '2px solid var(--primary)';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Following</span>
+      `;
+    } else {
+      btn.className = 'btn btn-follow btn-secondary';
+      btn.style.backgroundColor = 'transparent';
+      btn.style.color = 'var(--primary)';
+      btn.style.border = '1px solid rgba(0, 102, 200, 0.3)';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Follow</span>
+      `;
+    }
+  }
+
+  function setupSchoolFollowButton(schoolId, initialFollowing, initialCount, currentUser) {
+    const followBtn = document.getElementById('btn-follow-school');
+    if (!followBtn) return;
+
+    // Clone to remove previous listeners
+    const newFollowBtn = followBtn.cloneNode(true);
+    followBtn.parentNode.replaceChild(newFollowBtn, followBtn);
+
+    let isFollowing = initialFollowing;
+    let count = initialCount;
+
+    newFollowBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      if (!supabase) return;
+
+      newFollowBtn.disabled = true;
+
+      try {
+        if (isFollowing) {
+          // Unfollow
+          const { error } = await supabase
+            .from('follows')
+            .delete()
+            .eq('follower_id', currentUser.id)
+            .eq('following_school_id', schoolId);
+
+          if (error) throw error;
+
+          isFollowing = false;
+          count = Math.max(0, count - 1);
+          showToast('Unfollowed school');
+        } else {
+          // Follow
+          const { error } = await supabase
+            .from('follows')
+            .insert({
+              follower_id: currentUser.id,
+              following_school_id: schoolId,
+              follow_type: 'school'
+            });
+
+          if (error) throw error;
+
+          isFollowing = true;
+          count++;
+          showToast('Following school');
+        }
+
+        updateSchoolFollowButtonState(newFollowBtn, isFollowing);
+        const followersEl = document.getElementById('profile-followers-count');
+        if (followersEl) {
+          followersEl.textContent = `${count} follower${count !== 1 ? 's' : ''}`;
+        }
+      } catch (err) {
+        console.error('Follow school toggle failed:', err);
+        showToast(err.message || 'Failed to update follow state', 'error');
+      } finally {
+        newFollowBtn.disabled = false;
+      }
+    });
   }
 });

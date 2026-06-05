@@ -594,6 +594,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentUser = null;
   let currentUserProfile = null;
+  let activeFeedFilter = 'all';
+  let userFollows = { users: new Set(), schools: new Set() };
 
   // Relative time helper
   function formatRelativeTime(dateString) {
@@ -648,15 +650,76 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Load follows list
+    await loadFollows();
+
     // Render components
     renderUserSidebar();
     renderShareBox();
     loadTrendingEventsWidget();
     loadFeaturedSchoolsWidget();
+    setupFeedFilterTabs();
     loadFeed();
 
     // Setup Create Post Form Submit
     initCreatePostForm();
+  }
+
+  // Load user follow details
+  async function loadFollows() {
+    if (!supabase || !currentUser) return;
+    try {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('following_id, following_school_id, follow_type')
+        .eq('follower_id', currentUser.id);
+
+      if (error) {
+        console.warn('Error loading follows for feed:', error.message);
+        return;
+      }
+      
+      userFollows.users = new Set();
+      userFollows.schools = new Set();
+      (data || []).forEach(f => {
+        if (f.follow_type === 'user' && f.following_id) {
+          userFollows.users.add(f.following_id);
+        } else if (f.follow_type === 'school' && f.following_school_id) {
+          userFollows.schools.add(f.following_school_id);
+        }
+      });
+    } catch (err) {
+      console.warn('Error loading follows:', err);
+    }
+  }
+
+  // Setup feed filter tabs listeners
+  function setupFeedFilterTabs() {
+    const tabContainer = document.getElementById('feed-filter-tabs');
+    if (!tabContainer) return;
+
+    const tabs = tabContainer.querySelectorAll('.feed-filter-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', async (e) => {
+        tabs.forEach(t => {
+          t.classList.remove('active');
+          t.style.color = 'var(--text-muted)';
+          t.style.borderBottomColor = 'transparent';
+          t.style.fontWeight = '500';
+        });
+
+        tab.classList.add('active');
+        tab.style.color = 'var(--primary)';
+        tab.style.borderBottomColor = 'var(--primary)';
+        tab.style.fontWeight = '600';
+
+        activeFeedFilter = tab.getAttribute('data-filter');
+        
+        // Reload follows and refresh the feed
+        await loadFollows();
+        loadFeed();
+      });
+    });
   }
 
   // Render Left Sidebar Card
@@ -944,6 +1007,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Render Guest state for Following tab
+  function renderGuestFollowingFeedState() {
+    const feedContainer = document.getElementById('social-feed');
+    if (!feedContainer) return;
+    feedContainer.innerHTML = `
+      <div class="feed-empty-state" style="padding: 40px 24px;">
+        <div class="empty-icon">🔒</div>
+        <h3>Log in to see followed content</h3>
+        <p>Following schools, students, and teachers lets you build a personalized feed of their latest updates and achievements.</p>
+        <a href="login.html" class="btn btn-primary" style="margin-top: 16px; padding: 10px 24px; text-decoration: none; display: inline-block;">Log In to CampusLink</a>
+      </div>
+    `;
+  }
+
   // Load feed from Supabase
   async function loadFeed() {
     const feedContainer = document.getElementById('social-feed');
@@ -982,7 +1059,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (error) throw error;
 
-      renderFeed(posts || []);
+      let filteredPosts = posts || [];
+      if (activeFeedFilter === 'following') {
+        if (!currentUser) {
+          renderGuestFollowingFeedState();
+          return;
+        }
+        filteredPosts = (posts || []).filter(post => {
+          const authorId = post.user_id;
+          const authorSchoolId = post.profiles?.school_id;
+          
+          const followsAuthor = userFollows.users.has(authorId);
+          const followsSchool = authorSchoolId && userFollows.schools.has(authorSchoolId);
+          const isOwnPost = currentUser && authorId === currentUser.id;
+          
+          return followsAuthor || followsSchool || isOwnPost;
+        });
+      }
+
+      renderFeed(filteredPosts);
     } catch (err) {
       console.error('Error loading feed:', err);
       feedContainer.innerHTML = `
@@ -1002,13 +1097,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!feedContainer) return;
 
     if (posts.length === 0) {
-      feedContainer.innerHTML = `
-        <div class="feed-empty-state">
-          <div class="empty-icon">📣</div>
-          <h3>No posts yet</h3>
-          <p>Be the first to share an achievement, competition win, or project!</p>
-        </div>
-      `;
+      if (activeFeedFilter === 'following') {
+        feedContainer.innerHTML = `
+          <div class="feed-empty-state">
+            <div class="empty-icon">👥</div>
+            <h3>Feed is empty</h3>
+            <p>You aren't following anyone yet, or the people and schools you follow haven't posted anything. Discover them on the <a href="networking.html" style="color:var(--primary); font-weight:600; text-decoration:underline;">Networking page</a>!</p>
+          </div>
+        `;
+      } else {
+        feedContainer.innerHTML = `
+          <div class="feed-empty-state">
+            <div class="empty-icon">📣</div>
+            <h3>No posts yet</h3>
+            <p>Be the first to share an achievement, competition win, or project!</p>
+          </div>
+        `;
+      }
       return;
     }
 

@@ -36,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let allProfiles = [];
   let allSchools = [];
   let userFollows = { users: new Set(), schools: new Set() };
+  let userConnections = new Map();
+  let pendingIncomingRequests = [];
   let activeFilter = 'all';
   let searchQuery = '';
 
@@ -48,9 +50,17 @@ document.addEventListener('DOMContentLoaded', () => {
     await Promise.all([
       loadProfiles(),
       loadSchools(),
-      loadFollows()
+      loadFollows(),
+      loadConnections()
     ]);
 
+    // Show connections tab if logged in
+    const connTab = document.getElementById('net-tab-connections');
+    if (connTab && currentUser) {
+      connTab.style.display = 'inline-flex';
+    }
+
+    renderPendingRequests();
     renderCards();
     setupEventListeners();
   }
@@ -114,6 +124,94 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  async function loadConnections() {
+    if (!supabase || !currentUser) return;
+    try {
+      const { data, error } = await supabase
+        .from('connections')
+        .select('*')
+        .or(`requester_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
+
+      if (error) {
+        console.warn('Connections load failed:', error.message);
+        return;
+      }
+
+      userConnections.clear();
+      pendingIncomingRequests = [];
+
+      const pendingRequesters = [];
+
+      (data || []).forEach(c => {
+        const otherUserId = c.requester_id === currentUser.id ? c.receiver_id : c.requester_id;
+        userConnections.set(otherUserId, c);
+
+        if (c.status === 'pending' && c.receiver_id === currentUser.id) {
+          pendingRequesters.push(c.requester_id);
+        }
+      });
+
+      if (pendingRequesters.length > 0) {
+        const { data: profiles, error: pError } = await supabase
+          .from('profiles')
+          .select('*, schools(name)')
+          .in('id', pendingRequesters);
+
+        if (!pError) {
+          pendingIncomingRequests = profiles || [];
+        }
+      }
+    } catch (err) {
+      console.warn('Error loading connections:', err);
+    }
+  }
+
+  function renderPendingRequests() {
+    const inboxSection = document.getElementById('connections-requests-inbox');
+    const grid = document.getElementById('connections-requests-grid');
+    if (!inboxSection || !grid) return;
+
+    if (!currentUser || pendingIncomingRequests.length === 0) {
+      inboxSection.style.display = 'none';
+      return;
+    }
+
+    inboxSection.style.display = 'block';
+    grid.innerHTML = '';
+
+    pendingIncomingRequests.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'connection-request-card';
+      card.dataset.userId = p.id;
+
+      const displayName = p.full_name || 'CampusLink User';
+      const initial = displayName.charAt(0).toUpperCase();
+      const typeLabel = auth ? auth.getUserTypeLabel(p.user_type) : p.user_type;
+      const schoolName = p.schools?.name || '';
+      
+      const avatarHtml = p.avatar_url
+        ? `<img src="${p.avatar_url}" alt="${displayName}" class="connection-request-avatar">`
+        : `<div class="connection-request-avatar" style="display:flex; align-items:center; justify-content:center; background:var(--primary-light); color:var(--primary); font-weight:bold; font-size:1.2rem;">${initial}</div>`;
+
+      let profileUrl = `profile.html?id=${p.id}`;
+
+      card.innerHTML = `
+        <div class="connection-request-info" onclick="window.location.href='${profileUrl}'">
+          ${avatarHtml}
+          <div class="connection-request-details">
+            <h4>${displayName}</h4>
+            <p>${typeLabel}${schoolName ? ` at ${schoolName}` : ''}</p>
+          </div>
+        </div>
+        <div class="connection-request-actions">
+          <button class="btn-accept-request" data-user-id="${p.id}">Accept</button>
+          <button class="btn-reject-request" data-user-id="${p.id}">Ignore</button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
   /* --- Filtering --- */
   function getFilteredResults() {
     const q = searchQuery.toLowerCase().trim();
@@ -128,6 +226,17 @@ document.addEventListener('DOMContentLoaded', () => {
                (s.city || '').toLowerCase().includes(q) ||
                (s.board || '').toLowerCase().includes(q);
       });
+    } else if (activeFilter === 'connections') {
+      // Accepted connections only
+      people = allProfiles.filter(p => {
+        if (currentUser && p.id === currentUser.id) return false;
+        const conn = userConnections.get(p.id);
+        const isConn = conn && conn.status === 'accepted';
+        if (!isConn) return false;
+        if (!q) return true;
+        return matchProfile(p, q);
+      });
+      schools = [];
     } else if (activeFilter === 'all') {
       // People + schools
       people = allProfiles.filter(p => {
@@ -219,6 +328,57 @@ document.addEventListener('DOMContentLoaded', () => {
     const bio = p.bio || '';
     const skills = (p.skills || []).slice(0, 3);
     const isFollowing = userFollows.users.has(p.id);
+    const conn = userConnections.get(p.id);
+    let connectBtnHtml = '';
+
+    if (currentUser && currentUser.id !== p.id) {
+      if (conn) {
+        if (conn.status === 'accepted') {
+          connectBtnHtml = `
+            <button class="btn-connected" data-connect-id="${p.id}" data-connect-status="accepted" title="Connected - Click to disconnect" style="padding: 10px 14px; font-size: 0.8rem; height: 38px; flex: 1;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Connected</span>
+            </button>
+          `;
+        } else if (conn.status === 'pending') {
+          if (conn.requester_id === currentUser.id) {
+            connectBtnHtml = `
+              <button class="btn-requested" data-connect-id="${p.id}" data-connect-status="pending_sent" title="Requested - Click to withdraw" style="padding: 10px 14px; font-size: 0.8rem; height: 38px; flex: 1;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Requested</span>
+              </button>
+            `;
+          } else {
+            connectBtnHtml = `
+              <button class="btn-connect" data-connect-id="${p.id}" data-connect-status="pending_received" title="Accept Request" style="padding: 10px 14px; font-size: 0.8rem; height: 38px; flex: 1;">
+                <span>Accept</span>
+              </button>
+            `;
+          }
+        } else if (conn.status === 'rejected') {
+          connectBtnHtml = `
+            <button class="btn-connect" data-connect-id="${p.id}" data-connect-status="none" title="Connect" style="padding: 10px 14px; font-size: 0.8rem; height: 38px; flex: 1;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              <span>Connect</span>
+            </button>
+          `;
+        }
+      } else {
+        connectBtnHtml = `
+          <button class="btn-connect" data-connect-id="${p.id}" data-connect-status="none" title="Connect" style="padding: 10px 14px; font-size: 0.8rem; height: 38px; flex: 1;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            <span>Connect</span>
+          </button>
+        `;
+      }
+    } else if (!currentUser) {
+      connectBtnHtml = `
+        <button class="btn-connect" data-connect-id="${p.id}" data-connect-status="none" title="Connect" style="padding: 10px 14px; font-size: 0.8rem; height: 38px; flex: 1;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          <span>Connect</span>
+        </button>
+      `;
+    }
 
     const avatarHtml = p.avatar_url
       ? `<img src="${p.avatar_url}" alt="${displayName}" class="net-card-avatar-img">`
@@ -245,10 +405,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         ` : ''}
       </div>
-      <div class="net-card-footer">
+      <div class="net-card-footer" style="display: flex; gap: 8px; justify-content: center; align-items: center;">
         ${currentUser && currentUser.id !== p.id ? `
+          ${connectBtnHtml}
           <button class="btn ${isFollowing ? 'btn-following' : 'btn-follow'}" 
-                  data-follow-type="user" data-follow-id="${p.id}">
+                  data-follow-type="user" data-follow-id="${p.id}" style="padding: 10px 14px; font-size: 0.8rem; height: 38px; flex: 1;">
             ${isFollowing ? `
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               <span>Following</span>
@@ -258,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `}
           </button>
         ` : `
-          <a href="${profileUrl}" class="btn btn-secondary btn-view-profile">View Profile</a>
+          <a href="${profileUrl}" class="btn btn-secondary btn-view-profile" style="width: 100%;">View Profile</a>
         `}
       </div>
     `;
@@ -384,6 +545,82 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /* --- Connection Actions --- */
+  async function toggleConnection(btn) {
+    if (!currentUser || !supabase) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    const targetUserId = btn.dataset.connectId;
+    const currentStatus = btn.dataset.connectStatus;
+    btn.disabled = true;
+
+    try {
+      if (currentStatus === 'none') {
+        // Send request (delete any existing rejected row first)
+        await supabase
+          .from('connections')
+          .delete()
+          .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},receiver_id.eq.${currentUser.id})`);
+
+        const { error } = await supabase
+          .from('connections')
+          .insert({
+            requester_id: currentUser.id,
+            receiver_id: targetUserId,
+            status: 'pending'
+          });
+
+        if (error) throw error;
+        showToast('Connection request sent');
+      } else if (currentStatus === 'pending_sent') {
+        // Withdraw request
+        const { error } = await supabase
+          .from('connections')
+          .delete()
+          .eq('requester_id', currentUser.id)
+          .eq('receiver_id', targetUserId);
+
+        if (error) throw error;
+        showToast('Connection request withdrawn');
+      } else if (currentStatus === 'pending_received') {
+        // Accept request
+        const { error } = await supabase
+          .from('connections')
+          .update({ status: 'accepted', updated_at: new Date().toISOString() })
+          .eq('requester_id', targetUserId)
+          .eq('receiver_id', currentUser.id);
+
+        if (error) throw error;
+        showToast('Connection request accepted! You are now connected.');
+      } else if (currentStatus === 'accepted') {
+        // Disconnect
+        if (confirm('Are you sure you want to disconnect?')) {
+          const { error } = await supabase
+            .from('connections')
+            .delete()
+            .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},receiver_id.eq.${currentUser.id})`);
+
+          if (error) throw error;
+          showToast('Disconnected successfully');
+        } else {
+          btn.disabled = false;
+          return;
+        }
+      }
+
+      await loadConnections();
+      renderPendingRequests();
+      renderCards();
+    } catch (err) {
+      console.error('Connection action failed:', err);
+      showToast(err.message || 'Action failed', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   /* --- Event Listeners --- */
   function setupEventListeners() {
     // Filter tabs
@@ -410,7 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Follow button delegation
+    // Follow & Connect button delegation
     const grid = document.getElementById('net-card-grid');
     if (grid) {
       grid.addEventListener('click', (e) => {
@@ -419,6 +656,61 @@ document.addEventListener('DOMContentLoaded', () => {
           e.preventDefault();
           e.stopPropagation();
           toggleFollow(followBtn);
+        }
+
+        const connectBtn = e.target.closest('.btn-connect, .btn-requested, .btn-connected');
+        if (connectBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleConnection(connectBtn);
+        }
+      });
+    }
+
+    // Pending requests grid delegation
+    const reqGrid = document.getElementById('connections-requests-grid');
+    if (reqGrid) {
+      reqGrid.addEventListener('click', async (e) => {
+        const acceptBtn = e.target.closest('.btn-accept-request');
+        const rejectBtn = e.target.closest('.btn-reject-request');
+        if (!acceptBtn && !rejectBtn) return;
+
+        const targetUserId = acceptBtn ? acceptBtn.dataset.userId : rejectBtn.dataset.userId;
+        const btn = acceptBtn || rejectBtn;
+        
+        if (!supabase || !currentUser) return;
+        btn.disabled = true;
+
+        try {
+          if (acceptBtn) {
+            const { error } = await supabase
+              .from('connections')
+              .update({ status: 'accepted', updated_at: new Date().toISOString() })
+              .eq('requester_id', targetUserId)
+              .eq('receiver_id', currentUser.id);
+
+            if (error) throw error;
+            showToast('Connection request accepted!');
+          } else {
+            const { error } = await supabase
+              .from('connections')
+              .update({ status: 'rejected', updated_at: new Date().toISOString() })
+              .eq('requester_id', targetUserId)
+              .eq('receiver_id', currentUser.id);
+
+            if (error) throw error;
+            showToast('Connection request ignored');
+          }
+
+          // Reload and update
+          await loadConnections();
+          renderPendingRequests();
+          renderCards();
+        } catch (err) {
+          console.error('Pending request action failed:', err);
+          showToast(err.message || 'Action failed', 'error');
+        } finally {
+          btn.disabled = false;
         }
       });
     }

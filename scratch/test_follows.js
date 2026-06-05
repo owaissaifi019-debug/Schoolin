@@ -13,10 +13,9 @@ if (!urlMatch || !keyMatch) {
 const supabaseUrl = urlMatch[1];
 const supabaseAnonKey = keyMatch[1];
 
-async function test() {
-  console.log("Querying profiles table...");
+async function checkTable(tableName) {
   try {
-    const response = await fetch(`${supabaseUrl}/rest/v1/profiles?select=id,full_name,email,user_type,platform_role,school_id`, {
+    const response = await fetch(`${supabaseUrl}/rest/v1/${tableName}?select=*&limit=1`, {
       headers: {
         'apikey': supabaseAnonKey,
         'Authorization': `Bearer ${supabaseAnonKey}`
@@ -24,15 +23,20 @@ async function test() {
     });
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errText}`);
+      return `Error: HTTP ${response.status} - ${errText}`;
     }
     const data = await response.json();
-    console.log(`Profiles found:`, data.length);
-    data.forEach(p => {
-      console.log(`- User: ${p.full_name}\n  Email: ${p.email}\n  ID: ${p.id}\n  User Type: ${p.user_type}\n  Platform Role: ${p.platform_role}\n  School ID: ${p.school_id}`);
-    });
+    return `OK (Rows found: ${data.length})`;
   } catch (err) {
-    console.error("Error querying profiles:", err.message);
+    return `Network/HTTP Error: ${err.message}`;
+  }
+}
+
+async function test() {
+  const tables = ['profiles', 'schools', 'events', 'admissions', 'posts', 'post_likes', 'comments', 'follows'];
+  for (const table of tables) {
+    const result = await checkTable(table);
+    console.log(`Table '${table}': ${result}`);
   }
 }
 

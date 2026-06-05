@@ -160,8 +160,84 @@
         }
       }
 
+      // Fetch Follow details
+      let followersCount = 0;
+      let isFollowing = false;
+
+      const { count: countVal, error: countError } = await sb
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', profileId);
+      if (!countError) {
+        followersCount = countVal || 0;
+      }
+
+      if (currentUser && currentUser.id !== profileId) {
+        const { data: followData, error: followCheckError } = await sb
+          .from('follows')
+          .select('*')
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', profileId)
+          .maybeSingle();
+        if (!followCheckError && followData) {
+          isFollowing = true;
+        }
+      }
+
+      // Fetch Connection details
+      let connectionsCount = 0;
+      let connectionStatus = null;
+
+      // Count accepted connections for this profile (accepted user-to-user links)
+      const { count: connCountVal, error: connCountError } = await sb
+        .from('connections')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'accepted')
+        .or(`requester_id.eq.${profileId},receiver_id.eq.${profileId}`);
+      if (!connCountError) {
+        connectionsCount = connCountVal || 0;
+      }
+
+      if (currentUser && currentUser.id !== profileId) {
+        const { data: connData, error: connError } = await sb
+          .from('connections')
+          .select('*')
+          .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${profileId}),and(requester_id.eq.${profileId},receiver_id.eq.${currentUser.id})`)
+          .maybeSingle();
+
+        if (!connError && connData) {
+          if (connData.status === 'accepted') {
+            connectionStatus = 'accepted';
+          } else if (connData.status === 'pending') {
+            if (connData.requester_id === currentUser.id) {
+              connectionStatus = 'pending_sent';
+            } else {
+              connectionStatus = 'pending_received';
+            }
+          } else if (connData.status === 'rejected') {
+            if (connData.requester_id === currentUser.id) {
+              connectionStatus = 'rejected_sent';
+            } else {
+              connectionStatus = 'rejected_received';
+            }
+          }
+        }
+      }
+
       // Render the profile views
-      renderProfileView(profile, school);
+      renderProfileView(profile, school, followersCount, isFollowing);
+
+      // Update connections count display
+      const connectionsEl = document.getElementById('profile-connections-count');
+      if (connectionsEl) {
+        connectionsEl.textContent = `${connectionsCount} connection${connectionsCount !== 1 ? 's' : ''}`;
+      }
+      
+      // Setup follow and connect buttons if not owner
+      if (!isOwner) {
+        setupFollowButton(profileId, isFollowing, followersCount);
+        setupConnectButton(profileId, connectionStatus, connectionsCount);
+      }
       
       // Setup edit capabilities if user is profile owner
       if (isOwner) {
@@ -189,7 +265,7 @@
   }
 
   // --- Render Profile View Mode ---
-  function renderProfileView(profile, school) {
+  function renderProfileView(profile, school, followersCount, isFollowing) {
     const auth = getAuth();
 
     // 1. Profile Avatar & Name
@@ -248,6 +324,38 @@
         schoolNameEl.innerHTML = `<a href="school-profile.html?id=${school.id}">${school.name}</a>`;
       } else {
         schoolNameEl.textContent = 'No School Joined Yet';
+      }
+    }
+
+    // Followers Count update
+    const followersEl = document.getElementById('profile-followers-count');
+    if (followersEl) {
+      followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
+    }
+
+    // Follow Button display
+    const followBtn = document.getElementById('follow-profile-btn');
+    if (followBtn) {
+      if (currentUser && !isOwner) {
+        followBtn.style.display = 'inline-flex';
+        updateFollowButtonState(followBtn, isFollowing);
+      } else if (!currentUser) {
+        followBtn.style.display = 'inline-flex';
+        updateFollowButtonState(followBtn, false);
+      } else {
+        followBtn.style.display = 'none';
+      }
+    }
+
+    // Connect Button display
+    const connectBtn = document.getElementById('connect-profile-btn');
+    if (connectBtn) {
+      if (currentUser && !isOwner) {
+        connectBtn.style.display = 'inline-flex';
+      } else if (!currentUser) {
+        connectBtn.style.display = 'inline-flex';
+      } else {
+        connectBtn.style.display = 'none';
       }
     }
 
@@ -371,6 +479,287 @@
 
     if (sbClassVal) sbClassVal.textContent = profile.class || 'Not Specified';
     if (sbEmailVal) sbEmailVal.textContent = profile.email || 'Private';
+  }
+
+  // --- Follow Actions ---
+  function updateFollowButtonState(btn, following) {
+    if (following) {
+      btn.className = 'btn btn-following';
+      btn.style.backgroundColor = 'transparent';
+      btn.style.color = 'var(--primary)';
+      btn.style.border = '2px solid var(--primary)';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Following</span>
+      `;
+    } else {
+      btn.className = 'btn btn-follow btn-primary';
+      btn.style.backgroundColor = 'var(--primary)';
+      btn.style.color = 'var(--white)';
+      btn.style.border = 'none';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Follow</span>
+      `;
+    }
+  }
+
+  function setupFollowButton(profileId, initialFollowing, initialCount) {
+    const followBtn = document.getElementById('follow-profile-btn');
+    if (!followBtn) return;
+
+    // Clone to remove previous listeners
+    const newFollowBtn = followBtn.cloneNode(true);
+    followBtn.parentNode.replaceChild(newFollowBtn, followBtn);
+
+    let isFollowing = initialFollowing;
+    let count = initialCount;
+
+    newFollowBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      const sb = getSupabase();
+      if (!sb) return;
+
+      newFollowBtn.disabled = true;
+
+      try {
+        if (isFollowing) {
+          // Unfollow
+          const { error } = await sb
+            .from('follows')
+            .delete()
+            .eq('follower_id', currentUser.id)
+            .eq('following_id', profileId);
+
+          if (error) throw error;
+
+          isFollowing = false;
+          count = Math.max(0, count - 1);
+          showToast('Unfollowed user');
+        } else {
+          // Follow
+          const { error } = await sb
+            .from('follows')
+            .insert({
+              follower_id: currentUser.id,
+              following_id: profileId,
+              follow_type: 'user'
+            });
+
+          if (error) throw error;
+
+          isFollowing = true;
+          count++;
+          showToast('Following user');
+        }
+
+        updateFollowButtonState(newFollowBtn, isFollowing);
+        const followersEl = document.getElementById('profile-followers-count');
+        if (followersEl) {
+          followersEl.textContent = `${count} follower${count !== 1 ? 's' : ''}`;
+        }
+      } catch (err) {
+        console.error('Follow toggle failed:', err);
+        showToast(err.message || 'Failed to update follow state', 'error');
+      } finally {
+        newFollowBtn.disabled = false;
+      }
+    });
+  }
+
+  // --- Connection Actions ---
+  function updateConnectButtonState(btn, status) {
+    // Remove any existing reject button
+    const existingRejectBtn = document.getElementById('reject-profile-btn');
+    if (existingRejectBtn) {
+      existingRejectBtn.remove();
+    }
+
+    if (status === 'accepted') {
+      btn.className = 'btn-connected';
+      btn.title = 'Click to disconnect';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Connected</span>
+      `;
+    } else if (status === 'pending_sent') {
+      btn.className = 'btn-requested';
+      btn.title = 'Click to withdraw request';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Requested</span>
+      `;
+    } else if (status === 'pending_received') {
+      btn.className = 'btn-connect';
+      btn.title = 'Click to accept request';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Accept</span>
+      `;
+      
+      // Inject Ignore button next to it
+      const rejectBtn = document.createElement('button');
+      rejectBtn.id = 'reject-profile-btn';
+      rejectBtn.className = 'btn-requested';
+      rejectBtn.style.display = 'inline-flex';
+      rejectBtn.style.alignItems = 'center';
+      rejectBtn.style.justifyContent = 'center';
+      rejectBtn.style.gap = '8px';
+      rejectBtn.style.padding = '10px 20px';
+      rejectBtn.style.fontSize = '0.9rem';
+      rejectBtn.title = 'Click to reject request';
+      rejectBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <span>Ignore</span>
+      `;
+      btn.parentNode.insertBefore(rejectBtn, btn.nextSibling);
+    } else {
+      // Connect (no status or rejected)
+      btn.className = 'btn-connect';
+      btn.title = 'Send connection request';
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        <span>Connect</span>
+      `;
+    }
+  }
+
+  function setupConnectButton(profileId, initialStatus, initialCount) {
+    const connectBtn = document.getElementById('connect-profile-btn');
+    if (!connectBtn) return;
+
+    // Clone to remove previous listeners
+    const newConnectBtn = connectBtn.cloneNode(true);
+    connectBtn.parentNode.replaceChild(newConnectBtn, connectBtn);
+
+    let status = initialStatus;
+    let count = initialCount;
+
+    // Initial render
+    updateConnectButtonState(newConnectBtn, status);
+
+    // Dynamic delegate for Ignore button (since it is injected)
+    newConnectBtn.parentNode.addEventListener('click', async (e) => {
+      const rejectTarget = e.target.closest('#reject-profile-btn');
+      if (!rejectTarget) return;
+
+      const sb = getSupabase();
+      if (!sb) return;
+
+      rejectTarget.disabled = true;
+      newConnectBtn.disabled = true;
+
+      try {
+        const { error } = await sb
+          .from('connections')
+          .update({ status: 'rejected', updated_at: new Date().toISOString() })
+          .eq('requester_id', profileId)
+          .eq('receiver_id', currentUser.id);
+
+        if (error) throw error;
+
+        status = null;
+        updateConnectButtonState(newConnectBtn, status);
+        showToast('Connection request ignored');
+      } catch (err) {
+        console.error('Ignore connection failed:', err);
+        showToast(err.message || 'Failed to ignore request', 'error');
+      } finally {
+        newConnectBtn.disabled = false;
+      }
+    });
+
+    newConnectBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      const sb = getSupabase();
+      if (!sb) return;
+
+      newConnectBtn.disabled = true;
+
+      try {
+        if (!status || status === 'rejected_sent' || status === 'rejected_received') {
+          // If a rejected/existing record was there, clean it up first
+          if (status === 'rejected_sent' || status === 'rejected_received') {
+            await sb
+              .from('connections')
+              .delete()
+              .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${profileId}),and(requester_id.eq.${profileId},receiver_id.eq.${currentUser.id})`);
+          }
+
+          const { error } = await sb
+            .from('connections')
+            .insert({
+              requester_id: currentUser.id,
+              receiver_id: profileId,
+              status: 'pending'
+            });
+
+          if (error) throw error;
+
+          status = 'pending_sent';
+          showToast('Connection request sent');
+        } else if (status === 'pending_sent') {
+          // Withdraw request
+          const { error } = await sb
+            .from('connections')
+            .delete()
+            .eq('requester_id', currentUser.id)
+            .eq('receiver_id', profileId);
+
+          if (error) throw error;
+
+          status = null;
+          showToast('Connection request withdrawn');
+        } else if (status === 'pending_received') {
+          // Accept request
+          const { error } = await sb
+            .from('connections')
+            .update({ status: 'accepted', updated_at: new Date().toISOString() })
+            .eq('requester_id', profileId)
+            .eq('receiver_id', currentUser.id);
+
+          if (error) throw error;
+
+          status = 'accepted';
+          count++;
+          showToast('Connection request accepted! You are now connected.');
+        } else if (status === 'accepted') {
+          // Disconnect
+          if (confirm('Are you sure you want to disconnect? This will remove the connection for both of you.')) {
+            const { error } = await sb
+              .from('connections')
+              .delete()
+              .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${profileId}),and(requester_id.eq.${profileId},receiver_id.eq.${currentUser.id})`);
+
+            if (error) throw error;
+
+            status = null;
+            count = Math.max(0, count - 1);
+            showToast('Disconnected successfully');
+          }
+        }
+
+        // Update UI
+        updateConnectButtonState(newConnectBtn, status);
+        const connectionsEl = document.getElementById('profile-connections-count');
+        if (connectionsEl) {
+          connectionsEl.textContent = `${count} connection${count !== 1 ? 's' : ''}`;
+        }
+      } catch (err) {
+        console.error('Connection action failed:', err);
+        showToast(err.message || 'Failed to update connection state', 'error');
+      } finally {
+        newConnectBtn.disabled = false;
+      }
+    });
   }
 
   // --- Setup Owner-Only Controls ---

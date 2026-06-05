@@ -22,6 +22,7 @@
         <ul class="nav-links">
           <li><a href="index.html">Home</a></li>
           <li><a href="schools.html">Schools</a></li>
+          <li><a href="networking.html">Networking</a></li>
           <li><a href="events.html">Events</a></li>
           <li><a href="admissions.html">Admissions</a></li>
           <li class="mobile-only"><a href="login.html" id="mobile-nav-login">Login</a></li>
@@ -61,7 +62,7 @@
                 <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
               </svg>
             </h1>
-            <div class="profile-identity-meta">
+            <div class="profile-identity-meta" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
               <span class="badge badge-primary" id="profile-board-badge" style="margin-bottom:0;">CBSE Affiliated</span>
               <span style="color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 4px;">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
@@ -69,11 +70,18 @@
                 </svg>
                 <span id="profile-location-text">New Delhi, Delhi</span>
               </span>
+              <span class="meta-separator" style="color: var(--text-muted);">•</span>
+              <span id="profile-followers-count" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">0 followers</span>
             </div>
           </div>
         </div>
 
-        <div class="profile-actions" id="profile-actions-area">
+        <div class="profile-actions" id="profile-actions-area" style="display: flex; gap: 8px;">
+          <!-- Follow button for school -->
+          <button class="btn btn-follow" id="btn-follow-school" style="display: none; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; font-size: 0.9rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Follow</span>
+          </button>
           <button class="btn btn-secondary" id="btn-join-school" style="padding: 10px 20px; font-size: 0.9rem; transition: all 0.2s ease;">Join School</button>
           <button class="btn btn-primary btn-modal-trigger" id="btn-inquire-school" style="padding: 10px 20px; font-size: 0.9rem;">Inquire Now</button>
           <button class="btn btn-primary" id="btn-edit-school" style="display: none; padding: 10px 20px; font-size: 0.9rem; gap: 8px;">

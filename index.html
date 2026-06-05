@@ -22,8 +22,9 @@
       
       <nav>
         <ul class="nav-links">
-          <li><a href="#hero" class="active">Home</a></li>
+          <li><a href="index.html" class="active">Home</a></li>
           <li><a href="schools.html">Schools</a></li>
+          <li><a href="networking.html">Networking</a></li>
           <li><a href="events.html">Events</a></li>
           <li><a href="admissions.html">Admissions</a></li>
           <li class="mobile-only"><a href="login.html" id="mobile-nav-login">Login</a></li>
@@ -67,12 +68,18 @@
         </div>
 
         <!-- Social Feed Section -->
-        <div class="feed-heading-row">
+        <div class="feed-heading-row" style="margin-bottom: 12px;">
           <h2 class="feed-title">Campus Feed</h2>
           <span class="feed-sort-badge">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
             Latest First
           </span>
+        </div>
+
+        <!-- Feed Filter Tabs -->
+        <div class="feed-filter-tabs" id="feed-filter-tabs" style="display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 2px;">
+          <button class="feed-filter-tab active" data-filter="all" style="background: none; border: none; font-size: 0.95rem; font-weight: 600; padding: 8px 16px; cursor: pointer; color: var(--primary); border-bottom: 3px solid var(--primary); transition: all 0.2s; outline: none; margin-bottom: -2px;">All Posts</button>
+          <button class="feed-filter-tab" data-filter="following" style="background: none; border: none; font-size: 0.95rem; font-weight: 500; padding: 8px 16px; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all 0.2s; outline: none; margin-bottom: -2px;">Following</button>
         </div>
 
         <div id="social-feed" class="social-feed-list">

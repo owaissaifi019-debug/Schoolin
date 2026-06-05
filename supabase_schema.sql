@@ -340,6 +340,7 @@ CREATE POLICY "Super admins can delete any user profile"
 
 -- Trigger function to automatically create a profile for new users
 -- IMPORTANT: platform_role is ALWAYS set to 'user' on signup — no escalation from client
+-- Uses ON CONFLICT to gracefully handle re-signups (unconfirmed email retries, backfill conflicts)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
@@ -351,7 +352,12 @@ BEGIN
     COALESCE(new.raw_user_meta_data->>'user_type', CASE WHEN new.email = 'owaissaifi019@gmail.com' THEN 'school_representative' ELSE 'student' END),
     CASE WHEN new.email = 'owaissaifi019@gmail.com' THEN 'super_admin' ELSE 'user' END,
     new.raw_user_meta_data->>'avatar_url'
-  );
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    email = EXCLUDED.email,
+    user_type = EXCLUDED.user_type,
+    avatar_url = COALESCE(EXCLUDED.avatar_url, public.profiles.avatar_url);
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -567,6 +573,17 @@ CREATE POLICY "Users can delete their own posts"
   ON public.posts FOR DELETE
   USING (auth.uid() = user_id);
 
+CREATE POLICY "Super admins can delete any post"
+  ON public.posts FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.platform_role = 'super_admin'
+    )
+  );
+
+
 -- ── Post Likes Policies ──
 CREATE POLICY "Post likes are viewable by everyone"
   ON public.post_likes FOR SELECT
@@ -628,3 +645,40 @@ CREATE POLICY "Authenticated users can follow"
 CREATE POLICY "Users can unfollow"
   ON public.follows FOR DELETE
   USING (auth.uid() = follower_id);
+
+-- ============================================================
+-- CONNECTION SYSTEM: LINKEDIN-STYLE MUTUAL CONNECTIONS
+-- ============================================================
+
+-- Create connections table (user-to-user only, requires accept/reject)
+CREATE TABLE IF NOT EXISTS public.connections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  requester_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  receiver_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  status text NOT NULL CHECK (status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT connections_unique UNIQUE (requester_id, receiver_id),
+  CONSTRAINT connections_no_self CHECK (requester_id != receiver_id)
+);
+
+-- Enable RLS on connections
+ALTER TABLE public.connections ENABLE ROW LEVEL SECURITY;
+
+-- Connections Policies
+CREATE POLICY "Connections are viewable by everyone"
+  ON public.connections FOR SELECT
+  USING (true);
+
+CREATE POLICY "Authenticated users can send connection requests"
+  ON public.connections FOR INSERT
+  WITH CHECK (auth.uid() = requester_id);
+
+CREATE POLICY "Receiver can update connection status"
+  ON public.connections FOR UPDATE
+  USING (auth.uid() = receiver_id)
+  WITH CHECK (auth.uid() = receiver_id);
+
+CREATE POLICY "Either party can delete a connection"
+  ON public.connections FOR DELETE
+  USING (auth.uid() = requester_id OR auth.uid() = receiver_id);

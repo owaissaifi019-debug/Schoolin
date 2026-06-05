@@ -40,6 +40,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // User Table & Filters
   const usersTbody = document.getElementById('users-tbody');
   const userSearch = document.getElementById('user-search');
+
+  // Posts Table & Filters
+  const postsTbody = document.getElementById('posts-tbody');
+  const postSearch = document.getElementById('post-search');
+  const postTypeFilter = document.getElementById('post-type-filter');
   
   // Modal
   const modal = document.getElementById('school-details-modal');
@@ -68,6 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let allAdmissions = [];
   let allUsers = [];
   let allSuggestions = [];
+  let allPosts = [];
   
   // ── Auth Page Guard ──────────────────────────────────────
   const auth = window.CampusLink && window.CampusLink.auth;
@@ -131,12 +137,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
 
-      let pageTitle = 'Super Admin Dashboard';
+       let pageTitle = 'Super Admin Dashboard';
       if (tabTarget === 'schools') pageTitle = 'School Registry Management';
       if (tabTarget === 'suggestions') pageTitle = 'School Suggestions Inbox';
       if (tabTarget === 'events') pageTitle = 'Event & Fest Registry';
       if (tabTarget === 'admissions') pageTitle = 'Admission Management';
       if (tabTarget === 'users') pageTitle = 'User Account Directory';
+      if (tabTarget === 'posts') pageTitle = 'Feed Posts Management';
       if (topBarTitle) topBarTitle.textContent = pageTitle;
     });
   });
@@ -203,6 +210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         allSchools = data;
         populateCityFilter(data);
         renderSchools(data);
+        if (typeof renderAnalytics === 'function') renderAnalytics();
       }
     } catch (e) {
       console.error('Failed to load schools from Supabase:', e);
@@ -718,6 +726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (data) {
         allUsers = data;
         renderUsers(data);
+        if (typeof renderAnalytics === 'function') renderAnalytics();
       }
     } catch (e) {
       console.error('Failed to load user profiles from Supabase:', e);
@@ -1051,6 +1060,346 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (suggestionSearch) suggestionSearch.addEventListener('input', filterSuggestions);
 
+  // ── Post Management Functions ────────────────────────────
+  async function loadPostsData() {
+    if (!supabase) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*, profiles!posts_user_id_fkey(full_name, email)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        allPosts = data;
+        renderPosts(data);
+        if (typeof renderAnalytics === 'function') renderAnalytics();
+      }
+    } catch (e) {
+      console.error('Failed to load posts from Supabase:', e);
+      if (postsTbody) {
+        postsTbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #EF4444;">
+              Failed to fetch feed posts: ${e.message}
+            </td>
+          </tr>
+        `;
+      }
+    }
+  }
+
+  function renderPosts(postsList) {
+    if (!postsTbody) return;
+    postsTbody.innerHTML = '';
+
+    if (postsList.length === 0) {
+      postsTbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No feed posts found matching filters.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    postsList.forEach(post => {
+      const tr = document.createElement('tr');
+      const createdDate = new Date(post.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const authorName = post.profiles ? (post.profiles.full_name || 'Anonymous') : 'Anonymous';
+      const authorEmail = post.profiles ? (post.profiles.email || '') : '';
+      
+      let typeBadgeClass = 'status-approved';
+      if (post.post_type === 'achievement') typeBadgeClass = 'status-approved';
+      if (post.post_type === 'competition_win') typeBadgeClass = 'status-approved';
+      if (post.post_type === 'project') typeBadgeClass = 'status-pending';
+      if (post.post_type === 'event') typeBadgeClass = 'status-approved';
+
+      const typeLabels = {
+        achievement: 'Achievement',
+        competition_win: 'Competition Win',
+        project: 'Project',
+        event: 'Event'
+      };
+      const typeLabel = typeLabels[post.post_type] || post.post_type;
+
+      tr.innerHTML = `
+        <td style="padding: 12px 16px;">
+          <div style="font-weight: 700; color: var(--dark-bg);">${authorName}</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">${authorEmail}</div>
+        </td>
+        <td style="padding: 12px 16px; max-width: 380px;">
+          <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.4; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;" title="${post.content.replace(/"/g, '&quot;')}">${post.content}</div>
+        </td>
+        <td style="padding: 12px 16px;"><span class="badge-status ${typeBadgeClass}" style="font-weight:700;">${typeLabel.toUpperCase()}</span></td>
+        <td style="padding: 12px 16px; font-size: 0.85rem; color: var(--text-muted);">${createdDate}</td>
+        <td style="padding: 12px 16px;">
+          <button class="btn btn-secondary btn-delete-post" data-id="${post.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Delete</button>
+        </td>
+      `;
+      postsTbody.appendChild(tr);
+    });
+
+    // Bind delete buttons
+    postsTbody.querySelectorAll('.btn-delete-post').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const postId = e.target.getAttribute('data-id');
+        if (confirm('Are you sure you want to delete this social feed post? This will permanently delete the post, along with all its likes and comments.')) {
+          await deletePost(postId);
+        }
+      });
+    });
+  }
+
+  function filterPosts() {
+    if (!postSearch || !postTypeFilter) return;
+    const query = postSearch.value.trim().toLowerCase();
+    const type = postTypeFilter.value;
+
+    const filtered = allPosts.filter(post => {
+      const authorName = post.profiles ? (post.profiles.full_name || '').toLowerCase() : '';
+      const authorEmail = post.profiles ? (post.profiles.email || '').toLowerCase() : '';
+      const content = (post.content || '').toLowerCase();
+      
+      const matchesSearch = authorName.includes(query) || authorEmail.includes(query) || content.includes(query);
+      const matchesType = !type || post.post_type === type;
+      
+      return matchesSearch && matchesType;
+    });
+
+    renderPosts(filtered);
+  }
+
+  async function deletePost(postId) {
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+
+      if (error) throw error;
+
+      showToast('Post successfully deleted from social feed!', 'success');
+      await loadSystemStats();
+      await loadPostsData();
+      renderAnalytics();
+    } catch (e) {
+      console.error('Failed to delete post:', e);
+      showToast(`Failed to delete post: ${e.message}`, 'error');
+    }
+  }
+
+  // Bind post filters
+  if (postSearch) postSearch.addEventListener('input', filterPosts);
+  if (postTypeFilter) postTypeFilter.addEventListener('change', filterPosts);
+
+  // ── Platform Analytics Rendering ─────────────────────────
+  function renderAnalytics() {
+    // 1. User breakdown
+    const userTypeCounts = {
+      student: 0,
+      teacher: 0,
+      parent: 0,
+      alumni: 0,
+      school_representative: 0
+    };
+    allUsers.forEach(u => {
+      if (userTypeCounts[u.user_type] !== undefined) {
+        userTypeCounts[u.user_type]++;
+      }
+    });
+
+    const totalUsers = allUsers.length || 1;
+    const userLabels = {
+      student: 'Students',
+      teacher: 'Teachers',
+      parent: 'Parents',
+      alumni: 'Alumni',
+      school_representative: 'School Reps'
+    };
+
+    const usersBox = document.getElementById('analytics-users-box');
+    if (usersBox) {
+      usersBox.innerHTML = '';
+      Object.keys(userTypeCounts).forEach(type => {
+        const count = userTypeCounts[type];
+        const percent = Math.round((count / totalUsers) * 100);
+        const bar = document.createElement('div');
+        bar.style.display = 'flex';
+        bar.style.flexDirection = 'column';
+        bar.style.gap = '4px';
+        bar.innerHTML = `
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; color: var(--dark-bg);">
+            <span>${userLabels[type]}</span>
+            <span>${percent}% (${count})</span>
+          </div>
+          <div style="width: 100%; height: 6px; background-color: #F1F5F9; border-radius: 3px; overflow: hidden;">
+            <div style="width: ${percent}%; height: 100%; background-color: var(--primary); border-radius: 3px;"></div>
+          </div>
+        `;
+        usersBox.appendChild(bar);
+      });
+    }
+
+    // 2. School Board distribution
+    const boardCounts = {
+      CBSE: 0,
+      ICSE: 0,
+      IB: 0
+    };
+    let otherBoards = 0;
+    allSchools.forEach(s => {
+      const b = (s.board || 'CBSE').toUpperCase();
+      if (boardCounts[b] !== undefined) {
+        boardCounts[b]++;
+      } else {
+        otherBoards++;
+      }
+    });
+
+    const totalSchools = allSchools.length || 1;
+    const boardsBox = document.getElementById('analytics-boards-box');
+    if (boardsBox) {
+      boardsBox.innerHTML = '';
+      const boardsToRender = { ...boardCounts };
+      if (otherBoards > 0) {
+        boardsToRender['Other'] = otherBoards;
+      }
+      
+      const colors = {
+        CBSE: 'var(--primary)',
+        ICSE: '#10B981',
+        IB: '#F59E0B',
+        Other: '#64748B'
+      };
+
+      Object.keys(boardsToRender).forEach(board => {
+        const count = boardsToRender[board];
+        const percent = Math.round((count / totalSchools) * 100);
+        const bar = document.createElement('div');
+        bar.style.display = 'flex';
+        bar.style.flexDirection = 'column';
+        bar.style.gap = '4px';
+        bar.innerHTML = `
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; color: var(--dark-bg);">
+            <span>${board} Board</span>
+            <span>${percent}% (${count})</span>
+          </div>
+          <div style="width: 100%; height: 6px; background-color: #F1F5F9; border-radius: 3px; overflow: hidden;">
+            <div style="width: ${percent}%; height: 100%; background-color: ${colors[board] || 'var(--primary)'}; border-radius: 3px;"></div>
+          </div>
+        `;
+        boardsBox.appendChild(bar);
+      });
+    }
+
+    // 3. Post Activity breakdown
+    const postTypeCounts = {
+      achievement: 0,
+      competition_win: 0,
+      project: 0,
+      event: 0
+    };
+    allPosts.forEach(p => {
+      if (postTypeCounts[p.post_type] !== undefined) {
+        postTypeCounts[p.post_type]++;
+      }
+    });
+
+    const totalPosts = allPosts.length || 1;
+    const postLabels = {
+      achievement: 'Achievements',
+      competition_win: 'Competitions',
+      project: 'Projects',
+      event: 'Events'
+    };
+    
+    const postColors = {
+      achievement: 'var(--primary)',
+      competition_win: '#8B5CF6',
+      project: '#EC4899',
+      event: '#10B981'
+    };
+
+    const postsBox = document.getElementById('analytics-posts-box');
+    if (postsBox) {
+      postsBox.innerHTML = '';
+      Object.keys(postTypeCounts).forEach(type => {
+        const count = postTypeCounts[type];
+        const percent = Math.round((count / totalPosts) * 100);
+        const bar = document.createElement('div');
+        bar.style.display = 'flex';
+        bar.style.flexDirection = 'column';
+        bar.style.gap = '4px';
+        bar.innerHTML = `
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; color: var(--dark-bg);">
+            <span>${postLabels[type]}</span>
+            <span>${percent}% (${count})</span>
+          </div>
+          <div style="width: 100%; height: 6px; background-color: #F1F5F9; border-radius: 3px; overflow: hidden;">
+            <div style="width: ${percent}%; height: 100%; background-color: ${postColors[type] || 'var(--primary)'}; border-radius: 3px;"></div>
+          </div>
+        `;
+        postsBox.appendChild(bar);
+      });
+    }
+
+    // 4. Top Active Cities
+    const cityCounts = {};
+    allSchools.forEach(s => {
+      if (s.city) {
+        const c = s.city.trim();
+        cityCounts[c] = (cityCounts[c] || 0) + 1;
+      }
+    });
+
+    const sortedCities = Object.keys(cityCounts).sort((a, b) => cityCounts[b] - cityCounts[a]).slice(0, 4);
+    const citiesBox = document.getElementById('analytics-cities-box');
+    if (citiesBox) {
+      citiesBox.innerHTML = '';
+      
+      if (sortedCities.length === 0) {
+        citiesBox.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px 0;">No school locations recorded.</div>';
+        return;
+      }
+
+      sortedCities.forEach((city, index) => {
+        const count = cityCounts[city];
+        const percent = Math.round((count / totalSchools) * 100);
+        
+        const cityColors = ['#3B82F6', '#10B981', '#F59E0B', '#64748B'];
+        const color = cityColors[index] || '#64748B';
+
+        const bar = document.createElement('div');
+        bar.style.display = 'flex';
+        bar.style.flexDirection = 'column';
+        bar.style.gap = '4px';
+        bar.innerHTML = `
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; color: var(--dark-bg);">
+            <span>${city}</span>
+            <span>${count} school${count !== 1 ? 's' : ''} (${percent}%)</span>
+          </div>
+          <div style="width: 100%; height: 6px; background-color: #F1F5F9; border-radius: 3px; overflow: hidden;">
+            <div style="width: ${percent}%; height: 100%; background-color: ${color}; border-radius: 3px;"></div>
+          </div>
+        `;
+        citiesBox.appendChild(bar);
+      });
+    }
+  }
+
   // ── Logout ───────────────────────────────────────────────
   if (logoutBtn && auth) {
     logoutBtn.addEventListener('click', async (e) => {
@@ -1067,5 +1416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadSuggestionsData();
     await loadEventsData();
     await loadAdmissionsData();
+    await loadPostsData();
+    renderAnalytics();
   }
 });
