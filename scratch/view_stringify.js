@@ -1,0 +1,18 @@
+const fs = require('fs');
+const path = require('path');
+
+const jsPath = path.join(__dirname, '..', 'admin', 'admin.js');
+const content = fs.readFileSync(jsPath, 'utf8');
+const lines = content.split('\n');
+lines.forEach((line, idx) => {
+  if (line.includes('JSON.stringify')) {
+    console.log(`Line ${idx + 1}: ${line.trim()}`);
+    const start = Math.max(0, idx - 5);
+    const end = Math.min(lines.length, idx + 10);
+    console.log('--- Context ---');
+    for (let i = start; i < end; i++) {
+      console.log(`${i+1}: ${lines[i]}`);
+    }
+    console.log('---------------\n');
+  }
+});

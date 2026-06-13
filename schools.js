@@ -36,14 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* --- Schools Database --- */
   const DEFAULT_SCHOOLS = [
-    { id: '1', name: "Delhi Public School, RK Puram", city: "New Delhi", board: "CBSE", logoLetter: "D", colorClass: "bg-gradient-1", eventsCount: 3 },
-    { id: '2', name: "St. Xavier's High School", city: "Mumbai", board: "ICSE", logoLetter: "X", colorClass: "bg-gradient-2", eventsCount: 2 },
-    { id: '3', name: "Bishop Cotton School", city: "Shimla", board: "ICSE", logoLetter: "B", colorClass: "bg-gradient-3", eventsCount: 1 },
-    { id: '4', name: "St. Stephen's Academy", city: "Dehradun", board: "CBSE", logoLetter: "S", colorClass: "bg-gradient-4", eventsCount: 4 },
-    { id: '5', name: "The Heritage School", city: "Gurgaon", board: "IB", logoLetter: "H", colorClass: "bg-gradient-5", eventsCount: 2 },
-    { id: '6', name: "Cathedral & John Connon School", city: "Mumbai", board: "IB", logoLetter: "C", colorClass: "bg-gradient-1", eventsCount: 1 },
-    { id: '7', name: "Doon School", city: "Dehradun", board: "ICSE", logoLetter: "D", colorClass: "bg-gradient-2", eventsCount: 2 },
-    { id: '8', name: "La Martiniere for Boys", city: "Kolkata", board: "ICSE", logoLetter: "L", colorClass: "bg-gradient-3", eventsCount: 1 }
+    { id: '1', name: "Delhi Public School, RK Puram", city: "New Delhi", board: "CBSE", logoLetter: "D", colorClass: "bg-gradient-1", eventsCount: 3, verificationBadge: 'blue' },
+    { id: '2', name: "St. Xavier's High School", city: "Mumbai", board: "ICSE", logoLetter: "X", colorClass: "bg-gradient-2", eventsCount: 2, verificationBadge: 'blue' },
+    { id: '3', name: "Bishop Cotton School", city: "Shimla", board: "ICSE", logoLetter: "B", colorClass: "bg-gradient-3", eventsCount: 1, verificationBadge: 'gold' },
+    { id: '4', name: "St. Stephen's Academy", city: "Dehradun", board: "CBSE", logoLetter: "S", colorClass: "bg-gradient-4", eventsCount: 4, verificationBadge: 'none' },
+    { id: '5', name: "The Heritage School", city: "Gurgaon", board: "IB", logoLetter: "H", colorClass: "bg-gradient-5", eventsCount: 2, verificationBadge: 'gold' },
+    { id: '6', name: "Cathedral & John Connon School", city: "Mumbai", board: "IB", logoLetter: "C", colorClass: "bg-gradient-1", eventsCount: 1, verificationBadge: 'blue' },
+    { id: '7', name: "Doon School", city: "Dehradun", board: "ICSE", logoLetter: "D", colorClass: "bg-gradient-2", eventsCount: 2, verificationBadge: 'gold' },
+    { id: '8', name: "La Martiniere for Boys", city: "Kolkata", board: "ICSE", logoLetter: "L", colorClass: "bg-gradient-3", eventsCount: 1, verificationBadge: 'blue' }
   ];
 
   let schools = [];
@@ -63,7 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
             board: s.board || 'CBSE',
             logoLetter: s.logo_letter || s.name.charAt(0).toUpperCase(),
             colorClass: s.color_class || 'bg-gradient-1',
-            eventsCount: s.events_count || 0
+            eventsCount: s.events_count || 0,
+            verificationBadge: s.verification_badge || 'none'
           }));
         } else {
           schools = DEFAULT_SCHOOLS;
@@ -139,6 +140,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Populate Cards
     filtered.forEach(school => {
+      let badgeHtml = '';
+      if (school.verificationBadge === 'blue') {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="margin-left:4px; display:inline-block; vertical-align:middle;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>`;
+      } else if (school.verificationBadge === 'gold') {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="margin-left:4px; display:inline-block; vertical-align:middle;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>`;
+      }
+
       const card = document.createElement('div');
       card.className = 'school-card-item';
       card.innerHTML = `
@@ -146,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="school-logo-overlap">${school.logoLetter}</div>
         </div>
         <div class="school-card-content">
-          <h3 class="school-card-name"><a href="school-profile.html?id=${school.id}">${school.name}</a></h3>
+          <h3 class="school-card-name"><a href="school-profile.html?id=${school.id}">${school.name}</a>${badgeHtml}</h3>
           
           <div class="school-card-badges-row">
             <span class="badge badge-primary" style="margin-bottom: 0;">${school.board} Affiliated</span>
@@ -164,21 +180,37 @@ document.addEventListener('DOMContentLoaded', () => {
               </svg>
               <span>${school.eventsCount} Active Opportunities</span>
             </div>
-            <button class="btn btn-secondary btn-modal-trigger" style="padding: 6px 12px; font-size: 0.75rem;">Contact</button>
+            <button class="btn btn-secondary btn-contact-trigger" data-id="${school.id}" data-name="${school.name}" style="padding: 6px 12px; font-size: 0.75rem;">Contact</button>
           </div>
         </div>
       `;
       gridContainer.appendChild(card);
     });
 
-    // Rebind newly created modal buttons
-    const triggers = gridContainer.querySelectorAll('.btn-modal-trigger');
-    triggers.forEach(trigger => {
-      trigger.addEventListener('click', (e) => {
+    // Rebind newly created Contact buttons
+    gridContainer.querySelectorAll('.btn-contact-trigger').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
         e.preventDefault();
-        const schoolCard = e.currentTarget.closest('.school-card-content');
-        const schoolName = schoolCard.querySelector('.school-card-name').textContent.trim();
-        openRegistrationModal(`Contact: ${schoolName}`);
+        const schoolId = e.currentTarget.getAttribute('data-id');
+        const schoolName = e.currentTarget.getAttribute('data-name');
+        
+        const auth = window.CampusLink && window.CampusLink.auth;
+        if (!auth) return;
+        
+        const session = await auth.getSession();
+        if (!session) {
+          // Redirect to login if not logged in
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(schoolId)) {
+          alert(`Demo Mode: Contacting is only available for database-verified schools. "${schoolName}" is a demo fallback card.`);
+          return;
+        }
+
+        openContactModal(schoolId, schoolName);
       });
     });
   }
@@ -468,6 +500,152 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnText) btnText.style.display = 'inline';
         if (btnLoader) btnLoader.style.display = 'none';
         submitBtn.disabled = false;
+      }
+    });
+  }
+
+  // --- Contact School Modal Implementation ---
+  const contactModal = document.getElementById('contact-school-modal');
+  const contactClose = document.getElementById('contact-modal-close');
+  const contactForm = document.getElementById('contact-school-form');
+  
+  function openContactModal(schoolId, schoolName) {
+    if (!contactModal) return;
+    document.getElementById('contact-school-id').value = schoolId;
+    document.getElementById('contact-modal-school-title').textContent = `Contact ${schoolName}`;
+    contactModal.classList.add('active');
+    body.style.overflow = 'hidden';
+  }
+
+  function closeContactModal() {
+    if (!contactModal) return;
+    contactModal.classList.remove('active');
+    body.style.overflow = 'auto';
+    contactForm.reset();
+  }
+
+  if (contactClose) {
+    contactClose.addEventListener('click', closeContactModal);
+    contactModal.addEventListener('click', (e) => {
+      if (e.target === contactModal) closeContactModal();
+    });
+  }
+
+  if (contactForm) {
+    contactForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const auth = window.CampusLink && window.CampusLink.auth;
+      const supabase = window.CampusLink && window.CampusLink.supabase;
+      if (!auth || !supabase) return;
+
+      const session = await auth.getSession();
+      const currentUser = session?.user;
+      if (!currentUser) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      const schoolId = document.getElementById('contact-school-id').value;
+      const inquiryType = document.getElementById('contact-inquiry-type').value;
+      const messageText = document.getElementById('contact-message').value.trim();
+
+      if (!schoolId || !inquiryType || !messageText) return;
+
+      const submitBtn = document.getElementById('btn-submit-contact');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending Inquiry...';
+
+      try {
+        // Fetch school details (like admin_user_id)
+        const { data: dbSchool, error: schoolErr } = await supabase
+          .from('schools')
+          .select('admin_user_id')
+          .eq('id', schoolId)
+          .maybeSingle();
+
+        if (schoolErr) throw schoolErr;
+
+        // 1. Create conversation
+        const { data: conv, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            status: 'accepted',
+            initiator_id: currentUser.id,
+            school_id: schoolId,
+            inquiry_type: inquiryType
+          })
+          .select()
+          .single();
+
+        if (convError) throw convError;
+
+        // 2. Add participants: the initiator user and the school
+        const { error: partError } = await supabase
+          .from('conversation_participants')
+          .insert([
+            { conversation_id: conv.id, user_id: currentUser.id },
+            { conversation_id: conv.id, school_id: schoolId }
+          ]);
+
+        if (partError) throw partError;
+
+        // 3. Send message
+        const { error: msgError } = await supabase
+          .from('messages')
+          .insert({
+            conversation_id: conv.id,
+            sender_id: currentUser.id,
+            receiver_school_id: schoolId,
+            message: `[Inquiry: ${inquiryType.toUpperCase()}] ${messageText}`,
+            read_status: false
+          });
+
+        if (msgError) throw msgError;
+
+        console.log('Message created successfully (Schools List Inquiry):', {
+          conversation_id: conv.id,
+          sender_id: currentUser.id,
+          receiver_school_id: schoolId,
+          message: `[Inquiry: ${inquiryType.toUpperCase()}] ${messageText}`
+        });
+
+        // 4. Trigger notification to school representative / admin
+        if (window.CampusLink && window.CampusLink.notifications) {
+          try {
+            const recipientId = dbSchool?.admin_user_id;
+            if (recipientId) {
+              // Fetch current user name
+              const { data: senderProfile } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', currentUser.id)
+                .single();
+              const senderName = senderProfile?.full_name || 'Someone';
+
+              await window.CampusLink.notifications.createNotification(
+                recipientId,
+                'message',
+                `New message from ${senderName}`,
+                `[Inquiry: ${inquiryType.toUpperCase()}] ${messageText}`.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+                `messaging.html?chat_id=${conv.id}`,
+                currentUser.id
+              );
+            }
+          } catch (notifErr) {
+            console.warn('Error sending contact school notification:', notifErr);
+          }
+        }
+
+        closeContactModal();
+        alert('Inquiry sent successfully!');
+        document.getElementById('contact-message').value = '';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message Request';
+      } catch (err) {
+        console.error('Failed to send inquiry:', err);
+        alert('Failed to send inquiry: ' + err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message Request';
       }
     });
   }

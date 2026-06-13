@@ -155,6 +155,27 @@ document.addEventListener('DOMContentLoaded', async () => {
               admissionApplications = dbApps;
               saveState('campuslink_admission_applications', admissionApplications);
             }
+
+            // Fetch contact requests
+            const { data: dbConv, error: convErr } = await supabase
+              .from('conversations')
+              .select(`
+                id,
+                status,
+                inquiry_type,
+                created_at,
+                school_id,
+                school:schools(name),
+                initiator:profiles!initiator_id(full_name, email),
+                messages(message, created_at, sender_id)
+              `)
+              .eq('school_id', school.id)
+              .order('created_at', { ascending: false });
+            
+            if (!convErr && dbConv) {
+              contactRequests = dbConv;
+              saveState('campuslink_contact_requests', contactRequests);
+            }
           }
         }
       } catch (err) {
@@ -170,6 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderEvents();
     renderAdmissions();
     renderApplications();
+    renderContactRequests();
   }
 
   // --- Seed Data Configuration ---
@@ -266,6 +288,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   ];
 
+  const DEFAULT_CONTACT_REQUESTS = [
+    {
+      id: "mock-conv-1",
+      status: "pending",
+      inquiry_type: "general_inquiry",
+      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+      initiator: {
+        full_name: "Rahul Verma",
+        email: "rahul.verma@gmail.com"
+      },
+      messages: [
+        {
+          message: "[Inquiry: general_inquiry] Hello, I would like to know about the school bus routes for Rajpur Road.",
+          created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+          sender_id: "mock-user-1"
+        }
+      ]
+    },
+    {
+      id: "mock-conv-2",
+      status: "accepted",
+      inquiry_type: "admissions",
+      created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+      initiator: {
+        full_name: "Pooja Sen",
+        email: "pooja.sen@yahoo.com"
+      },
+      messages: [
+        {
+          message: "[Inquiry: admissions] Dear Admission Team, does the school offer IB curriculum options for Grade XI?",
+          created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+          sender_id: "mock-user-2"
+        }
+      ]
+    }
+  ];
+
   // --- Initial Storage Sync ---
   function getStoredData(key, fallback) {
     const data = localStorage.getItem(key);
@@ -281,6 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let admissions = getStoredData('campuslink_admissions', DEFAULT_ADMISSIONS);
   let registrations = getStoredData('campuslink_registrations', DEFAULT_REGISTRATIONS);
   let admissionApplications = getStoredData('campuslink_admission_applications', []);
+  let contactRequests = getStoredData('campuslink_contact_requests', DEFAULT_CONTACT_REQUESTS);
 
   // Helper to persist data
   function saveState(key, data) {
@@ -371,6 +431,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tabTarget === 'events') tabName = 'Manage Events';
       if (tabTarget === 'admissions') tabName = 'Admissions Announcements';
       if (tabTarget === 'applications') tabName = 'Admissions Applications Received';
+      if (tabTarget === 'contact-requests') tabName = 'Contact Requests Received';
       if (tabTarget === 'profile') tabName = 'School Profile Settings';
       if (topBarTitle) topBarTitle.textContent = tabName;
     });
@@ -1518,6 +1579,136 @@ document.addEventListener('DOMContentLoaded', async () => {
     saveState('campuslink_admission_applications', admissionApplications);
     renderApplications();
     showToast(`Application successfully ${newStatus}!`, newStatus === 'approved' ? 'success' : 'info');
+  }
+
+  // --- Render Contact Requests Table ---
+  const contactRequestsTbody = document.getElementById('contact-requests-tbody');
+  function renderContactRequests() {
+    if (!contactRequestsTbody) return;
+    contactRequestsTbody.innerHTML = '';
+
+    if (contactRequests.length === 0) {
+      contactRequestsTbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No contact requests received yet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    contactRequests.forEach(req => {
+      const tr = document.createElement('tr');
+      const senderName = req.initiator ? req.initiator.full_name : 'Anonymous User';
+      const senderEmail = req.initiator ? req.initiator.email : 'N/A';
+      
+      const inquiryTypeLabels = {
+        admissions: 'Admissions',
+        events: 'Events',
+        general_inquiry: 'General Inquiry'
+      };
+      const inquiryLabel = inquiryTypeLabels[req.inquiry_type] || 'General';
+
+      // Get initial message
+      const sortedMessages = (req.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      let rawMsg = sortedMessages.length > 0 ? sortedMessages[0].message : 'No message';
+      if (rawMsg.startsWith('[Inquiry:')) {
+        rawMsg = rawMsg.substring(rawMsg.indexOf(']') + 2);
+      }
+
+      const createdDate = new Date(req.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      let statusClass = 'status-pending';
+      if (req.status === 'accepted') statusClass = 'status-approved';
+      if (req.status === 'ignored') statusClass = 'status-rejected';
+
+      let actionsHtml = '';
+      if (req.status === 'pending') {
+        actionsHtml = `
+          <div class="btn-action-group">
+            <button class="btn-action btn-approve btn-accept-contact" data-id="${req.id}">Accept</button>
+            <button class="btn-action btn-reject btn-ignore-contact" data-id="${req.id}">Ignore</button>
+          </div>
+        `;
+      } else if (req.status === 'accepted') {
+        actionsHtml = `
+          <button class="btn btn-primary btn-reply-contact" data-id="${req.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm);">Reply / Chat</button>
+        `;
+      } else {
+        actionsHtml = `<span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Ignored</span>`;
+      }
+
+      tr.innerHTML = `
+        <td style="font-weight: 600; color: var(--dark-bg);">${senderName}</td>
+        <td>${senderEmail}</td>
+        <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${inquiryLabel}</span></td>
+        <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rawMsg}">${rawMsg}</td>
+        <td>${createdDate}</td>
+        <td>
+          <span class="badge-status ${statusClass}">${req.status}</span>
+        </td>
+        <td>${actionsHtml}</td>
+      `;
+      contactRequestsTbody.appendChild(tr);
+    });
+
+    // Attach listeners
+    contactRequestsTbody.querySelectorAll('.btn-accept-contact').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        await updateContactRequestStatus(id, 'accepted');
+      });
+    });
+
+    contactRequestsTbody.querySelectorAll('.btn-ignore-contact').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        if (confirm('Are you sure you want to ignore this request?')) {
+          await updateContactRequestStatus(id, 'ignored');
+        }
+      });
+    });
+
+    contactRequestsTbody.querySelectorAll('.btn-reply-contact').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.getAttribute('data-id');
+        window.location.href = `messaging.html?chat_id=${id}`;
+      });
+    });
+  }
+
+  async function updateContactRequestStatus(id, newStatus) {
+    showToast(`Updating request status...`, 'info');
+    
+    // 1. Update in Supabase
+    if (supabase && !id.startsWith('mock-')) {
+      try {
+        const { error } = await supabase
+          .from('conversations')
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', id);
+        
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to update request status in Supabase:', err);
+      }
+    }
+
+    // 2. Update local state
+    contactRequests = contactRequests.map(req => {
+      if (req.id === id) {
+        return { ...req, status: newStatus };
+      }
+      return req;
+    });
+    saveState('campuslink_contact_requests', contactRequests);
+    renderContactRequests();
+    showToast(`Request successfully ${newStatus === 'accepted' ? 'accepted' : 'ignored'}!`, newStatus === 'accepted' ? 'success' : 'info');
   }
 
   // --- Init Dashboard Rendering ---

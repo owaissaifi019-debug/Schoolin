@@ -32,7 +32,12 @@
     if (!sb) return;
 
     // Don't notify yourself
-    if (actorId && recipientId === actorId) return;
+    if (actorId && recipientId === actorId) {
+      console.log('Skipping notification creation: Actor is the same as recipient.', { actorId, recipientId });
+      return;
+    }
+
+    console.log('Attempting to create notification:', { recipientId, type, title, body, link, actorId });
 
     try {
       const { error } = await sb
@@ -49,6 +54,8 @@
 
       if (error) {
         console.warn('Failed to create notification:', error.message);
+      } else {
+        console.log('Notification created successfully in database:', { recipientId, type, title, body, link, actorId });
       }
     } catch (err) {
       console.warn('Notification creation error:', err);
@@ -60,10 +67,12 @@
     const sb = getSupabase();
     if (!sb || !currentUser) return [];
 
+    console.log('Fetching notifications for user:', currentUser.id);
+
     try {
       const { data, error } = await sb
         .from('notifications')
-        .select('*, actor:profiles!notifications_actor_id_fkey(full_name, avatar_url, user_type)')
+        .select('*, actor:profiles!actor_id(full_name, avatar_url, user_type)')
         .eq('user_id', currentUser.id)
         .order('created_at', { ascending: false })
         .limit(30);
@@ -75,6 +84,7 @@
 
       notifications = data || [];
       unreadCount = notifications.filter(n => !n.is_read).length;
+      console.log('Notifications retrieved successfully. Unread count:', unreadCount, 'Total notifications:', notifications.length, 'Notifications list:', notifications);
       return notifications;
     } catch (err) {
       console.warn('Notification fetch error:', err);

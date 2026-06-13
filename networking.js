@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*, schools(name, city)')
+        .select('*, schools(name, city, verification_badge)')
         .in('user_type', ['student', 'teacher', 'alumni', 'parent'])
         .order('created_at', { ascending: false });
 
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (pendingRequesters.length > 0) {
         const { data: profiles, error: pError } = await supabase
           .from('profiles')
-          .select('*, schools(name)')
+          .select('*, schools(name, verification_badge)')
           .in('id', pendingRequesters);
 
         if (!pError) {

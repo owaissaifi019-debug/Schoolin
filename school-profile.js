@@ -103,7 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2024", title: "National Robotics Championship Winners", desc: "First place at the All-India STEM robotics league." },
         { year: "2023", title: "CBSE National Sports Meet Overall Trophy", desc: "Dominating in Athletics, Swimming, and Basketball tournaments." }
       ],
-      admissionText: "Admissions Open: Registration for nursery and grade XI starts June 15, 2026."
+      admissionText: "Admissions Open: Registration for nursery and grade XI starts June 15, 2026.",
+      verificationBadge: 'blue'
     },
     2: {
       name: "St. Xavier's High School",
@@ -119,7 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2024", title: "State Football League Champions", desc: "Under-17 boys clinching the Maharashtra Football Association Shield." },
         { year: "2023", title: "All-India Science Model Expo Gold Medal", desc: "Secured top honours in environmental engineering design." }
       ],
-      admissionText: "Admissions Open: KG registration cycles commence from July 1, 2026."
+      admissionText: "Admissions Open: KG registration cycles commence from July 1, 2026.",
+      verificationBadge: 'blue'
     },
     3: {
       name: "Bishop Cotton School",
@@ -134,7 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2025", title: "Top Boarding School in Himachal Pradesh", desc: "Consistently rated #1 for heritage and boarding standards." },
         { year: "2024", title: "Inter-School Debate Championship Winners", desc: "Won the prestigious Shimla Debates overall shield." }
       ],
-      admissionText: "Admissions Open: Boarding registrations open for Grades 3 to 9. Apply before July 10, 2026."
+      admissionText: "Admissions Open: Boarding registrations open for Grades 3 to 9. Apply before July 10, 2026.",
+      verificationBadge: 'gold'
     },
     4: {
       name: "St. Stephen's Academy",
@@ -149,7 +152,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2025", title: "National Basketball League Runners-Up", desc: "Fought in the finals of the Inter-School Sports Council League." },
         { year: "2024", title: "98.4% School Board Aggregate", desc: "Record highest board scores achieved in school history." }
       ],
-      admissionText: "Admissions Open: Regular admission slots open for sports quotas. Apply today."
+      admissionText: "Admissions Open: Regular admission slots open for sports quotas. Apply today.",
+      verificationBadge: 'none'
     },
     5: {
       name: "The Heritage School",
@@ -164,7 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2025", title: "Leading Experiential School in NCR", desc: "Awarded for child-centric progressive methodologies." },
         { year: "2024", title: "IBDP Perfect Score Achievers", desc: "Two students secured 45/45 in the international diploma board." }
       ],
-      admissionText: "Admissions Open: IB PYP, MYP, and DP intakes are open. Virtual open houses schedule available."
+      admissionText: "Admissions Open: IB PYP, MYP, and DP intakes are open. Virtual open houses schedule available.",
+      verificationBadge: 'gold'
     },
     6: {
       name: "Cathedral & John Connon School",
@@ -179,7 +184,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2025", title: "Ranked #1 Co-Ed Day School in Maharashtra", desc: "Awarded for global college placement and student support." },
         { year: "2024", title: "International Math Olympiad Silver", desc: "Student secured global rank in the advanced math tournament." }
       ],
-      admissionText: "Admissions Open: Secondary school IB intakes live. Direct prospectus requests open."
+      admissionText: "Admissions Open: Secondary school IB intakes live. Direct prospectus requests open.",
+      verificationBadge: 'blue'
     },
     7: {
       name: "Doon School",
@@ -194,7 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2025", title: "All-India Boarding School Rank #1", desc: "Consistently top-ranked boarding institution for boys." },
         { year: "2024", title: "President's Social Action Award", desc: "Recognized for community service and village uplift fests." }
       ],
-      admissionText: "Admissions Open: Entrance test schedules for Class VII and VIII are active online."
+      admissionText: "Admissions Open: Entrance test schedules for Class VII and VIII are active online.",
+      verificationBadge: 'gold'
     },
     8: {
       name: "La Martiniere for Boys",
@@ -209,7 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2025", title: "National Debating Champion Shield", desc: "Secured overall winner at the Frank Anthony Memorial Debates." },
         { year: "2024", title: "East Zone Swimming League Gold", desc: "Overall team championship won for the 5th consecutive year." }
       ],
-      admissionText: "Admissions Open: Nursery & Primary admissions active. Contact registrar."
+      admissionText: "Admissions Open: Nursery & Primary admissions active. Contact registrar.",
+      verificationBadge: 'blue'
     },
     9: {
       name: "Greenwood Public School",
@@ -224,7 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2025", title: "Green School National Gold Award", desc: "Recognized for solar powered labs and water recycling campaigns." },
         { year: "2024", title: "Inter-School Coding hackathon Winners", desc: "Secured first prize in the national junior dev challenge." }
       ],
-      admissionText: "Admissions Open: Direct CBSE admissions active online for grades 1 to 9."
+      admissionText: "Admissions Open: Direct CBSE admissions active online for grades 1 to 9.",
+      verificationBadge: 'gold'
     },
     10: {
       name: "The Shri Ram School",
@@ -239,7 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { year: "2025", title: "#1 Day School in Delhi NCR", desc: "Ranked first for teacher training, infrastructure, and values." },
         { year: "2024", title: "International Music Fest Gold", desc: "School choir secured first place at the Asia Pacific Choral league." }
       ],
-      admissionText: "Admissions Open: Applications starting shortly. Pre-register for notifications."
+      admissionText: "Admissions Open: Applications starting shortly. Pre-register for notifications.",
+      verificationBadge: 'blue'
     }
   };
 
@@ -259,10 +269,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const schoolId = urlParams.get('id') || '1';
   let currentProfile = null;
+  let followersCount = 0;
+  let isFollowing = false;
+  let currentUser = null;
+  let isSchoolAdmin = false;
 
   async function loadSchoolProfile() {
     const supabase = window.CampusLink && window.CampusLink.supabase;
+    const auth = window.CampusLink && window.CampusLink.auth;
     let loadedFromDB = false;
+    
+    if (auth) {
+      try {
+        const session = await auth.getSession();
+        currentUser = session?.user || null;
+      } catch (authErr) {
+        console.warn('Error fetching user session:', authErr);
+      }
+    }
     
     if (supabase) {
       try {
@@ -314,16 +338,15 @@ document.addEventListener('DOMContentLoaded', () => {
             about: description,
             achievements: schoolAchievements,
             highlights: schoolHighlights,
-            admissionText: "No active admissions at the moment."
+            admissionText: "No active admissions at the moment.",
+            verificationBadge: dbSchool.verification_badge || 'none',
+            address: dbSchool.address || '',
+            contactEmail: dbSchool.contact_email || '',
+            website: dbSchool.website || '',
+            contactPhone: dbSchool.contact_phone || '',
+            adminUserId: dbSchool.admin_user_id || null
           };
           
-          // Check if current user is authorized to edit or is following
-          const auth = window.CampusLink && window.CampusLink.auth;
-          let followersCount = 0;
-          let isFollowing = false;
-          let currentUser = null;
-          let isSchoolAdmin = false;
-
           // Fetch Followers count from DB
           try {
             const { count: countVal, error: countError } = await supabase
@@ -337,64 +360,31 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('Error fetching followers count:', followersErr);
           }
 
-          if (auth) {
-            try {
-              const session = await auth.getSession();
-              currentUser = session?.user || null;
-              if (currentUser) {
-                isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
-                const isSuperAdmin = currentUser.email === 'owaissaifi019@gmail.com';
-                
-                if (isSchoolAdmin || isSuperAdmin) {
-                  const editBtn = document.getElementById('btn-edit-school');
-                  if (editBtn) {
-                    editBtn.style.display = 'inline-flex';
-                    setupSchoolEditFeatures(dbSchool);
-                  }
-                }
-
-                // Check if currently following
-                const { data: followData, error: followCheckError } = await supabase
-                  .from('follows')
-                  .select('*')
-                  .eq('follower_id', currentUser.id)
-                  .eq('following_school_id', dbSchool.id)
-                  .maybeSingle();
-                if (!followCheckError && followData) {
-                  isFollowing = true;
-                }
+          if (currentUser) {
+            isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
+            const isSuperAdmin = currentUser.email === 'owaissaifi019@gmail.com';
+            
+            if (isSchoolAdmin || isSuperAdmin) {
+              const editBtn = document.getElementById('btn-edit-school');
+              if (editBtn) {
+                editBtn.style.display = 'inline-flex';
+                setupSchoolEditFeatures(dbSchool);
               }
-            } catch (authErr) {
-              console.warn('Error loading auth states for school editor:', authErr);
             }
-          }
 
-          // Update Followers count text
-          const followersEl = document.getElementById('profile-followers-count');
-          if (followersEl) {
-            followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
-          }
-
-          // Update Follow Button display and state
-          const followBtn = document.getElementById('btn-follow-school');
-          if (followBtn) {
-            if (!isSchoolAdmin) {
-              followBtn.style.display = 'inline-flex';
-              updateSchoolFollowButtonState(followBtn, isFollowing);
-              setupSchoolFollowButton(dbSchool.id, isFollowing, followersCount, currentUser);
-            } else {
-              followBtn.style.display = 'none';
-            }
-          }
-
-          // Update Contact School Button display and state
-          const contactBtn = document.getElementById('btn-contact-school');
-          if (contactBtn) {
-            if (!isSchoolAdmin) {
-              contactBtn.style.display = 'inline-flex';
-              setupContactSchoolButton(dbSchool);
-            } else {
-              contactBtn.style.display = 'none';
+            // Check if currently following
+            try {
+              const { data: followData, error: followCheckError } = await supabase
+                .from('follows')
+                .select('*')
+                .eq('follower_id', currentUser.id)
+                .eq('following_school_id', dbSchool.id)
+                .maybeSingle();
+              if (!followCheckError && followData) {
+                isFollowing = true;
+              }
+            } catch (err) {
+              console.warn('Error checking follow status:', err);
             }
           }
           
@@ -459,11 +449,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const locationText = document.getElementById('profile-location-text');
     
     if (nameHeading) {
+      let badgeHtml = '';
+      if (currentProfile.verificationBadge === 'blue') {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-lg" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Partner School" style="display:inline-block; vertical-align:middle; margin-left:8px;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>`;
+      } else if (currentProfile.verificationBadge === 'gold') {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-lg gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:8px;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>`;
+      }
+
       nameHeading.innerHTML = `
         ${currentProfile.name}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="var(--primary)" style="display:inline-block; vertical-align:middle;" title="Verified School">
-          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-        </svg>
+        ${badgeHtml}
       `;
     }
     if (boardBadge) {
@@ -490,6 +493,83 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (metaSize) {
       metaSize.textContent = currentProfile.size || '10 Acres';
+    }
+
+    // Populate Contact Details card
+    const contactCard = document.getElementById('contact-info-card');
+    const contactList = document.getElementById('contact-meta-list');
+    
+    if (contactCard && contactList) {
+      let contactHtml = '';
+      let hasContactInfo = false;
+
+      if (currentProfile.contactEmail) {
+        hasContactInfo = true;
+        contactHtml += `
+          <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem;">
+            <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">✉️</span>
+            <div style="flex: 1; min-width: 0; word-break: break-all;">
+              <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Official Email</strong>
+              <a href="mailto:${currentProfile.contactEmail}" style="color: var(--primary); font-weight: 500; text-decoration: none; word-break: break-all;">${currentProfile.contactEmail}</a>
+            </div>
+          </li>
+        `;
+      }
+
+      if (currentProfile.website) {
+        hasContactInfo = true;
+        let cleanUrl = currentProfile.website;
+        if (!/^https?:\/\//i.test(cleanUrl)) {
+          cleanUrl = 'https://' + cleanUrl;
+        }
+        let displayUrl = currentProfile.website.replace(/^(https?:\/\/)?(www\.)?/i, '');
+        contactHtml += `
+          <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem;">
+            <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">🔗</span>
+            <div style="flex: 1; min-width: 0; word-break: break-all;">
+              <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Website</strong>
+              <a href="${cleanUrl}" target="_blank" style="color: var(--primary); font-weight: 500; text-decoration: none; word-break: break-all;">${displayUrl}</a>
+            </div>
+          </li>
+        `;
+      }
+
+      if (currentProfile.contactPhone) {
+        hasContactInfo = true;
+        contactHtml += `
+          <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem;">
+            <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">📞</span>
+            <div style="flex: 1; min-width: 0;">
+              <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Phone Number</strong>
+              <span style="color: var(--text-main); font-weight: 500;">${currentProfile.contactPhone}</span>
+            </div>
+          </li>
+        `;
+      }
+
+      if (currentProfile.address || currentProfile.city || currentProfile.state) {
+        hasContactInfo = true;
+        let fullAddress = currentProfile.address || '';
+        let cityState = [currentProfile.city, currentProfile.state].filter(Boolean).join(', ');
+        let displayAddress = [fullAddress, cityState].filter(Boolean).join(', ') || 'Address not listed';
+
+        contactHtml += `
+          <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem;">
+            <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">📍</span>
+            <div style="flex: 1;">
+              <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Address</strong>
+              <span style="color: var(--text-main); font-weight: 500; line-height: 1.4;">${displayAddress}</span>
+            </div>
+          </li>
+        `;
+      }
+
+      if (hasContactInfo) {
+        contactList.innerHTML = contactHtml;
+        contactCard.style.display = 'block';
+      } else {
+        contactCard.style.display = 'none';
+      }
     }
 
     // Admissions status box text & Apply Now button
@@ -598,6 +678,50 @@ document.addEventListener('DOMContentLoaded', () => {
             openRegistrationModal(`Register for: ${title}`);
           });
         });
+      }
+    }
+
+    // Update Followers count text
+    const followersEl = document.getElementById('profile-followers-count');
+    if (followersEl) {
+      followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
+    }
+
+    // Update Follow Button display and state
+    const followBtn = document.getElementById('btn-follow-school');
+    if (followBtn) {
+      if (!isSchoolAdmin) {
+        followBtn.style.display = 'inline-flex';
+        updateSchoolFollowButtonState(followBtn, isFollowing);
+        // If it's a fallback school, disable following database actions
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(currentProfile.id)) {
+          setupSchoolFollowButton(currentProfile.id, isFollowing, followersCount, currentUser);
+        } else {
+          // Mock follow button toggle without DB persistence
+          followBtn.onclick = () => {
+            isFollowing = !isFollowing;
+            updateSchoolFollowButtonState(followBtn, isFollowing);
+            followersCount += isFollowing ? 1 : -1;
+            if (followersEl) {
+              followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
+            }
+            showToast(isFollowing ? 'Mock followed successfully!' : 'Mock unfollowed successfully!');
+          };
+        }
+      } else {
+        followBtn.style.display = 'none';
+      }
+    }
+
+    // Update Contact School Button display and state
+    const contactBtn = document.getElementById('btn-contact-school');
+    if (contactBtn) {
+      if (!isSchoolAdmin) {
+        contactBtn.style.display = 'inline-flex';
+        setupContactSchoolButton(currentProfile);
+      } else {
+        contactBtn.style.display = 'none';
       }
     }
   }
@@ -1066,6 +1190,7 @@ function showToast(message, type = 'success') {
       document.getElementById('edit-sch-address').value = dbSchool.address || '';
       document.getElementById('edit-sch-email').value = dbSchool.contact_email || '';
       document.getElementById('edit-sch-website').value = dbSchool.website || '';
+      document.getElementById('edit-sch-phone').value = dbSchool.contact_phone || '';
       document.getElementById('edit-sch-est').value = dbSchool.est_year || '';
       document.getElementById('edit-sch-size').value = dbSchool.campus_size || '';
       document.getElementById('edit-sch-logo-letter').value = dbSchool.logo_letter || '';
@@ -1122,6 +1247,7 @@ function showToast(message, type = 'success') {
           address: document.getElementById('edit-sch-address').value.trim() || null,
           contact_email: document.getElementById('edit-sch-email').value.trim() || null,
           website: document.getElementById('edit-sch-website').value.trim() || null,
+          contact_phone: document.getElementById('edit-sch-phone').value.trim() || null,
           est_year: document.getElementById('edit-sch-est').value.trim() || null,
           campus_size: document.getElementById('edit-sch-size').value.trim() || null,
           logo_letter: document.getElementById('edit-sch-logo-letter').value.trim().toUpperCase() || null,
@@ -1273,39 +1399,45 @@ function showToast(message, type = 'success') {
   function setupContactSchoolButton(dbSchool) {
     const contactBtn = document.getElementById('btn-contact-school');
     const modal = document.getElementById('contact-school-modal');
-    const closeBtn = document.getElementById('contact-modal-close');
     const form = document.getElementById('contact-school-form');
     
     if (!contactBtn || !modal || !form) return;
 
-    // Clone to remove previous listeners
+    // Clone button and form to remove any previously attached listeners
     const newContactBtn = contactBtn.cloneNode(true);
     contactBtn.parentNode.replaceChild(newContactBtn, contactBtn);
+
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+
+    const closeBtn = document.getElementById('contact-modal-close');
+
+    const closeModal = () => {
+      modal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+      newForm.reset();
+    };
 
     newContactBtn.addEventListener('click', () => {
       if (!currentUser) {
         window.location.href = 'login.html';
         return;
       }
-      modal.style.display = 'flex';
+      modal.classList.add('active');
       document.body.style.overflow = 'hidden';
     });
 
-    const closeModal = () => {
-      modal.style.display = 'none';
-      document.body.style.overflow = 'auto';
-      form.reset();
-    };
-
     if (closeBtn) {
-      closeBtn.addEventListener('click', closeModal);
+      const newCloseBtn = closeBtn.cloneNode(true);
+      closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+      newCloseBtn.addEventListener('click', closeModal);
     }
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();
     });
 
     // Handle form submission
-    form.addEventListener('submit', async (e) => {
+    newForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const inquiryType = document.getElementById('contact-inquiry-type').value;
@@ -1318,13 +1450,20 @@ function showToast(message, type = 'success') {
       submitBtn.textContent = 'Sending Inquiry...';
 
       try {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(dbSchool.id)) {
+          closeModal();
+          alert(`Demo Mode: Contact inquiry simulated successfully for fallback school "${dbSchool.name}"!`);
+          return;
+        }
+
         const sb = window.CampusLink.supabase;
         
         // 1. Create a conversation
         const { data: conv, error: convError } = await sb
           .from('conversations')
           .insert({
-            status: 'pending',
+            status: 'accepted',
             initiator_id: currentUser.id,
             school_id: dbSchool.id,
             inquiry_type: inquiryType
@@ -1351,16 +1490,51 @@ function showToast(message, type = 'success') {
             conversation_id: conv.id,
             sender_id: currentUser.id,
             receiver_school_id: dbSchool.id,
-            receiver_id: dbSchool.admin_user_id || null,
             message: `[Inquiry: ${inquiryType.toUpperCase()}] ${messageText}`,
             read_status: false
           });
 
         if (msgError) throw msgError;
 
+        console.log('Message created successfully (School Profile Inquiry):', {
+          conversation_id: conv.id,
+          sender_id: currentUser.id,
+          receiver_school_id: dbSchool.id,
+          message: `[Inquiry: ${inquiryType.toUpperCase()}] ${messageText}`
+        });
+
+        // 4. Trigger notification to school representative / admin
+        if (window.CampusLink && window.CampusLink.notifications) {
+          try {
+            const recipientId = dbSchool.adminUserId;
+            if (recipientId) {
+              // Fetch current user name
+              const { data: senderProfile } = await sb
+                .from('profiles')
+                .select('full_name')
+                .eq('id', currentUser.id)
+                .single();
+              const senderName = senderProfile?.full_name || 'Someone';
+
+              await window.CampusLink.notifications.createNotification(
+                recipientId,
+                'message',
+                `New message from ${senderName}`,
+                `[Inquiry: ${inquiryType.toUpperCase()}] ${messageText}`.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+                `messaging.html?chat_id=${conv.id}`,
+                currentUser.id
+              );
+            }
+          } catch (notifErr) {
+            console.warn('Error sending contact school notification:', notifErr);
+          }
+        }
+
         closeModal();
-        alert('Inquiry sent successfully! Redirecting to messaging page...');
-        window.location.href = `messaging.html?chat_id=${conv.id}`;
+        showToast('Inquiry sent successfully!');
+        document.getElementById('contact-message').value = '';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message Request';
       } catch (err) {
         console.error('Failed to send inquiry:', err);
         alert('Failed to send inquiry: ' + err.message);

@@ -248,31 +248,40 @@
               </ul>
             </div>
             
-            <aside class="about-info-card">
-              <h3>Quick Details</h3>
-              <ul class="about-meta-list">
-                <li class="about-meta-item">
-                  <span>Established</span>
-                  <span id="meta-est">...</span>
-                </li>
-                <li class="about-meta-item">
-                  <span>School Type</span>
-                  <span>Co-Educational</span>
-                </li>
-                <li class="about-meta-item">
-                  <span>Intake Grades</span>
-                  <span>Nursery to XII</span>
-                </li>
-                <li class="about-meta-item">
-                  <span>Affiliation Board</span>
-                  <span id="meta-board">...</span>
-                </li>
-                <li class="about-meta-item">
-                  <span>Campus Size</span>
-                  <span id="meta-size">...</span>
-                </li>
-              </ul>
-            </aside>
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <aside class="about-info-card">
+                <h3>Quick Details</h3>
+                <ul class="about-meta-list">
+                  <li class="about-meta-item">
+                    <span>Established</span>
+                    <span id="meta-est">...</span>
+                  </li>
+                  <li class="about-meta-item">
+                    <span>School Type</span>
+                    <span>Co-Educational</span>
+                  </li>
+                  <li class="about-meta-item">
+                    <span>Intake Grades</span>
+                    <span>Nursery to XII</span>
+                  </li>
+                  <li class="about-meta-item">
+                    <span>Affiliation Board</span>
+                    <span id="meta-board">...</span>
+                  </li>
+                  <li class="about-meta-item">
+                    <span>Campus Size</span>
+                    <span id="meta-size">...</span>
+                  </li>
+                </ul>
+              </aside>
+
+              <aside class="about-info-card" id="contact-info-card" style="display: none;">
+                <h3>Contact & Location</h3>
+                <ul class="about-meta-list" id="contact-meta-list" style="display: flex; flex-direction: column; gap: 14px; margin-top: 12px; list-style: none; padding: 0;">
+                  <!-- Dynamically populated from school-profile.js -->
+                </ul>
+              </aside>
+            </div>
           </div>
         </div>
 
@@ -530,6 +539,13 @@
               <input type="url" id="edit-sch-website" placeholder="e.g. https://www.dpsrkpuram.in">
             </div>
             <div class="form-group col-6">
+              <label for="edit-sch-phone">Contact Phone Number</label>
+              <input type="tel" id="edit-sch-phone" placeholder="e.g. +91 98765 43210">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-6">
               <label for="edit-sch-logo-letter">Logo Initial Letter</label>
               <input type="text" id="edit-sch-logo-letter" maxlength="1" placeholder="e.g. D" style="text-transform: uppercase;">
             </div>
@@ -660,7 +676,7 @@
   </div>
 
   <!-- --- Contact School Modal --- -->
-  <div class="modal-overlay" id="contact-school-modal" style="display: none;">
+  <div class="modal-overlay" id="contact-school-modal">
     <div class="modal-content" style="max-width: 500px; border-radius: var(--radius-lg); background-color: var(--white); box-shadow: var(--shadow-lg); padding: 32px; position: relative;">
       <button class="modal-close-btn" id="contact-modal-close" aria-label="Close modal" style="font-size: 1.75rem; border: none; background: transparent; cursor: pointer; position: absolute; right: 20px; top: 15px; color: var(--text-muted);">&times;</button>
       

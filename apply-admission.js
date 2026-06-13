@@ -204,6 +204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (error) throw error;
         submitted = true;
+        console.log('Admission application created successfully:', payload);
 
         // Trigger notification to school representative / admin
         if (window.CampusLink && window.CampusLink.notifications) {

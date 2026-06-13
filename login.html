@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login | SchoolIn</title>
   <meta name="description" content="Login or create your account on SchoolIn — India's premier school networking platform for students, teachers, parents, alumni, and schools.">
-  <link rel="stylesheet" href="style.css?v=1.2">
+  <link rel="stylesheet" href="style.css?v=1.3">
 </head>
 <body class="auth-page-body">
 
@@ -17,6 +17,14 @@
   </div>
 
   <div class="auth-page-wrapper">
+
+    <!-- Mobile-only compact sticky header -->
+    <header class="auth-mobile-header" role="banner">
+      <a href="index.html" class="auth-mobile-logo">
+        SchoolIn<span class="logo-dot"></span>
+      </a>
+      <span class="auth-mobile-tagline">India's School Network</span>
+    </header>
 
     <!-- Left Panel — Branding -->
     <div class="auth-brand-panel">
@@ -96,6 +104,9 @@
             <span class="error-msg" id="err-login-password"></span>
           </div>
 
+          <!-- Forgot password -->
+          <a href="#" class="auth-forgot-link" id="forgot-password-link">Forgot password?</a>
+
           <button type="submit" class="btn btn-primary auth-submit-btn" id="btn-login">
             <span class="btn-text">Sign In</span>
             <span class="btn-loader" style="display:none;">
@@ -135,19 +146,40 @@
             <span class="error-msg" id="err-reg-email"></span>
           </div>
 
-          <!-- User Type -->
+          <!-- User Type — visual role cards -->
           <div class="form-group">
-            <label for="reg-user-type">I want to join as *</label>
-            <div class="input-icon-wrapper select-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              <select id="reg-user-type" required>
-                <option value="">Select your role</option>
-                <option value="student">🎓 Student</option>
-                <option value="teacher">👩‍🏫 Teacher</option>
-                <option value="parent">👪 Parent</option>
-                <option value="alumni">🎖️ Alumni</option>
-                <option value="school_representative">🏫 School Representative</option>
-              </select>
+            <label>I want to join as *</label>
+            <!-- Hidden select keeps the existing auth logic intact -->
+            <select id="reg-user-type" required style="display:none;" aria-hidden="true" tabindex="-1">
+              <option value="">Select your role</option>
+              <option value="student">Student</option>
+              <option value="teacher">Teacher</option>
+              <option value="parent">Parent</option>
+              <option value="alumni">Alumni</option>
+              <option value="school_representative">School Rep</option>
+            </select>
+            <!-- Visual role card grid -->
+            <div class="role-card-grid" id="role-card-grid" role="radiogroup" aria-label="Select your role">
+              <button type="button" class="role-card" data-role="student" role="radio" aria-checked="false" id="role-student">
+                <span class="role-card-icon">🎓</span>
+                <span class="role-card-label">Student</span>
+              </button>
+              <button type="button" class="role-card" data-role="teacher" role="radio" aria-checked="false" id="role-teacher">
+                <span class="role-card-icon">👩‍🏫</span>
+                <span class="role-card-label">Teacher</span>
+              </button>
+              <button type="button" class="role-card" data-role="parent" role="radio" aria-checked="false" id="role-parent">
+                <span class="role-card-icon">👪</span>
+                <span class="role-card-label">Parent</span>
+              </button>
+              <button type="button" class="role-card" data-role="alumni" role="radio" aria-checked="false" id="role-alumni">
+                <span class="role-card-icon">🎖️</span>
+                <span class="role-card-label">Alumni</span>
+              </button>
+              <button type="button" class="role-card" data-role="school_representative" role="radio" aria-checked="false" id="role-school-rep" style="grid-column: span 2;">
+                <span class="role-card-icon">🏫</span>
+                <span class="role-card-label">School Rep</span>
+              </button>
             </div>
             <span class="error-msg" id="err-reg-user-type"></span>
           </div>
@@ -232,6 +264,106 @@
   <script src="supabase.js"></script>
   <script src="auth.js"></script>
   <script src="login.js"></script>
+  <!-- Phase 2: Role card UI + Forgot Password UI (no auth logic changes) -->
+  <script>
+    /* ── Role Card Grid ── */
+    (function () {
+      const grid = document.getElementById('role-card-grid');
+      const hiddenSelect = document.getElementById('reg-user-type');
+      if (!grid || !hiddenSelect) return;
+
+      grid.querySelectorAll('.role-card').forEach(function (card) {
+        card.addEventListener('click', function () {
+          // Clear all
+          grid.querySelectorAll('.role-card').forEach(function (c) {
+            c.classList.remove('selected');
+            c.setAttribute('aria-checked', 'false');
+          });
+          // Select clicked
+          card.classList.add('selected');
+          card.setAttribute('aria-checked', 'true');
+          // Sync hidden select (keeps login.js validation intact)
+          hiddenSelect.value = card.getAttribute('data-role');
+          // Clear validation error if any
+          var errEl = document.getElementById('err-reg-user-type');
+          if (errEl) errEl.style.display = 'none';
+        });
+      });
+    })();
+
+    /* ── Forgot Password ── */
+    (function () {
+      var link = document.getElementById('forgot-password-link');
+      if (!link) return;
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        var email = document.getElementById('login-email');
+        var emailVal = email ? email.value.trim() : '';
+        var prompt = emailVal
+          ? 'Send reset link to: ' + emailVal + '?'
+          : 'Enter your email in the field above, then click Forgot password.';
+
+        if (!emailVal) {
+          // Show toast with instruction
+          var toast = document.getElementById('auth-toast');
+          var msg = document.getElementById('auth-toast-msg');
+          if (toast && msg) {
+            msg.textContent = 'Enter your email address above, then click "Forgot password?" to reset it.';
+            toast.style.display = 'flex';
+            toast.classList.add('show');
+            setTimeout(function () {
+              toast.classList.remove('show');
+              setTimeout(function () { toast.style.display = 'none'; }, 300);
+            }, 4000);
+          }
+          if (email) email.focus();
+          return;
+        }
+
+        // If email present, attempt Supabase password reset (uses existing supabase client)
+        if (typeof window.supabaseClient !== 'undefined' || typeof supabase !== 'undefined') {
+          var client = window.supabaseClient || supabase;
+          if (client && client.auth && client.auth.resetPasswordForEmail) {
+            client.auth.resetPasswordForEmail(emailVal, {
+              redirectTo: window.location.origin + '/login.html'
+            }).then(function (res) {
+              var toast = document.getElementById('auth-toast');
+              var msg = document.getElementById('auth-toast-msg');
+              if (res.error) {
+                if (toast && msg) {
+                  msg.textContent = res.error.message || 'Could not send reset email.';
+                  toast.style.display = 'flex';
+                  toast.classList.add('show');
+                  setTimeout(function () {
+                    toast.classList.remove('show');
+                    setTimeout(function () { toast.style.display = 'none'; }, 300);
+                  }, 4000);
+                }
+              } else {
+                // Success toast (reuse existing element but style as success)
+                if (toast && msg) {
+                  toast.style.background = '#F0FDF4';
+                  toast.style.borderColor = '#BBF7D0';
+                  var icon = toast.querySelector('.auth-toast-icon');
+                  if (icon) { icon.textContent = '✓'; icon.style.color = '#16A34A'; }
+                  msg.style.color = '#15803D';
+                  msg.textContent = 'Password reset email sent to ' + emailVal;
+                  toast.style.display = 'flex';
+                  toast.classList.add('show');
+                  setTimeout(function () {
+                    toast.classList.remove('show');
+                    setTimeout(function () { toast.style.display = 'none'; }, 300);
+                  }, 5000);
+                }
+              }
+            });
+          }
+        } else {
+          alert('Password reset: ' + prompt);
+        }
+      });
+    })();
+  </script>
 
 </body>
 </html>

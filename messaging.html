@@ -205,8 +205,8 @@
         <!-- Empty State View -->
         <div class="chat-empty-state" id="chat-empty-state">
           <div class="empty-illustration">💬</div>
-          <h3>Select a conversation</h3>
-          <p>Choose a contact from the inbox list or visit profiles to start messaging instantly.</p>
+          <h3>Welcome to SchoolIn Messaging</h3>
+          <p>Connect and network with schools, alumni, parents, and students. Start a conversation to build your academic circle, discuss admissions, coordinate events, and seek mentorship.</p>
         </div>
 
         <!-- Active Chat Interface (hidden initially) -->
@@ -223,7 +223,7 @@
               <p id="chat-recipient-headline">Recipient Headline details</p>
             </div>
             <div class="chat-header-actions" id="chat-header-actions">
-              <!-- Rendered dynamically e.g. inquiry label -->
+              <!-- Toggle Profile button and rendered inquiries will go here -->
             </div>
           </div>
 
@@ -256,6 +256,11 @@
         </div>
       </section>
 
+      <!-- --- Right-side Profile Panel (Collapsible) --- -->
+      <aside class="chat-profile-panel" id="chat-profile-panel" style="display: none;">
+        <!-- Filled dynamically by messaging.js -->
+      </aside>
+
     </div>
   </main>
 
@@ -267,6 +272,30 @@
   <script src="supabase.js"></script>
   <script src="auth.js"></script>
   <script src="notifications.js"></script>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <div class="mobile-bottom-nav">
+    <a href="index.html" class="mobile-nav-item" id="mobile-nav-home">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </a>
+    <a href="schools.html" class="mobile-nav-item" id="mobile-nav-schools">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+      <span>Schools</span>
+    </a>
+    <a href="networking.html" class="mobile-nav-item" id="mobile-nav-network">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Connect</span>
+    </a>
+    <a href="messaging.html" class="mobile-nav-item" id="mobile-nav-messages">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Messages</span>
+    </a>
+    <a href="profile.html" class="mobile-nav-item" id="mobile-nav-profile">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </a>
+  </div>
 
   <!-- Messaging Logic -->
   <script src="messaging.js"></script>

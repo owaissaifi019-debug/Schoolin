@@ -344,113 +344,192 @@
     </div>
   </main>
 
-  <!-- --- Edit Profile Modal --- -->
+    <!-- --- Edit Profile Modal (Redesigned) --- -->
   <div class="modal-overlay" id="edit-profile-modal" style="display: none;">
-    <div class="modal-content modal-large">
-      <button class="modal-close-btn" id="edit-modal-close" aria-label="Close modal">&times;</button>
+    <div class="epm-editor">
       
-      <div class="modal-title">
-        <h3>Edit Student Profile</h3>
-        <p>Keep your profile updated so other students and schools can connect with you.</p>
+      <!-- Close Button -->
+      <button class="epm-close" id="edit-modal-close" aria-label="Close modal">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+
+      <!-- Profile Header -->
+      <div class="epm-header">
+        <div class="epm-banner" id="epm-banner-display">
+          <label for="cover-upload-input" class="epm-cover-upload-btn" title="Change Cover Photo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Change Cover</span>
+          </label>
+          <input type="file" id="cover-upload-input" accept="image/*" style="display: none;">
+        </div>
+        <div class="epm-header-content">
+          <div class="epm-profile-row">
+            <div class="epm-avatar-wrap">
+              <div class="epm-avatar" id="epm-avatar-display"></div>
+              <label for="avatar-upload-input" class="epm-avatar-edit-badge" title="Change Profile Photo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </label>
+            </div>
+            <div class="epm-header-info">
+              <h2 class="epm-header-name" id="epm-header-name">Student Name</h2>
+              <p class="epm-header-meta" id="epm-header-meta">Student</p>
+            </div>
+          </div>
+          <div class="epm-strength">
+            <div class="epm-strength-label">
+              <span>Profile Strength</span>
+              <span class="epm-strength-pct" id="epm-strength-pct">0%</span>
+            </div>
+            <div class="epm-strength-bar">
+              <div class="epm-strength-fill" id="epm-strength-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Tabbed Form Navigation -->
-      <div class="modal-tabs">
-        <button class="tab-btn active" data-tab="tab-basic">Basic Info</button>
-        <button class="tab-btn" data-tab="tab-skills-sports">Skills & Sports</button>
-        <button class="tab-btn" data-tab="tab-achievements">Achievements</button>
-        <button class="tab-btn" data-tab="tab-certs">Certificates</button>
+      <!-- Tab Navigation -->
+      <div class="epm-tabs">
+        <button class="epm-tab active" data-tab="tab-basic">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Basic Info</span>
+        </button>
+        <button class="epm-tab" data-tab="tab-skills-sports">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Skills &amp; Sports</span>
+        </button>
+        <button class="epm-tab" data-tab="tab-achievements">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+          <span>Achievements</span>
+        </button>
+        <button class="epm-tab" data-tab="tab-certs">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h4"/></svg>
+          <span>Certificates</span>
+        </button>
       </div>
 
+      <!-- Form Content -->
       <form id="edit-profile-form">
-        <!-- Tab 1: Basic Info -->
-        <div class="tab-pane active" id="tab-basic">
-          <div class="form-group">
-            <label for="edit-full-name">Full Name *</label>
-            <input type="text" id="edit-full-name" required placeholder="e.g. Owais Saifi">
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group col-6">
-              <label for="edit-school">School</label>
-              <select id="edit-school">
-                <option value="">Select your school...</option>
-                <!-- Schools dynamically populated -->
-              </select>
-            </div>
-            <div class="form-group col-6">
-              <label for="edit-class">Class / Grade</label>
-              <input type="text" id="edit-class" placeholder="e.g. 10th Grade, 12th Science">
-            </div>
-          </div>
+        <div class="epm-body">
 
-          <div class="form-group">
-            <label for="edit-bio">Bio / About Me</label>
-            <textarea id="edit-bio" rows="4" placeholder="Tell the CampusLink community about yourself, your interests, and what you're working on..."></textarea>
-          </div>
-        </div>
-
-        <!-- Tab 2: Skills & Sports -->
-        <div class="tab-pane" id="tab-skills-sports">
-          <div class="form-group">
-            <label>Skills</label>
-            <p class="field-desc">Press Enter or comma to add a skill (e.g., Python, Debate, Painting)</p>
-            <div class="tag-input-container" id="skills-tag-container">
-              <input type="text" id="skills-tag-input" placeholder="Type a skill and press Enter...">
+          <!-- Tab 1: Basic Info -->
+          <div class="tab-pane active" id="tab-basic">
+            <div class="epm-section-title">
+              <h3>Basic Information</h3>
+              <p>Tell the community about yourself.</p>
             </div>
-          </div>
 
-          <div class="form-group" style="margin-top: 25px;">
-            <label>Sports & Games</label>
-            <p class="field-desc">Press Enter or comma to add sports you play (e.g., Cricket, Basketball, Chess)</p>
-            <div class="tag-input-container" id="sports-tag-container">
-              <input type="text" id="sports-tag-input" placeholder="Type a sport and press Enter...">
-            </div>
-          </div>
-        </div>
-
-        <!-- Tab 3: Achievements -->
-        <div class="tab-pane" id="tab-achievements">
-          <div class="form-group">
-            <label>Achievements</label>
-            <p class="field-desc">List your achievements, competitions won, or roles held. Press Enter or click Add.</p>
-            
-            <div class="achievement-input-row">
-              <input type="text" id="achievement-item-input" placeholder="e.g. 1st Place in Inter-School Science Fair 2026">
-              <button type="button" id="add-achievement-btn" class="btn btn-secondary btn-sm">Add</button>
+            <div class="epm-field">
+              <label for="edit-full-name">Full Name <span class="epm-required">*</span></label>
+              <input type="text" id="edit-full-name" required placeholder="e.g. Owais Saifi" class="epm-input">
             </div>
             
-            <ul class="editable-list-items" id="achievements-editable-list">
-              <!-- Dynamically populated -->
-            </ul>
-          </div>
-        </div>
-
-        <!-- Tab 4: Certificates -->
-        <div class="tab-pane" id="tab-certs">
-          <div class="form-group">
-            <label>Certificates & Licenses</label>
-            <p class="field-desc">Add external courses, online certificates, or merit awards. Press Enter or click Add.</p>
-            
-            <div class="achievement-input-row">
-              <input type="text" id="certificate-item-input" placeholder="e.g. Google IT Support Professional Certificate">
-              <button type="button" id="add-certificate-btn" class="btn btn-secondary btn-sm">Add</button>
+            <div class="epm-field-row">
+              <div class="epm-field">
+                <label for="edit-school">School</label>
+                <select id="edit-school" class="epm-input">
+                  <option value="">Select your school...</option>
+                  <!-- Schools dynamically populated -->
+                </select>
+              </div>
+              <div class="epm-field">
+                <label for="edit-class">Class / Grade</label>
+                <input type="text" id="edit-class" placeholder="e.g. 10th Grade, 12th Science" class="epm-input">
+              </div>
             </div>
-            
-            <ul class="editable-list-items" id="certificates-editable-list">
-              <!-- Dynamically populated -->
-            </ul>
+
+            <div class="epm-field">
+              <label for="edit-bio">Bio / About Me</label>
+              <textarea id="edit-bio" rows="5" placeholder="Tell the CampusLink community about yourself, your interests, and what you're working on..." class="epm-input epm-textarea"></textarea>
+              <span class="epm-field-hint">A good bio helps others connect with you. Share your passions, projects, and goals.</span>
+            </div>
           </div>
+
+          <!-- Tab 2: Skills & Sports -->
+          <div class="tab-pane" id="tab-skills-sports">
+            <div class="epm-section-title">
+              <h3>Skills &amp; Sports</h3>
+              <p>Showcase what you're great at.</p>
+            </div>
+
+            <div class="epm-field">
+              <label>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Skills
+              </label>
+              <p class="epm-field-hint" style="margin-bottom: 10px;">Press Enter or comma to add a skill (e.g., Python, Debate, Painting)</p>
+              <div class="tag-input-container" id="skills-tag-container">
+                <input type="text" id="skills-tag-input" placeholder="Type a skill and press Enter...">
+              </div>
+            </div>
+
+            <div class="epm-field" style="margin-top: 28px;">
+              <label>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                Sports &amp; Games
+              </label>
+              <p class="epm-field-hint" style="margin-bottom: 10px;">Press Enter or comma to add sports you play (e.g., Cricket, Basketball, Chess)</p>
+              <div class="tag-input-container" id="sports-tag-container">
+                <input type="text" id="sports-tag-input" placeholder="Type a sport and press Enter...">
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Achievements -->
+          <div class="tab-pane" id="tab-achievements">
+            <div class="epm-section-title">
+              <h3>Achievements</h3>
+              <p>Highlight your accomplishments and competitions.</p>
+            </div>
+
+            <div class="epm-field">
+              <div class="epm-add-row">
+                <input type="text" id="achievement-item-input" placeholder="e.g. 1st Place in Inter-School Science Fair 2026" class="epm-input">
+                <button type="button" id="add-achievement-btn" class="epm-add-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>Add</span>
+                </button>
+              </div>
+              
+              <ul class="editable-list-items" id="achievements-editable-list">
+                <!-- Dynamically populated -->
+              </ul>
+            </div>
+          </div>
+
+          <!-- Tab 4: Certificates -->
+          <div class="tab-pane" id="tab-certs">
+            <div class="epm-section-title">
+              <h3>Certificates &amp; Licenses</h3>
+              <p>Add courses, online certificates, or merit awards.</p>
+            </div>
+
+            <div class="epm-field">
+              <div class="epm-add-row">
+                <input type="text" id="certificate-item-input" placeholder="e.g. Google IT Support Professional Certificate" class="epm-input">
+                <button type="button" id="add-certificate-btn" class="epm-add-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>Add</span>
+                </button>
+              </div>
+              
+              <ul class="editable-list-items" id="certificates-editable-list">
+                <!-- Dynamically populated -->
+              </ul>
+            </div>
+          </div>
+
         </div>
 
-        <div class="form-navigation form-actions-modal">
-          <button type="button" class="btn btn-secondary" id="edit-profile-cancel">Cancel</button>
-          <button type="submit" class="btn btn-accent">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            <span>Save Profile</span>
+        <!-- Sticky Footer -->
+        <div class="epm-footer">
+          <button type="button" class="epm-btn-cancel" id="edit-profile-cancel">Cancel</button>
+          <button type="submit" class="epm-btn-save">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Save Changes</span>
           </button>
         </div>
       </form>
+
     </div>
   </div>
 
@@ -462,6 +541,30 @@
   <script src="supabase.js"></script>
   <script src="auth.js"></script>
   <script src="notifications.js"></script>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <div class="mobile-bottom-nav">
+    <a href="index.html" class="mobile-nav-item" id="mobile-nav-home">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </a>
+    <a href="schools.html" class="mobile-nav-item" id="mobile-nav-schools">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+      <span>Schools</span>
+    </a>
+    <a href="networking.html" class="mobile-nav-item" id="mobile-nav-network">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Connect</span>
+    </a>
+    <a href="messaging.html" class="mobile-nav-item" id="mobile-nav-messages">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Messages</span>
+    </a>
+    <a href="profile.html" class="mobile-nav-item" id="mobile-nav-profile">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </a>
+  </div>
 
   <!-- Page JS Script -->
   <script src="profile.js"></script>

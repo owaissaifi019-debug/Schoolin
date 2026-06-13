@@ -783,9 +783,23 @@ document.addEventListener('DOMContentLoaded', () => {
           const letter = s.logo_letter || schoolName.charAt(0).toUpperCase();
           logoHtml = `<div class="feed-user-avatar-placeholder">${letter}</div>`;
         }
+        let badgeHtml = '';
+        let badgeColorStyle = '';
+        if (s.verification_badge === 'gold') {
+          badgeHtml = `
+            <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>`;
+          badgeColorStyle = 'background-color: #FEF3C7; color: #D97706; border: 1.5px solid #FCD34D;';
+        } else if (s.verification_badge === 'blue') {
+          badgeHtml = `
+            <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>`;
+        }
         
-        const profileUrl = `school-profile.html?id=${p.school_id}`;
-
         sidebarContainer.innerHTML = `
           <div class="feed-sidebar-card profile-sidebar-card">
             <div class="profile-card-cover ${colorClass}"></div>
@@ -794,9 +808,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${logoHtml}
               </a>
               <h3 class="profile-card-name">
-                <a href="${profileUrl}">${schoolName}</a>
+                <a href="${profileUrl}">${schoolName}${badgeHtml}</a>
               </h3>
-              <span class="profile-card-badge school_representative">Verified School</span>
+              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">Verified School</span>
               <p class="profile-card-headline">${board} Affiliated ${city ? `• ${city}` : ''}</p>
               <p class="profile-card-school" style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); margin-top: 4px;">
                 👤 Admin: ${displayName}
@@ -805,6 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="profile-card-footer">
               <a href="${profileUrl}" class="btn-profile-view">View School Profile</a>
             </div>
+          </div>         </div>
           </div>
           
           <div class="feed-sidebar-card shortcuts-sidebar-card">
@@ -1081,7 +1096,8 @@ document.addEventListener('DOMContentLoaded', () => {
             school_id,
             is_verified,
             schools (
-              name
+              name,
+              verification_badge
             )
           ),
           post_likes (
@@ -1096,7 +1112,12 @@ document.addEventListener('DOMContentLoaded', () => {
               full_name,
               user_type,
               avatar_url,
-              is_verified
+              is_verified,
+              school_id,
+              schools (
+                name,
+                verification_badge
+              )
             )
           )
         `)
@@ -1141,7 +1162,8 @@ document.addEventListener('DOMContentLoaded', () => {
                   school_id,
                   is_verified,
                   schools (
-                    name
+                    name,
+                    verification_badge
                   )
                 ),
                 post_likes (
@@ -1156,7 +1178,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     full_name,
                     user_type,
                     avatar_url,
-                    is_verified
+                    is_verified,
+                    school_id,
+                    schools (
+                      name,
+                      verification_badge
+                    )
                   )
                 )
               `)
@@ -1266,6 +1293,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const comments = post.comments || [];
       const sortedComments = [...comments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
+      const isAuthorSchool = (p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id;
+      let badgeHtml = '';
+      if (isAuthorSchool && p.schools?.verification_badge === 'gold') {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>`;
+      } else if ((isAuthorSchool && p.schools?.verification_badge === 'blue') || (!isAuthorSchool && p.is_verified)) {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="${isAuthorSchool ? 'Verified School' : 'Verified Profile'}" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>`;
+      }
+
       const card = document.createElement('article');
       card.className = 'feed-post-card';
       card.dataset.postId = post.id;
@@ -1277,12 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </a>
           <div class="post-meta-info">
             <div class="post-author-row">
-              <a href="${profileUrl}" class="post-author-name">${authorName}${p.is_verified ? `
-                <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
-                  <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
-                  <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
-                </svg>
-              ` : ''}</a>
+              <a href="${profileUrl}" class="post-author-name">${authorName}${badgeHtml}</a>
               <span class="post-author-role ${p.user_type || 'student'}">${auth.getUserTypeLabel(p.user_type)}</span>
             </div>
             <p class="post-author-headline">${headlineText}</p>
@@ -1369,6 +1407,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 commenterProfileUrl = `school-profile.html?id=${cp.school_id}`;
               }
 
+              const isCommenterSchool = (cp.user_type === 'school_representative' || cp.platform_role === 'school_admin') && cp.school_id;
+              let commenterBadge = '';
+              if (isCommenterSchool && cp.schools?.verification_badge === 'gold') {
+                commenterBadge = `
+                  <svg class="verified-badge verified-badge-sm gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+                    <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+                    <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+                  </svg>`;
+              } else if ((isCommenterSchool && cp.schools?.verification_badge === 'blue') || (!isCommenterSchool && cp.is_verified)) {
+                commenterBadge = `
+                  <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="${isCommenterSchool ? 'Verified School' : 'Verified Profile'}" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+                    <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+                    <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+                  </svg>`;
+              }
+
               return `
                 <div class="comment-item">
                   <a href="${commenterProfileUrl}">
@@ -1377,12 +1431,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <div class="comment-item-content-wrapper">
                     <div class="comment-item-header">
                       <div class="comment-item-author-info">
-                        <a href="${commenterProfileUrl}" class="comment-item-author-name">${commenterName}${cp.is_verified ? `
-                          <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
-                            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
-                            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
-                          </svg>
-                        ` : ''}</a>
+                        <a href="${commenterProfileUrl}" class="comment-item-author-name">${commenterName}${commenterBadge}</a>
                         <span class="comment-item-author-role ${cp.user_type || 'student'}">${auth.getUserTypeLabel(cp.user_type)}</span>
                       </div>
                       <span class="comment-item-time">${formatRelativeTime(c.created_at)}</span>

@@ -65,6 +65,12 @@
           </span>
           Admission Applications
         </a>
+        <a class="dashboard-nav-link" data-tab="contact-requests" id="tab-link-contact-requests">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          </span>
+          Contact Requests
+        </a>
         <a class="dashboard-nav-link" data-tab="users" id="tab-link-users">
           <span class="icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -256,6 +262,7 @@
                     <th>City</th>
                     <th>Board</th>
                     <th>Status</th>
+                    <th>Badge</th>
                     <th>Created Date</th>
                     <th>Actions</th>
                   </tr>
@@ -430,6 +437,49 @@
                   <tr>
                     <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
                       Loading global admission applications...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        
+        <!-- ================= CONTACT REQUESTS TAB ================= -->
+        <section id="contact-requests-tab" class="dashboard-tab-panel">
+          <div class="dash-table-card" style="padding: 24px;">
+            <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+              <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">Global Contact Requests</h3>
+              
+              <!-- Search & Filters -->
+              <div style="display: flex; gap: 12px; flex-grow: 1; justify-content: flex-end; max-width: 500px; width: 100%;">
+                <input type="text" id="contact-request-search" placeholder="Search by student, email or school..." style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; flex-grow: 1; outline: none;">
+                <select id="contact-request-status-filter" style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: white; cursor: pointer; max-width: 180px;">
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="ignored">Ignored</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="dash-table-wrapper">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>School Name</th>
+                    <th>Sender Name</th>
+                    <th>Sender Email</th>
+                    <th>Inquiry Type</th>
+                    <th>Message</th>
+                    <th>Date Sent</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="contact-requests-tbody">
+                  <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                      Loading global contact requests...
                     </td>
                   </tr>
                 </tbody>

@@ -143,8 +143,17 @@
           *,
           conversation_participants (
             *,
-            profile:profiles(id, full_name, avatar_url, user_type, class, is_verified),
-            school:schools(id, name, logo_letter, color_class, city)
+            profile:profiles(
+              id, 
+              full_name, 
+              avatar_url, 
+              user_type, 
+              class, 
+              is_verified,
+              school_id,
+              school:schools(id, name)
+            ),
+            school:schools(id, name, logo_letter, color_class, city, board, verification_badge, logo_url)
           ),
           messages (
             id,
@@ -196,7 +205,40 @@
       return false;
     });
 
-    if (!otherPart) return { name: 'Unknown User', avatarUrl: null, headline: '', isSchool: false };
+    if (!otherPart) {
+      const firstPart = conv.conversation_participants[0];
+      if (firstPart?.school) {
+        return {
+          id: firstPart.school.id,
+          name: firstPart.school.name,
+          logoLetter: firstPart.school.logo_letter || firstPart.school.name.charAt(0).toUpperCase(),
+          colorClass: firstPart.school.color_class || 'bg-gradient-1',
+          avatarUrl: firstPart.school.logo_url || null,
+          headline: `${firstPart.school.city || 'India'} • School Account`,
+          isSchool: true,
+          city: firstPart.school.city || 'India',
+          board: firstPart.school.board || 'CBSE',
+          verificationBadge: firstPart.school.verification_badge || 'blue'
+        };
+      } else if (firstPart?.profile) {
+        const auth = getAuth();
+        const roleLabel = auth ? auth.getUserTypeLabel(firstPart.profile.user_type) : 'Member';
+        const headline = firstPart.profile.class ? `${firstPart.profile.class} • ${roleLabel}` : roleLabel;
+        return {
+          id: firstPart.profile.id,
+          name: firstPart.profile.full_name || 'Member',
+          avatarUrl: firstPart.profile.avatar_url,
+          logoLetter: (firstPart.profile.full_name || 'M').charAt(0).toUpperCase(),
+          colorClass: 'bg-gradient-1',
+          headline: headline,
+          isSchool: false,
+          isVerified: firstPart.profile.is_verified,
+          userType: roleLabel,
+          schoolName: firstPart.profile.school?.name || 'Not Linked'
+        };
+      }
+      return { name: 'SchoolIn Member', avatarUrl: null, logoLetter: 'S', headline: '', isSchool: false };
+    }
 
     if (otherPart.school) {
       return {
@@ -204,9 +246,12 @@
         name: otherPart.school.name,
         logoLetter: otherPart.school.logo_letter || otherPart.school.name.charAt(0).toUpperCase(),
         colorClass: otherPart.school.color_class || 'bg-gradient-1',
-        avatarUrl: null,
+        avatarUrl: otherPart.school.logo_url || null,
         headline: `${otherPart.school.city || 'India'} • School Account`,
-        isSchool: true
+        isSchool: true,
+        city: otherPart.school.city || 'India',
+        board: otherPart.school.board || 'CBSE',
+        verificationBadge: otherPart.school.verification_badge || 'blue'
       };
     } else if (otherPart.profile) {
       const auth = getAuth();
@@ -220,7 +265,9 @@
         colorClass: 'bg-gradient-1',
         headline: headline,
         isSchool: false,
-        isVerified: otherPart.profile.is_verified
+        isVerified: otherPart.profile.is_verified,
+        userType: roleLabel,
+        schoolName: otherPart.profile.school?.name || 'Not Linked'
       };
     }
 
@@ -243,9 +290,8 @@
       const isInitiator = c.initiator_id === currentUser.id;
 
       if (currentTab === 'active') {
-        // Show accepted, OR pending where we are the initiator (so we can view our sent request)
+        // Show accepted, OR pending (both initiator and receiver)
         if (c.status === 'ignored') return false;
-        if (c.status === 'pending' && !isInitiator) return false;
       } else {
         // Show pending requests where we are the receiver
         if (c.status !== 'pending' || isInitiator) return false;
@@ -294,7 +340,11 @@
       // Avatar setup
       let avatarHtml = '';
       if (other.isSchool) {
-        avatarHtml = `<div class="conversation-avatar ${other.colorClass}" style="border-radius:var(--radius-sm); color:var(--white);">${other.logoLetter}</div>`;
+        if (other.avatarUrl) {
+          avatarHtml = `<div class="conversation-avatar" style="background-image: url(${other.avatarUrl}); border-radius:var(--radius-sm);"></div>`;
+        } else {
+          avatarHtml = `<div class="conversation-avatar ${other.colorClass}" style="border-radius:var(--radius-sm); color:var(--white);">${other.logoLetter}</div>`;
+        }
       } else if (other.avatarUrl) {
         avatarHtml = `<div class="conversation-avatar" style="background-image: url(${other.avatarUrl});"></div>`;
       } else {
@@ -317,40 +367,80 @@
         }
       }
 
-      // Inquiry badge if any
-      let inquiryHtml = '';
-      if (conv.school_id && conv.inquiry_type) {
-        const labels = {
-          admissions: 'Admissions Inquiry',
-          events: 'Event Inquiry',
-          general_inquiry: 'General Inquiry'
-        };
-        const label = labels[conv.inquiry_type] || 'Inquiry';
-        inquiryHtml = `<span class="inquiry-badge-tag ${conv.inquiry_type}">${label}</span>`;
+      // Verification badge SVG
+      let verificationBadgeHtml = '';
+      if (other.isSchool) {
+        if (other.verificationBadge === 'gold') {
+          verificationBadgeHtml = `
+            <svg class="verified-badge verified-badge-sm gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>
+          `;
+        } else if (other.verificationBadge === 'blue') {
+          verificationBadgeHtml = `
+            <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>
+          `;
+        }
+      } else if (other.isVerified) {
+        verificationBadgeHtml = `
+          <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>
+        `;
       }
+
+      // Determine colored category
+      let category = 'Networking';
+      let categoryClass = 'networking';
+      if (conv.inquiry_type === 'admissions') {
+        category = 'Admission';
+        categoryClass = 'admission';
+      } else if (conv.inquiry_type === 'events') {
+        category = 'Event';
+        categoryClass = 'event';
+      } else if (conv.inquiry_type === 'general_inquiry') {
+        category = 'Networking';
+        categoryClass = 'networking';
+      } else {
+        if (other.userType && (other.userType.toLowerCase().includes('alumni') || other.userType.toLowerCase().includes('teacher') || other.userType.toLowerCase().includes('mentor'))) {
+          category = 'Mentorship';
+          categoryClass = 'mentorship';
+        } else {
+          category = 'Networking';
+          categoryClass = 'networking';
+        }
+      }
+
+      let categoryBadgeHtml = `<span class="category-card-badge ${categoryClass}">${category}</span>`;
 
       // Pending badge if sent request
       let statusBadge = '';
       if (conv.status === 'pending' && conv.initiator_id === currentUser.id) {
-        statusBadge = `<span style="font-size:0.7rem; background:#ECEFF1; color:#546E7A; padding:2px 6px; border-radius:4px; margin-top:4px; display:inline-block;">Sent Request</span>`;
+        statusBadge = `<span class="status-badge-sent">Sent Request</span>`;
       }
+
+      // Unread badge layout (LinkedIn style green or primary dot)
+      let unreadDotHtml = isUnread ? `<span class="unread-dot-indicator"></span>` : '';
 
       item.innerHTML = `
         ${avatarHtml}
         <div class="conversation-info">
           <div class="conversation-meta-row">
-            <span class="conversation-name">${other.name}${other.isVerified ? `
-              <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
-                <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
-                <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
-              </svg>
-            ` : ''}</span>
+            <span class="conversation-name">${other.name}${verificationBadgeHtml}</span>
             <span class="conversation-time">${lastMsgTime}</span>
           </div>
           <p class="conversation-last-msg">${lastMsgText}</p>
-          ${inquiryHtml}
-          ${statusBadge}
+          <div class="conversation-badges-row">
+            ${categoryBadgeHtml}
+            ${statusBadge}
+          </div>
         </div>
+        ${unreadDotHtml}
       `;
 
       item.addEventListener('click', () => selectConversation(conv.id));
@@ -401,6 +491,138 @@
     await markMessagesAsRead(conv);
   }
 
+  // Toggle collapsible profile panel state
+  let profilePanelCollapsed = false;
+
+  function renderProfilePanel(other) {
+    const panel = document.getElementById('chat-profile-panel');
+    if (!panel) return;
+
+    if (profilePanelCollapsed) {
+      panel.style.display = 'none';
+      if (messagingCard) {
+        messagingCard.classList.remove('profile-panel-open');
+      }
+      return;
+    }
+
+    panel.style.display = 'block';
+    if (messagingCard) {
+      messagingCard.classList.add('profile-panel-open');
+    }
+
+    let contentHtml = '';
+    if (other.isSchool) {
+      let logoHtml = '';
+      if (other.avatarUrl) {
+        logoHtml = `<div class="panel-school-logo" style="background-image: url('${other.avatarUrl}');"></div>`;
+      } else {
+        logoHtml = `<div class="panel-school-logo-letter ${other.colorClass}">${other.logoLetter}</div>`;
+      }
+
+      let badgeHtml = '';
+      if (other.verificationBadge === 'gold') {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>
+        `;
+      } else if (other.verificationBadge === 'blue') {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>
+        `;
+      }
+
+      contentHtml = `
+        <div class="panel-header-close">
+          <button class="btn-panel-close" id="btn-panel-close-action" aria-label="Close panel">&times;</button>
+        </div>
+        <div class="panel-content-scroll">
+          <div class="panel-identity-card">
+            ${logoHtml}
+            <h3 class="panel-name">${other.name} ${badgeHtml}</h3>
+            <span class="panel-subtitle">School Profile</span>
+          </div>
+          <div class="panel-details-list">
+            <div class="panel-detail-item">
+              <span class="detail-label">City</span>
+              <span class="detail-value">${other.city}</span>
+            </div>
+            <div class="panel-detail-item">
+              <span class="detail-label">Board</span>
+              <span class="detail-value">${other.board}</span>
+            </div>
+          </div>
+          <div class="panel-actions-list">
+            <a href="school-profile.html?id=${other.id}" class="btn btn-secondary panel-btn">View School</a>
+            <a href="school-profile.html?id=${other.id}#panel-events" class="btn btn-secondary panel-btn">View Events</a>
+            <a href="school-profile.html?id=${other.id}#panel-admissions" class="btn btn-secondary panel-btn">View Admissions</a>
+          </div>
+        </div>
+      `;
+    } else {
+      let avatarHtml = '';
+      if (other.avatarUrl) {
+        avatarHtml = `<div class="panel-user-avatar" style="background-image: url('${other.avatarUrl}');"></div>`;
+      } else {
+        avatarHtml = `<div class="panel-user-avatar-letter">${other.logoLetter}</div>`;
+      }
+
+      let badgeHtml = '';
+      if (other.isVerified) {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>
+        `;
+      }
+
+      contentHtml = `
+        <div class="panel-header-close">
+          <button class="btn-panel-close" id="btn-panel-close-action" aria-label="Close panel">&times;</button>
+        </div>
+        <div class="panel-content-scroll">
+          <div class="panel-identity-card">
+            ${avatarHtml}
+            <h3 class="panel-name">${other.name} ${badgeHtml}</h3>
+            <span class="panel-subtitle">Member Profile</span>
+          </div>
+          <div class="panel-details-list">
+            <div class="panel-detail-item">
+              <span class="detail-label">User Type</span>
+              <span class="detail-value">${other.userType || 'Student'}</span>
+            </div>
+            <div class="panel-detail-item">
+              <span class="detail-label">School</span>
+              <span class="detail-value">${other.schoolName || 'Not Linked'}</span>
+            </div>
+          </div>
+          <div class="panel-actions-list">
+            <a href="profile.html?id=${other.id}" class="btn btn-secondary panel-btn">View Profile</a>
+          </div>
+        </div>
+      `;
+    }
+
+    panel.innerHTML = contentHtml;
+
+    const closeBtn = document.getElementById('btn-panel-close-action');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        profilePanelCollapsed = true;
+        panel.style.display = 'none';
+        if (messagingCard) {
+          messagingCard.classList.remove('profile-panel-open');
+        }
+      });
+    }
+  }
+
   // --- Render Active Chat Details ---
   function renderActiveChat(conv) {
     if (!chatEmptyState || !chatActiveInterface) return;
@@ -412,24 +634,51 @@
 
     // Header
     if (chatRecipientName) {
-          const verifiedBadge = other.isVerified ? `
-        <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
-          <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
-          <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
-        </svg>
-      ` : '';
-      chatRecipientName.innerHTML = other.name + verifiedBadge;
+      let badgeHtml = '';
+      if (other.isSchool) {
+        if (other.verificationBadge === 'gold') {
+          badgeHtml = `
+            <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>
+          `;
+        } else if (other.verificationBadge === 'blue') {
+          badgeHtml = `
+            <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>
+          `;
+        }
+      } else if (other.isVerified) {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>
+        `;
+      }
+      chatRecipientName.innerHTML = other.name + badgeHtml;
     }
     if (chatRecipientHeadline) chatRecipientHeadline.textContent = other.headline;
     
     if (chatRecipientAvatar) {
       chatRecipientAvatar.innerHTML = '';
       if (other.isSchool) {
-        chatRecipientAvatar.className = `chat-recipient-avatar ${other.colorClass}`;
-        chatRecipientAvatar.style.borderRadius = 'var(--radius-sm)';
-        chatRecipientAvatar.style.backgroundImage = 'none';
-        chatRecipientAvatar.style.color = 'var(--white)';
-        chatRecipientAvatar.textContent = other.logoLetter;
+        if (other.avatarUrl) {
+          chatRecipientAvatar.className = 'chat-recipient-avatar';
+          chatRecipientAvatar.style.borderRadius = 'var(--radius-sm)';
+          chatRecipientAvatar.style.backgroundImage = `url('${other.avatarUrl}')`;
+          chatRecipientAvatar.style.backgroundSize = 'cover';
+          chatRecipientAvatar.textContent = '';
+        } else {
+          chatRecipientAvatar.className = `chat-recipient-avatar ${other.colorClass}`;
+          chatRecipientAvatar.style.borderRadius = 'var(--radius-sm)';
+          chatRecipientAvatar.style.backgroundImage = 'none';
+          chatRecipientAvatar.style.color = 'var(--white)';
+          chatRecipientAvatar.textContent = other.logoLetter;
+        }
       } else if (other.avatarUrl) {
         chatRecipientAvatar.className = 'chat-recipient-avatar';
         chatRecipientAvatar.style.borderRadius = '50%';
@@ -444,7 +693,7 @@
       }
     }
 
-    // Inquiry label in header actions
+    // Inquiry label & Toggle Profile button in header actions
     if (chatHeaderActions) {
       chatHeaderActions.innerHTML = '';
       if (conv.school_id && conv.inquiry_type) {
@@ -454,31 +703,43 @@
           general_inquiry: 'General Inquiry'
         };
         const label = labels[conv.inquiry_type] || 'Inquiry';
-        chatHeaderActions.innerHTML = `<span class="inquiry-badge-tag ${conv.inquiry_type}" style="font-size:0.8rem; padding: 6px 12px; border-radius: var(--radius-sm);">${label}</span>`;
+        const badgeSpan = document.createElement('span');
+        badgeSpan.className = `inquiry-badge-tag ${conv.inquiry_type}`;
+        badgeSpan.style.cssText = 'font-size:0.8rem; padding: 6px 12px; border-radius: var(--radius-sm); margin-top: 0;';
+        badgeSpan.textContent = label;
+        chatHeaderActions.appendChild(badgeSpan);
       }
+
+      // Add collapsible toggle button
+      const toggleProfileBtn = document.createElement('button');
+      toggleProfileBtn.className = 'btn-toggle-profile';
+      toggleProfileBtn.id = 'btn-toggle-profile';
+      toggleProfileBtn.title = 'Recipient Details';
+      toggleProfileBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+      `;
+      chatHeaderActions.appendChild(toggleProfileBtn);
+
+      toggleProfileBtn.addEventListener('click', () => {
+        profilePanelCollapsed = !profilePanelCollapsed;
+        renderProfilePanel(other);
+      });
     }
+
+    // Render/update profile panel
+    renderProfilePanel(other);
 
     // Message Request Bar setup
     if (messageRequestBar) {
       if (conv.status === 'pending') {
-        const isInitiator = conv.initiator_id === currentUser.id;
-        messageRequestBar.style.display = 'block';
-
-        if (isInitiator) {
-          // Sent request
-          if (requestBarText) requestBarText.innerHTML = `⏳ Your connection/message request is pending acceptance by <strong>${other.name}</strong>.`;
-          document.getElementById('btn-accept-request').style.display = 'none';
-          document.getElementById('btn-ignore-request').style.display = 'none';
-          chatMessageInput.disabled = false; // Sender can send multiple messages if they want
-          btnSendMessage.disabled = false;
-        } else {
-          // Received request
-          if (requestBarText) requestBarText.innerHTML = `👋 <strong>${other.name}</strong> sent you a message request. Accept to reply.`;
-          document.getElementById('btn-accept-request').style.display = 'inline-flex';
-          document.getElementById('btn-ignore-request').style.display = 'inline-flex';
-          chatMessageInput.disabled = true; // Block receiver replies until accepted
-          btnSendMessage.disabled = true;
-        }
+        // Pending is now treated exactly like accepted, allowing direct reply and hiding request banner
+        messageRequestBar.style.display = 'none';
+        chatMessageInput.disabled = false;
+        btnSendMessage.disabled = false;
       } else if (conv.status === 'ignored') {
         messageRequestBar.style.display = 'block';
         if (requestBarText) requestBarText.textContent = '🚫 This request has been ignored. You cannot send messages.';
@@ -818,7 +1079,7 @@
             const { data: conv, error: convError } = await sb
               .from('conversations')
               .insert({
-                status: 'pending',
+                status: 'accepted',
                 initiator_id: currentUser.id
               })
               .select()
@@ -848,6 +1109,8 @@
 
             if (msgError) throw msgError;
 
+            console.log('Message created successfully (Scenario A):', { conversation_id: conv.id, sender_id: currentUser.id, receiver_id: newRecipientId, message: messageText });
+
             // Trigger notification
             if (window.CampusLink && window.CampusLink.notifications) {
               try {
@@ -869,7 +1132,7 @@
             delete chatSendForm.dataset.newChatRecipient;
             chatMessageInput.value = '';
             
-            showToast('Message request sent!');
+            showToast('Message sent!');
             activeChatId = conv.id;
             await loadConversations();
             selectConversation(conv.id);
@@ -888,17 +1151,16 @@
               read_status: false
             };
 
+            let notificationRecipientId = null;
+
             if (other.isSchool) {
               msgPayload.receiver_school_id = other.id;
-              // Attempt to fetch the admin user ID of the school if known
-              const schoolPart = activeConv.conversation_participants.find(p => p.school_id === other.id);
-              // Wait, we query conversations, so we can fetch admin_user_id from schools if it wasn't preloaded
-              // or let it be null. But in our db school admin user id is not in participant row, let's keep it null if not known,
-              // or let Supabase trigger handle it, or query schools table. Let's do a quick query to fetch admin_user_id:
+              // Fetch the admin user ID of the school to trigger notifications, but do NOT insert it as receiver_id in messages table
               const { data: sch } = await sb.from('schools').select('admin_user_id').eq('id', other.id).maybeSingle();
-              msgPayload.receiver_id = sch?.admin_user_id || null;
+              notificationRecipientId = sch?.admin_user_id || null;
             } else {
               msgPayload.receiver_id = other.id;
+              notificationRecipientId = other.id;
             }
 
             const { error: msgError } = await sb
@@ -907,11 +1169,13 @@
 
             if (msgError) throw msgError;
 
+            console.log('Message created successfully (Scenario B):', msgPayload);
+
             // Trigger notification
             if (window.CampusLink && window.CampusLink.notifications) {
               try {
                 const senderName = currentUserProfile?.full_name || 'Someone';
-                const recipientId = msgPayload.receiver_id;
+                const recipientId = notificationRecipientId;
                 if (recipientId) {
                   await window.CampusLink.notifications.createNotification(
                     recipientId,
@@ -927,10 +1191,14 @@
               }
             }
 
-            // Update conversations updated_at timestamp to float it to top of sidebar
+            // Update conversations updated_at timestamp and set status to accepted if pending
+            const convUpdateData = { updated_at: new Date().toISOString() };
+            if (activeConv.status === 'pending') {
+              convUpdateData.status = 'accepted';
+            }
             await sb
               .from('conversations')
-              .update({ updated_at: new Date().toISOString() })
+              .update(convUpdateData)
               .eq('id', activeChatId);
 
             chatMessageInput.value = '';

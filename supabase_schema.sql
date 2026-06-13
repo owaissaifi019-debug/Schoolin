@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS schools (
   color_class text DEFAULT 'bg-gradient-1',
   about text,
   events_count integer DEFAULT 0,
+  verification_badge text NOT NULL CHECK (verification_badge IN ('none', 'blue', 'gold')) DEFAULT 'blue',
+  contact_phone text,
   created_at timestamp with time zone DEFAULT now()
 );
 
@@ -709,4 +711,24 @@ DROP TRIGGER IF EXISTS tr_enforce_verification_badge ON public.profiles;
 CREATE TRIGGER tr_enforce_verification_badge
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.enforce_verification_badge_permissions();
+
+-- Function to prevent non-owaissaifi019@gmail.com from changing school verification badges
+CREATE OR REPLACE FUNCTION public.enforce_school_verification_badge_permissions()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.verification_badge IS DISTINCT FROM OLD.verification_badge THEN
+    IF auth.role() = 'authenticated' AND COALESCE(auth.jwt()->>'email', '') <> 'owaissaifi019@gmail.com' THEN
+      RAISE EXCEPTION 'Access Denied: Only owaissaifi019@gmail.com can change school verification badges.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for school verification badge restriction
+DROP TRIGGER IF EXISTS tr_enforce_school_verification_badge ON public.schools;
+CREATE TRIGGER tr_enforce_school_verification_badge
+  BEFORE UPDATE ON public.schools
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_school_verification_badge_permissions();
+
 

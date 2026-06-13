@@ -159,6 +159,13 @@
 
     // 3. Load Profile details
     await loadProfileData(profileId);
+
+    // If query parameters demand edit modal and user is owner
+    if (isOwner && urlParams.get('open_edit') === 'true') {
+      setTimeout(() => {
+        openEditModal();
+      }, 300);
+    }
   }
 
   // --- Load Profile Data ---
@@ -332,6 +339,19 @@
   // --- Render Profile View Mode ---
   function renderProfileView(profile, school, followersCount, isFollowing) {
     const auth = getAuth();
+
+    // 0. Cover photo display
+    const heroBannerEl = document.querySelector('.profile-hero-banner');
+    if (heroBannerEl) {
+      const storedCover = localStorage.getItem(`cover_photo_${profile.id}`);
+      if (storedCover) {
+        heroBannerEl.style.backgroundImage = `url(${storedCover})`;
+        heroBannerEl.style.backgroundSize = 'cover';
+        heroBannerEl.style.backgroundPosition = 'center';
+      } else {
+        heroBannerEl.style.backgroundImage = '';
+      }
+    }
 
     // 1. Profile Avatar & Name
     const nameEl = document.getElementById('profile-full-name');
@@ -1078,6 +1098,16 @@
       avatarInput.addEventListener('change', handleAvatarUpload);
     }
 
+    // Bind cover uploader
+    const coverInput = document.getElementById('cover-upload-input');
+    if (coverInput) {
+      coverInput.addEventListener('change', handleCoverUpload);
+    }
+
+    // Expose edit modal globally so dropdown can open it
+    window.CampusLink = window.CampusLink || {};
+    window.CampusLink.openEditProfileModal = openEditModal;
+
     setupModalControls();
   }
 
@@ -1139,6 +1169,14 @@
         avatarDisplay.style.backgroundPosition = 'center';
       }
 
+      const epmAvatarDisplay = document.getElementById('epm-avatar-display');
+      if (epmAvatarDisplay) {
+        epmAvatarDisplay.innerHTML = '';
+        epmAvatarDisplay.style.backgroundImage = `url(${publicUrl})`;
+        epmAvatarDisplay.style.backgroundSize = 'cover';
+        epmAvatarDisplay.style.backgroundPosition = 'center';
+      }
+
       // Also trigger updating the navigation pill avatar
       const auth = getAuth();
       if (auth) {
@@ -1151,16 +1189,80 @@
     }
   }
 
+  // --- Handle Cover Upload ---
+  async function handleCoverUpload(e) {
+    const sb = getSupabase();
+    if (!sb) return;
+
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Cover image size must be less than 2MB', 'error');
+      return;
+    }
+
+    showToast('Uploading cover photo...', 'info');
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `covers/${profileUser.id}/${fileName}`;
+
+      // Upload cover to Supabase bucket
+      const { error: uploadError } = await sb.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Retrieve public URL
+      const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = urlData?.publicUrl;
+
+      if (!publicUrl) throw new Error('Could not retrieve public URL for uploaded cover photo');
+
+      // Save to localStorage (persistent client-side cover)
+      localStorage.setItem(`cover_photo_${profileUser.id}`, publicUrl);
+
+      showToast('Cover photo updated successfully!');
+
+      // Update UI displays
+      const heroBannerEl = document.querySelector('.profile-hero-banner');
+      if (heroBannerEl) {
+        heroBannerEl.style.backgroundImage = `url(${publicUrl})`;
+        heroBannerEl.style.backgroundSize = 'cover';
+        heroBannerEl.style.backgroundPosition = 'center';
+      }
+
+      const epmBannerEl = document.getElementById('epm-banner-display');
+      if (epmBannerEl) {
+        epmBannerEl.style.backgroundImage = `url(${publicUrl})`;
+        epmBannerEl.style.backgroundSize = 'cover';
+        epmBannerEl.style.backgroundPosition = 'center';
+      }
+
+    } catch (err) {
+      console.error('Cover upload failed:', err);
+      showToast(err.message || 'Cover upload failed. Please try again.', 'error');
+    }
+  }
+
   // --- Modal Open/Close Logic ---
   async function openEditModal() {
     const sb = getSupabase();
+    const auth = getAuth();
     const modal = document.getElementById('edit-profile-modal');
     if (!modal) return;
 
     showToast('Loading settings...', 'info');
 
     try {
-      // 1. Populate schools list (only verified schools or all? We select verified schools first)
+      // 1. Populate schools list
       if (allSchools.length === 0) {
         const { data: schoolsData, error: schoolsError } = await sb
           .from('schools')
@@ -1200,19 +1302,71 @@
       renderAchievementsList();
       renderCertificatesList();
 
+      // 4. Populate profile header in modal
+      const epmAvatar = document.getElementById('epm-avatar-display');
+      const epmName = document.getElementById('epm-header-name');
+      const epmMeta = document.getElementById('epm-header-meta');
+      const epmBanner = document.getElementById('epm-banner-display');
+
+      if (epmBanner) {
+        const storedCover = localStorage.getItem(`cover_photo_${profileUser.id}`);
+        if (storedCover) {
+          epmBanner.style.backgroundImage = `url(${storedCover})`;
+          epmBanner.style.backgroundSize = 'cover';
+          epmBanner.style.backgroundPosition = 'center';
+        } else {
+          epmBanner.style.backgroundImage = '';
+        }
+      }
+
+      if (epmAvatar) {
+        if (profileUser.avatar_url) {
+          epmAvatar.style.backgroundImage = `url(${profileUser.avatar_url})`;
+          epmAvatar.textContent = '';
+        } else {
+          epmAvatar.style.backgroundImage = 'none';
+          epmAvatar.textContent = (profileUser.full_name || '?').charAt(0).toUpperCase();
+        }
+      }
+      if (epmName) epmName.textContent = profileUser.full_name || 'Student';
+      if (epmMeta) {
+        let metaStr = auth ? auth.getUserTypeLabel(profileUser.user_type) : 'Student';
+        const linkedSchool = allSchools.find(s => s.id === profileUser.school_id);
+        if (linkedSchool) metaStr += ` at ${linkedSchool.name}`;
+        epmMeta.textContent = metaStr;
+      }
+
+      // 5. Calculate profile strength
+      updateProfileStrength();
+
       // Reset default tab to basic
-      const firstTabBtn = document.querySelector('.tab-btn[data-tab="tab-basic"]');
+      const firstTabBtn = document.querySelector('.epm-tab[data-tab="tab-basic"]');
       if (firstTabBtn) firstTabBtn.click();
 
       // Display the modal
       modal.classList.add('active');
       modal.style.display = 'flex';
-      document.body.style.overflow = 'hidden'; // block scrolling background
+      document.body.style.overflow = 'hidden';
 
     } catch (err) {
       console.error('Failed to load edit modal settings:', err);
       showToast('Could not open editor: ' + err.message, 'error');
     }
+  }
+
+  function updateProfileStrength() {
+    let filled = 0;
+    const total = 5;
+    if (profileUser.bio && profileUser.bio.trim()) filled++;
+    if (profileUser.school_id) filled++;
+    if (editSkills.length > 0) filled++;
+    if (editAchievements.length > 0) filled++;
+    if (editCertificates.length > 0) filled++;
+    const pct = Math.round((filled / total) * 100);
+    const pctEl = document.getElementById('epm-strength-pct');
+    const fillEl = document.getElementById('epm-strength-fill');
+    if (pctEl) pctEl.textContent = pct + '%';
+    if (fillEl) fillEl.style.width = pct + '%';
   }
 
   function closeEditModal() {
@@ -1242,8 +1396,8 @@
       });
     }
 
-    // Bind tab clicks
-    const tabBtns = document.querySelectorAll('.tab-btn');
+    // Bind tab clicks (new .epm-tab buttons)
+    const tabBtns = document.querySelectorAll('.epm-tab');
     const tabPanes = document.querySelectorAll('.tab-pane');
     tabBtns.forEach(btn => {
       btn.addEventListener('click', () => {

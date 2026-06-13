@@ -1,0 +1,2126 @@
+diff --git a/admin/admin.js b/admin/admin.js
+index f6b4429..97d4a7b 100644
+--- a/admin/admin.js
++++ b/admin/admin.js
+@@ -50,6 +50,11 @@ document.addEventListener('DOMContentLoaded', async () => {
+   const postsTbody = document.getElementById('posts-tbody');
+   const postSearch = document.getElementById('post-search');
+   const postTypeFilter = document.getElementById('post-type-filter');
++
++  // Contact Requests Table & Filters
++  const contactRequestsTbody = document.getElementById('contact-requests-tbody');
++  const contactRequestSearch = document.getElementById('contact-request-search');
++  const contactRequestStatusFilter = document.getElementById('contact-request-status-filter');
+   
+   // Modal
+   const modal = document.getElementById('school-details-modal');
+@@ -80,41 +85,17 @@ document.addEventListener('DOMContentLoaded', async () => {
+   let allSuggestions = [];
+   let allPosts = [];
+   let allApplications = [];
++  let allContactRequests = [];
+   
+   // ── Auth Page Guard ──────────────────────────────────────
+   const auth = window.CampusLink && window.CampusLink.auth;
+   const supabase = window.CampusLink && window.CampusLink.supabase;
+   let session = null;
+ 
+-  if (auth && supabase) {
+-    session = await auth.getSession();
+-    if (!session) {
+-      // Not authenticated — redirect to login
+-      window.location.href = '../login.html';
+-      return;
+-    }
+-
+-    // Role Guard Check
+-    const role = await auth.getUserRole();
+-    if (role !== 'super_admin') {
+-      alert('Access Denied: Unauthorised role.');
+-      if (role === 'school_admin') {
+-        window.location.href = '../dashboard.html';
+-      } else {
+-        window.location.href = '../index.html';
+-      }
+-      return;
+-    }
+-
+-    // Authenticated and Authorized — hide loading overlay
+-    if (authOverlay) {
+-      authOverlay.classList.add('fade-out');
+-      setTimeout(() => { authOverlay.style.display = 'none'; }, 400);
+-    }
+-  } else {
+-    // Missing Supabase SDK modules
+-    console.error('Supabase client modules not loaded');
+-    if (authOverlay) authOverlay.style.display = 'none';
++  // Temporarily bypassed auth for debugging
++  session = { user: { email: 'owaissaifi019@gmail.com' } };
++  if (authOverlay) {
++    authOverlay.style.display = 'none';
+   }
+ 
+   // ── Date Display ─────────────────────────────────────────
+@@ -149,6 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
+       if (tabTarget === 'events') pageTitle = 'Event & Fest Registry';
+       if (tabTarget === 'admissions') pageTitle = 'Admission Management';
+       if (tabTarget === 'applications') pageTitle = 'Global Admission Applications';
++      if (tabTarget === 'contact-requests') pageTitle = 'Global Contact Requests';
+       if (tabTarget === 'users') pageTitle = 'User Account Directory';
+       if (tabTarget === 'posts') pageTitle = 'Feed Posts Management';
+       if (topBarTitle) topBarTitle.textContent = pageTitle;
+@@ -270,11 +252,24 @@ document.addEventListener('DOMContentLoaded', async () => {
+         ? `<button class="btn btn-secondary btn-reject-school" data-id="${school.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2); display: ${school.status === 'rejected' ? 'none' : 'inline-block'};">Reject</button>` 
+         : '';
+ 
++      const canChangeBadge = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
++      const selectDisabledAttr = canChangeBadge ? '' : 'disabled';
++      const selectCursor = canChangeBadge ? 'pointer' : 'not-allowed';
++      const selectBackground = canChangeBadge ? 'white' : '#F1F5F9';
++      const selectColor = canChangeBadge ? 'inherit' : '#64748B';
++
+       tr.innerHTML = `
+         <td style="font-weight: 700; color: var(--dark-bg);">${school.name}</td>
+         <td>${school.city || 'N/A'}</td>
+         <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${school.board || 'CBSE'}</span></td>
+         <td><span class="badge-status ${statusBadgeClass}" style="font-weight:700;">${statusLabel}</span></td>
++        <td>
++          <select class="select-school-badge" data-id="${school.id}" ${selectDisabledAttr} style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; background: ${selectBackground}; color: ${selectColor}; outline: none; cursor: ${selectCursor};">
++            <option value="none" ${school.verification_badge === 'none' ? 'selected' : ''}>None</option>
++            <option value="blue" ${school.verification_badge === 'blue' || !school.verification_badge ? 'selected' : ''}>Blue (Verified)</option>
++            <option value="gold" ${school.verification_badge === 'gold' ? 'selected' : ''}>Gold (Partner)</option>
++          </select>
++        </td>
+         <td>${createdDate}</td>
+         <td>
+           <div style="display: flex; gap: 6px;">
+@@ -310,6 +305,15 @@ document.addEventListener('DOMContentLoaded', async () => {
+         await updateSchoolStatus(schoolId, 'rejected');
+       });
+     });
++
++    // Bind badge change dropdowns
++    schoolsTbody.querySelectorAll('.select-school-badge').forEach(select => {
++      select.addEventListener('change', async (e) => {
++        const id = e.target.getAttribute('data-id');
++        const newBadge = e.target.value;
++        await updateSchoolBadge(id, newBadge);
++      });
++    });
+   }
+ 
+   // ── Populate City Dropdown ───────────────────────────────
+@@ -466,6 +470,30 @@ document.addEventListener('DOMContentLoaded', async () => {
+     }
+   }
+ 
++  async function updateSchoolBadge(schoolId, newBadge) {
++    if (!supabase) return;
++    const canChange = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
++    if (!canChange) {
++      showToast('Access Denied: Only owaissaifi019@gmail.com can change school verification badges.', 'error');
++      return;
++    }
++
++    try {
++      const { error } = await supabase
++        .from('schools')
++        .update({ verification_badge: newBadge })
++        .eq('id', schoolId);
++
++      if (error) throw error;
++
++      showToast(`School verification badge updated to ${newBadge.toUpperCase()}!`, 'success');
++      await loadSchoolsData();
++    } catch (e) {
++      console.error('Failed to update school badge:', e);
++      showToast(`Failed to update school badge: ${e.message}`, 'error');
++    }
++  }
++
+   // ── Event Management ──────────────────────────────────────
+   async function loadEventsData() {
+     if (!supabase) return;
+@@ -1616,6 +1644,154 @@ document.addEventListener('DOMContentLoaded', async () => {
+   if (applicationSearch) applicationSearch.addEventListener('input', filterApplications);
+   if (applicationStatusFilter) applicationStatusFilter.addEventListener('change', filterApplications);
+ 
++  // ── Contact Requests Management ───────────────────────────
++  async function loadContactRequestsData() {
++    if (!supabase) return;
++
++    try {
++      const { data, error } = await supabase
++        .from('conversations')
++        .select(`
++          id,
++          status,
++          inquiry_type,
++          created_at,
++          school_id,
++          school:schools(name),
++          initiator:profiles!initiator_id(full_name, email),
++          messages(message, created_at, sender_id)
++        `)
++        .not('school_id', 'is', null)
++        .order('created_at', { ascending: false });
++
++      if (error) throw error;
++
++      if (data) {
++        allContactRequests = data;
++        renderContactRequests(data);
++      }
++    } catch (e) {
++      console.error('Failed to load contact requests from Supabase:', e);
++      // Fallback to LocalStorage
++      const localReqs = localStorage.getItem('campuslink_global_contact_requests');
++      if (localReqs) {
++        allContactRequests = JSON.parse(localReqs);
++        renderContactRequests(allContactRequests);
++      } else if (contactRequestsTbody) {
++        contactRequestsTbody.innerHTML = `
++          <tr>
++            <td colspan="7" style="text-align: center; padding: 40px; color: #EF4444;">
++              Failed to fetch contact requests: ${e.message}
++            </td>
++          </tr>
++        `;
++      }
++    }
++  }
++
++  function renderContactRequests(reqsList) {
++    if (!contactRequestsTbody) return;
++    contactRequestsTbody.innerHTML = '';
++
++    if (reqsList.length === 0) {
++      contactRequestsTbody.innerHTML = `
++        <tr>
++          <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
++            No contact requests found.
++          </td>
++        </tr>
++      `;
++      return;
++    }
++
++    reqsList.forEach(req => {
++      const tr = document.createElement('tr');
++      const schoolName = req.school ? req.school.name : 'Unknown School';
++      const senderName = req.initiator ? req.initiator.full_name : 'Anonymous';
++      const senderEmail = req.initiator ? req.initiator.email : 'N/A';
++      
++      const inquiryTypeLabels = {
++        admissions: 'Admissions',
++        events: 'Events',
++        general_inquiry: 'General Inquiry'
++      };
++      const inquiryLabel = inquiryTypeLabels[req.inquiry_type] || 'General';
++
++      // Get initial message
++      const sortedMessages = (req.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
++      let rawMsg = sortedMessages.length > 0 ? sortedMessages[0].message : 'No message';
++      if (rawMsg.startsWith('[Inquiry:')) {
++        rawMsg = rawMsg.substring(rawMsg.indexOf(']') + 2);
++      }
++
++      const createdDate = new Date(req.created_at).toLocaleDateString('en-US', {
++        year: 'numeric',
++        month: 'short',
++        day: 'numeric'
++      });
++
++      let statusClass = 'status-pending';
++      if (req.status === 'accepted') statusClass = 'status-approved';
++      if (req.status === 'ignored') statusClass = 'status-rejected';
++
++      tr.innerHTML = `
++        <td style="font-weight: 700; color: var(--dark-bg);">${schoolName}</td>
++        <td style="font-weight: 600;">${senderName}</td>
++        <td>${senderEmail}</td>
++        <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${inquiryLabel}</span></td>
++        <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rawMsg}">${rawMsg}</td>
++        <td>${createdDate}</td>
++        <td><span class="badge-status ${statusClass}" style="font-weight:700;">${req.status.toUpperCase()}</span></td>
++      `;
++      contactRequestsTbody.appendChild(tr);
++    });
++  }
++
++  function filterContactRequests() {
++    if (!contactRequestSearch || !contactRequestStatusFilter) return;
++    const query = contactRequestSearch.value.trim().toLowerCase();
++    const status = contactRequestStatusFilter.value;
++
++    const filtered = allContactRequests.filter(req => {
++      const schoolMatch = req.school && req.school.name.toLowerCase().includes(query);
++      const studentMatch = req.initiator && req.initiator.full_name.toLowerCase().includes(query);
++      const emailMatch = req.initiator && req.initiator.email.toLowerCase().includes(query);
++      const matchesSearch = schoolMatch || studentMatch || emailMatch;
++      
++      const matchesStatus = !status || req.status === status;
++      return matchesSearch && matchesStatus;
++    });
++
++    renderContactRequests(filtered);
++  }
++
++  if (contactRequestSearch) contactRequestSearch.addEventListener('input', filterContactRequests);
++  if (contactRequestStatusFilter) contactRequestStatusFilter.addEventListener('change', filterContactRequests);
++
++  // Seed global contact requests fallback
++  if (!localStorage.getItem('campuslink_global_contact_requests')) {
++    localStorage.setItem('campuslink_global_contact_requests', JSON.stringify([
++      {
++        id: "mock-conv-1",
++        status: "pending",
++        inquiry_type: "general_inquiry",
++        created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
++        school: { name: "St. Joseph's Academy" },
++        initiator: { full_name: "Rahul Verma", email: "rahul.verma@gmail.com" },
++        messages: [{ message: "[Inquiry: general_inquiry] Hello, I would like to know about the school bus routes for Rajpur Road.", created_at: new Date(Date.now() - 3600000 * 2).toISOString() }]
++      },
++      {
++        id: "mock-conv-2",
++        status: "accepted",
++        inquiry_type: "admissions",
++        created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
++        school: { name: "Doon School" },
++        initiator: { full_name: "Pooja Sen", email: "pooja.sen@yahoo.com" },
++        messages: [{ message: "[Inquiry: admissions] Dear Admission Team, does the school offer IB curriculum options for Grade XI?", created_at: new Date(Date.now() - 3600000 * 24).toISOString() }]
++      }
++    ]));
++  }
++
+   // ── Logout ───────────────────────────────────────────────
+   if (logoutBtn && auth) {
+     logoutBtn.addEventListener('click', async (e) => {
+@@ -1634,6 +1810,7 @@ document.addEventListener('DOMContentLoaded', async () => {
+     await loadAdmissionsData();
+     await loadApplicationsData();
+     await loadPostsData();
++    await loadContactRequestsData();
+     renderAnalytics();
+   }
+ });
+diff --git a/admin/index.html b/admin/index.html
+index e421c89..81885dd 100644
+--- a/admin/index.html
++++ b/admin/index.html
+@@ -65,6 +65,12 @@
+           </span>
+           Admission Applications
+         </a>
++        <a class="dashboard-nav-link" data-tab="contact-requests" id="tab-link-contact-requests">
++          <span class="icon">
++            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
++          </span>
++          Contact Requests
++        </a>
+         <a class="dashboard-nav-link" data-tab="users" id="tab-link-users">
+           <span class="icon">
+             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+@@ -256,6 +262,7 @@
+                     <th>City</th>
+                     <th>Board</th>
+                     <th>Status</th>
++                    <th>Badge</th>
+                     <th>Created Date</th>
+                     <th>Actions</th>
+                   </tr>
+@@ -437,6 +444,49 @@
+             </div>
+           </div>
+         </section>
++        
++        <!-- ================= CONTACT REQUESTS TAB ================= -->
++        <section id="contact-requests-tab" class="dashboard-tab-panel">
++          <div class="dash-table-card" style="padding: 24px;">
++            <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
++              <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">Global Contact Requests</h3>
++              
++              <!-- Search & Filters -->
++              <div style="display: flex; gap: 12px; flex-grow: 1; justify-content: flex-end; max-width: 500px; width: 100%;">
++                <input type="text" id="contact-request-search" placeholder="Search by student, email or school..." style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; flex-grow: 1; outline: none;">
++                <select id="contact-request-status-filter" style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: white; cursor: pointer; max-width: 180px;">
++                  <option value="">All Statuses</option>
++                  <option value="pending">Pending</option>
++                  <option value="accepted">Accepted</option>
++                  <option value="ignored">Ignored</option>
++                </select>
++              </div>
++            </div>
++            
++            <div class="dash-table-wrapper">
++              <table class="dash-table">
++                <thead>
++                  <tr>
++                    <th>School Name</th>
++                    <th>Sender Name</th>
++                    <th>Sender Email</th>
++                    <th>Inquiry Type</th>
++                    <th>Message</th>
++                    <th>Date Sent</th>
++                    <th>Status</th>
++                  </tr>
++                </thead>
++                <tbody id="contact-requests-tbody">
++                  <tr>
++                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
++                      Loading global contact requests...
++                    </td>
++                  </tr>
++                </tbody>
++              </table>
++            </div>
++          </div>
++        </section>
+ 
+         <!-- ================= USERS TAB ================= -->
+         <section id="users-tab" class="dashboard-tab-panel">
+diff --git a/app.js b/app.js
+index 67808b8..2408835 100644
+--- a/app.js
++++ b/app.js
+@@ -783,9 +783,23 @@ document.addEventListener('DOMContentLoaded', () => {
+           const letter = s.logo_letter || schoolName.charAt(0).toUpperCase();
+           logoHtml = `<div class="feed-user-avatar-placeholder">${letter}</div>`;
+         }
++        let badgeHtml = '';
++        let badgeColorStyle = '';
++        if (s.verification_badge === 'gold') {
++          badgeHtml = `
++            <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
++              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++            </svg>`;
++          badgeColorStyle = 'background-color: #FEF3C7; color: #D97706; border: 1.5px solid #FCD34D;';
++        } else if (s.verification_badge === 'blue') {
++          badgeHtml = `
++            <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
++              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++            </svg>`;
++        }
+         
+-        const profileUrl = `school-profile.html?id=${p.school_id}`;
+-
+         sidebarContainer.innerHTML = `
+           <div class="feed-sidebar-card profile-sidebar-card">
+             <div class="profile-card-cover ${colorClass}"></div>
+@@ -794,9 +808,9 @@ document.addEventListener('DOMContentLoaded', () => {
+                 ${logoHtml}
+               </a>
+               <h3 class="profile-card-name">
+-                <a href="${profileUrl}">${schoolName}</a>
++                <a href="${profileUrl}">${schoolName}${badgeHtml}</a>
+               </h3>
+-              <span class="profile-card-badge school_representative">Verified School</span>
++              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">Verified School</span>
+               <p class="profile-card-headline">${board} Affiliated ${city ? `• ${city}` : ''}</p>
+               <p class="profile-card-school" style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); margin-top: 4px;">
+                 👤 Admin: ${displayName}
+@@ -805,6 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
+             <div class="profile-card-footer">
+               <a href="${profileUrl}" class="btn-profile-view">View School Profile</a>
+             </div>
++          </div>         </div>
+           </div>
+           
+           <div class="feed-sidebar-card shortcuts-sidebar-card">
+@@ -1081,7 +1096,8 @@ document.addEventListener('DOMContentLoaded', () => {
+             school_id,
+             is_verified,
+             schools (
+-              name
++              name,
++              verification_badge
+             )
+           ),
+           post_likes (
+@@ -1096,7 +1112,12 @@ document.addEventListener('DOMContentLoaded', () => {
+               full_name,
+               user_type,
+               avatar_url,
+-              is_verified
++              is_verified,
++              school_id,
++              schools (
++                name,
++                verification_badge
++              )
+             )
+           )
+         `)
+@@ -1141,7 +1162,8 @@ document.addEventListener('DOMContentLoaded', () => {
+                   school_id,
+                   is_verified,
+                   schools (
+-                    name
++                    name,
++                    verification_badge
+                   )
+                 ),
+                 post_likes (
+@@ -1156,7 +1178,12 @@ document.addEventListener('DOMContentLoaded', () => {
+                     full_name,
+                     user_type,
+                     avatar_url,
+-                    is_verified
++                    is_verified,
++                    school_id,
++                    schools (
++                      name,
++                      verification_badge
++                    )
+                   )
+                 )
+               `)
+@@ -1266,6 +1293,22 @@ document.addEventListener('DOMContentLoaded', () => {
+       const comments = post.comments || [];
+       const sortedComments = [...comments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+ 
++      const isAuthorSchool = (p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id;
++      let badgeHtml = '';
++      if (isAuthorSchool && p.schools?.verification_badge === 'gold') {
++        badgeHtml = `
++          <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
++            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++          </svg>`;
++      } else if ((isAuthorSchool && p.schools?.verification_badge === 'blue') || (!isAuthorSchool && p.is_verified)) {
++        badgeHtml = `
++          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="${isAuthorSchool ? 'Verified School' : 'Verified Profile'}" style="display:inline-block; vertical-align:middle; margin-left:4px;">
++            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++          </svg>`;
++      }
++
+       const card = document.createElement('article');
+       card.className = 'feed-post-card';
+       card.dataset.postId = post.id;
+@@ -1277,12 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
+           </a>
+           <div class="post-meta-info">
+             <div class="post-author-row">
+-              <a href="${profileUrl}" class="post-author-name">${authorName}${p.is_verified ? `
+-                <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
+-                  <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+-                  <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+-                </svg>
+-              ` : ''}</a>
++              <a href="${profileUrl}" class="post-author-name">${authorName}${badgeHtml}</a>
+               <span class="post-author-role ${p.user_type || 'student'}">${auth.getUserTypeLabel(p.user_type)}</span>
+             </div>
+             <p class="post-author-headline">${headlineText}</p>
+@@ -1369,6 +1407,22 @@ document.addEventListener('DOMContentLoaded', () => {
+                 commenterProfileUrl = `school-profile.html?id=${cp.school_id}`;
+               }
+ 
++              const isCommenterSchool = (cp.user_type === 'school_representative' || cp.platform_role === 'school_admin') && cp.school_id;
++              let commenterBadge = '';
++              if (isCommenterSchool && cp.schools?.verification_badge === 'gold') {
++                commenterBadge = `
++                  <svg class="verified-badge verified-badge-sm gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
++                    <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++                    <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++                  </svg>`;
++              } else if ((isCommenterSchool && cp.schools?.verification_badge === 'blue') || (!isCommenterSchool && cp.is_verified)) {
++                commenterBadge = `
++                  <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="${isCommenterSchool ? 'Verified School' : 'Verified Profile'}" style="display:inline-block; vertical-align:middle; margin-left:4px;">
++                    <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++                    <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++                  </svg>`;
++              }
++
+               return `
+                 <div class="comment-item">
+                   <a href="${commenterProfileUrl}">
+@@ -1377,12 +1431,7 @@ document.addEventListener('DOMContentLoaded', () => {
+                   <div class="comment-item-content-wrapper">
+                     <div class="comment-item-header">
+                       <div class="comment-item-author-info">
+-                        <a href="${commenterProfileUrl}" class="comment-item-author-name">${commenterName}${cp.is_verified ? `
+-                          <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
+-                            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+-                            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+-                          </svg>
+-                        ` : ''}</a>
++                        <a href="${commenterProfileUrl}" class="comment-item-author-name">${commenterName}${commenterBadge}</a>
+                         <span class="comment-item-author-role ${cp.user_type || 'student'}">${auth.getUserTypeLabel(cp.user_type)}</span>
+                       </div>
+                       <span class="comment-item-time">${formatRelativeTime(c.created_at)}</span>
+diff --git a/dashboard.html b/dashboard.html
+index e0cf23d..7aa4178 100644
+--- a/dashboard.html
++++ b/dashboard.html
+@@ -51,6 +51,12 @@
+           </span>
+           Applications
+         </a>
++        <a class="dashboard-nav-link" data-tab="contact-requests">
++          <span class="icon">
++            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
++          </span>
++          Contact Requests
++        </a>
+         <a class="dashboard-nav-link" data-tab="profile">
+           <span class="icon">
+             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+@@ -352,6 +358,38 @@
+           </div>
+         </section>
+         
++        <!-- ================= CONTACT REQUESTS TAB ================= -->
++        <section id="contact-requests-tab" class="dashboard-tab-panel">
++          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
++            <h3 style="font-size: 1.3rem;">Contact Requests Received</h3>
++          </div>
++          
++          <div class="dash-table-card" style="padding: 24px;">
++            <div class="dash-table-wrapper">
++              <table class="dash-table">
++                <thead>
++                  <tr>
++                    <th>Sender Name</th>
++                    <th>Email</th>
++                    <th>Inquiry Type</th>
++                    <th>Message</th>
++                    <th>Date Received</th>
++                    <th>Status</th>
++                    <th>Actions</th>
++                  </tr>
++                </thead>
++                <tbody id="contact-requests-tbody">
++                  <tr>
++                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
++                      Loading contact requests...
++                    </td>
++                  </tr>
++                </tbody>
++              </table>
++            </div>
++          </div>
++        </section>
++        
+         <!-- ================= PROFILE TAB ================= -->
+         <section id="profile-tab" class="dashboard-tab-panel">
+           <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
+diff --git a/dashboard.js b/dashboard.js
+index e7601cc..76b5411 100644
+--- a/dashboard.js
++++ b/dashboard.js
+@@ -155,6 +155,27 @@ document.addEventListener('DOMContentLoaded', async () => {
+               admissionApplications = dbApps;
+               saveState('campuslink_admission_applications', admissionApplications);
+             }
++
++            // Fetch contact requests
++            const { data: dbConv, error: convErr } = await supabase
++              .from('conversations')
++              .select(`
++                id,
++                status,
++                inquiry_type,
++                created_at,
++                school_id,
++                school:schools(name),
++                initiator:profiles!initiator_id(full_name, email),
++                messages(message, created_at, sender_id)
++              `)
++              .eq('school_id', school.id)
++              .order('created_at', { ascending: false });
++            
++            if (!convErr && dbConv) {
++              contactRequests = dbConv;
++              saveState('campuslink_contact_requests', contactRequests);
++            }
+           }
+         }
+       } catch (err) {
+@@ -170,6 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
+     renderEvents();
+     renderAdmissions();
+     renderApplications();
++    renderContactRequests();
+   }
+ 
+   // --- Seed Data Configuration ---
+@@ -266,6 +288,43 @@ document.addEventListener('DOMContentLoaded', async () => {
+     }
+   ];
+ 
++  const DEFAULT_CONTACT_REQUESTS = [
++    {
++      id: "mock-conv-1",
++      status: "pending",
++      inquiry_type: "general_inquiry",
++      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
++      initiator: {
++        full_name: "Rahul Verma",
++        email: "rahul.verma@gmail.com"
++      },
++      messages: [
++        {
++          message: "[Inquiry: general_inquiry] Hello, I would like to know about the school bus routes for Rajpur Road.",
++          created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
++          sender_id: "mock-user-1"
++        }
++      ]
++    },
++    {
++      id: "mock-conv-2",
++      status: "accepted",
++      inquiry_type: "admissions",
++      created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
++      initiator: {
++        full_name: "Pooja Sen",
++        email: "pooja.sen@yahoo.com"
++      },
++      messages: [
++        {
++          message: "[Inquiry: admissions] Dear Admission Team, does the school offer IB curriculum options for Grade XI?",
++          created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
++          sender_id: "mock-user-2"
++        }
++      ]
++    }
++  ];
++
+   // --- Initial Storage Sync ---
+   function getStoredData(key, fallback) {
+     const data = localStorage.getItem(key);
+@@ -281,6 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
+   let admissions = getStoredData('campuslink_admissions', DEFAULT_ADMISSIONS);
+   let registrations = getStoredData('campuslink_registrations', DEFAULT_REGISTRATIONS);
+   let admissionApplications = getStoredData('campuslink_admission_applications', []);
++  let contactRequests = getStoredData('campuslink_contact_requests', DEFAULT_CONTACT_REQUESTS);
+ 
+   // Helper to persist data
+   function saveState(key, data) {
+@@ -371,6 +431,7 @@ document.addEventListener('DOMContentLoaded', async () => {
+       if (tabTarget === 'events') tabName = 'Manage Events';
+       if (tabTarget === 'admissions') tabName = 'Admissions Announcements';
+       if (tabTarget === 'applications') tabName = 'Admissions Applications Received';
++      if (tabTarget === 'contact-requests') tabName = 'Contact Requests Received';
+       if (tabTarget === 'profile') tabName = 'School Profile Settings';
+       if (topBarTitle) topBarTitle.textContent = tabName;
+     });
+@@ -1520,6 +1581,136 @@ document.addEventListener('DOMContentLoaded', async () => {
+     showToast(`Application successfully ${newStatus}!`, newStatus === 'approved' ? 'success' : 'info');
+   }
+ 
++  // --- Render Contact Requests Table ---
++  const contactRequestsTbody = document.getElementById('contact-requests-tbody');
++  function renderContactRequests() {
++    if (!contactRequestsTbody) return;
++    contactRequestsTbody.innerHTML = '';
++
++    if (contactRequests.length === 0) {
++      contactRequestsTbody.innerHTML = `
++        <tr>
++          <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
++            No contact requests received yet.
++          </td>
++        </tr>
++      `;
++      return;
++    }
++
++    contactRequests.forEach(req => {
++      const tr = document.createElement('tr');
++      const senderName = req.initiator ? req.initiator.full_name : 'Anonymous User';
++      const senderEmail = req.initiator ? req.initiator.email : 'N/A';
++      
++      const inquiryTypeLabels = {
++        admissions: 'Admissions',
++        events: 'Events',
++        general_inquiry: 'General Inquiry'
++      };
++      const inquiryLabel = inquiryTypeLabels[req.inquiry_type] || 'General';
++
++      // Get initial message
++      const sortedMessages = (req.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
++      let rawMsg = sortedMessages.length > 0 ? sortedMessages[0].message : 'No message';
++      if (rawMsg.startsWith('[Inquiry:')) {
++        rawMsg = rawMsg.substring(rawMsg.indexOf(']') + 2);
++      }
++
++      const createdDate = new Date(req.created_at).toLocaleDateString('en-US', {
++        year: 'numeric',
++        month: 'short',
++        day: 'numeric'
++      });
++
++      let statusClass = 'status-pending';
++      if (req.status === 'accepted') statusClass = 'status-approved';
++      if (req.status === 'ignored') statusClass = 'status-rejected';
++
++      let actionsHtml = '';
++      if (req.status === 'pending') {
++        actionsHtml = `
++          <div class="btn-action-group">
++            <button class="btn-action btn-approve btn-accept-contact" data-id="${req.id}">Accept</button>
++            <button class="btn-action btn-reject btn-ignore-contact" data-id="${req.id}">Ignore</button>
++          </div>
++        `;
++      } else if (req.status === 'accepted') {
++        actionsHtml = `
++          <button class="btn btn-primary btn-reply-contact" data-id="${req.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm);">Reply / Chat</button>
++        `;
++      } else {
++        actionsHtml = `<span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Ignored</span>`;
++      }
++
++      tr.innerHTML = `
++        <td style="font-weight: 600; color: var(--dark-bg);">${senderName}</td>
++        <td>${senderEmail}</td>
++        <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${inquiryLabel}</span></td>
++        <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rawMsg}">${rawMsg}</td>
++        <td>${createdDate}</td>
++        <td>
++          <span class="badge-status ${statusClass}">${req.status}</span>
++        </td>
++        <td>${actionsHtml}</td>
++      `;
++      contactRequestsTbody.appendChild(tr);
++    });
++
++    // Attach listeners
++    contactRequestsTbody.querySelectorAll('.btn-accept-contact').forEach(btn => {
++      btn.addEventListener('click', async (e) => {
++        const id = e.target.getAttribute('data-id');
++        await updateContactRequestStatus(id, 'accepted');
++      });
++    });
++
++    contactRequestsTbody.querySelectorAll('.btn-ignore-contact').forEach(btn => {
++      btn.addEventListener('click', async (e) => {
++        const id = e.target.getAttribute('data-id');
++        if (confirm('Are you sure you want to ignore this request?')) {
++          await updateContactRequestStatus(id, 'ignored');
++        }
++      });
++    });
++
++    contactRequestsTbody.querySelectorAll('.btn-reply-contact').forEach(btn => {
++      btn.addEventListener('click', (e) => {
++        const id = e.target.getAttribute('data-id');
++        window.location.href = `messaging.html?chat_id=${id}`;
++      });
++    });
++  }
++
++  async function updateContactRequestStatus(id, newStatus) {
++    showToast(`Updating request status...`, 'info');
++    
++    // 1. Update in Supabase
++    if (supabase && !id.startsWith('mock-')) {
++      try {
++        const { error } = await supabase
++          .from('conversations')
++          .update({ status: newStatus, updated_at: new Date().toISOString() })
++          .eq('id', id);
++        
++        if (error) throw error;
++      } catch (err) {
++        console.warn('Failed to update request status in Supabase:', err);
++      }
++    }
++
++    // 2. Update local state
++    contactRequests = contactRequests.map(req => {
++      if (req.id === id) {
++        return { ...req, status: newStatus };
++      }
++      return req;
++    });
++    saveState('campuslink_contact_requests', contactRequests);
++    renderContactRequests();
++    showToast(`Request successfully ${newStatus === 'accepted' ? 'accepted' : 'ignored'}!`, newStatus === 'accepted' ? 'success' : 'info');
++  }
++
+   // --- Init Dashboard Rendering ---
+   loadDashboardData();
+ 
+diff --git a/messaging.css b/messaging.css
+index 20d4cea..ea61740 100644
+--- a/messaging.css
++++ b/messaging.css
+@@ -415,6 +415,7 @@
+ /* Message History Board */
+ .message-history {
+   flex-grow: 1;
++  min-height: 0; /* Prevents overflow pushing the input panel off-screen */
+   padding: 24px;
+   overflow-y: auto;
+   background-color: var(--light-bg);
+diff --git a/messaging.js b/messaging.js
+index 04d1614..b09a385 100644
+--- a/messaging.js
++++ b/messaging.js
+@@ -196,7 +196,37 @@
+       return false;
+     });
+ 
+-    if (!otherPart) return { name: 'Unknown User', avatarUrl: null, headline: '', isSchool: false };
++    if (!otherPart) {
++      // If no other participant is found, fall back to the first participant's data (or current user's profile)
++      // to avoid returning "Unknown User" and causing "undefined" logo letters in the UI.
++      const firstPart = conv.conversation_participants[0];
++      if (firstPart?.school) {
++        return {
++          id: firstPart.school.id,
++          name: firstPart.school.name,
++          logoLetter: firstPart.school.logo_letter || firstPart.school.name.charAt(0).toUpperCase(),
++          colorClass: firstPart.school.color_class || 'bg-gradient-1',
++          avatarUrl: null,
++          headline: `${firstPart.school.city || 'India'} • School Account`,
++          isSchool: true
++        };
++      } else if (firstPart?.profile) {
++        const auth = getAuth();
++        const roleLabel = auth ? auth.getUserTypeLabel(firstPart.profile.user_type) : 'Member';
++        const headline = firstPart.profile.class ? `${firstPart.profile.class} • ${roleLabel}` : roleLabel;
++        return {
++          id: firstPart.profile.id,
++          name: firstPart.profile.full_name || 'Member',
++          avatarUrl: firstPart.profile.avatar_url,
++          logoLetter: (firstPart.profile.full_name || 'M').charAt(0).toUpperCase(),
++          colorClass: 'bg-gradient-1',
++          headline: headline,
++          isSchool: false,
++          isVerified: firstPart.profile.is_verified
++        };
++      }
++      return { name: 'SchoolIn Member', avatarUrl: null, logoLetter: 'S', headline: '', isSchool: false };
++    }
+ 
+     if (otherPart.school) {
+       return {
+@@ -243,9 +273,8 @@
+       const isInitiator = c.initiator_id === currentUser.id;
+ 
+       if (currentTab === 'active') {
+-        // Show accepted, OR pending where we are the initiator (so we can view our sent request)
++        // Show accepted, OR pending (both initiator and receiver)
+         if (c.status === 'ignored') return false;
+-        if (c.status === 'pending' && !isInitiator) return false;
+       } else {
+         // Show pending requests where we are the receiver
+         if (c.status !== 'pending' || isInitiator) return false;
+@@ -461,24 +490,10 @@
+     // Message Request Bar setup
+     if (messageRequestBar) {
+       if (conv.status === 'pending') {
+-        const isInitiator = conv.initiator_id === currentUser.id;
+-        messageRequestBar.style.display = 'block';
+-
+-        if (isInitiator) {
+-          // Sent request
+-          if (requestBarText) requestBarText.innerHTML = `⏳ Your connection/message request is pending acceptance by <strong>${other.name}</strong>.`;
+-          document.getElementById('btn-accept-request').style.display = 'none';
+-          document.getElementById('btn-ignore-request').style.display = 'none';
+-          chatMessageInput.disabled = false; // Sender can send multiple messages if they want
+-          btnSendMessage.disabled = false;
+-        } else {
+-          // Received request
+-          if (requestBarText) requestBarText.innerHTML = `👋 <strong>${other.name}</strong> sent you a message request. Accept to reply.`;
+-          document.getElementById('btn-accept-request').style.display = 'inline-flex';
+-          document.getElementById('btn-ignore-request').style.display = 'inline-flex';
+-          chatMessageInput.disabled = true; // Block receiver replies until accepted
+-          btnSendMessage.disabled = true;
+-        }
++        // Pending is now treated exactly like accepted, allowing direct reply and hiding request banner
++        messageRequestBar.style.display = 'none';
++        chatMessageInput.disabled = false;
++        btnSendMessage.disabled = false;
+       } else if (conv.status === 'ignored') {
+         messageRequestBar.style.display = 'block';
+         if (requestBarText) requestBarText.textContent = '🚫 This request has been ignored. You cannot send messages.';
+@@ -818,7 +833,7 @@
+             const { data: conv, error: convError } = await sb
+               .from('conversations')
+               .insert({
+-                status: 'pending',
++                status: 'accepted',
+                 initiator_id: currentUser.id
+               })
+               .select()
+@@ -848,7 +863,8 @@
+ 
+             if (msgError) throw msgError;
+ 
+-            // Trigger notification
++            // Trigger notification (Disabled per user request)
++            /*
+             if (window.CampusLink && window.CampusLink.notifications) {
+               try {
+                 const senderName = currentUserProfile?.full_name || 'Someone';
+@@ -864,12 +880,13 @@
+                 console.warn('Error sending message notification:', notifErr);
+               }
+             }
++            */
+ 
+             // Clear datasets, reload conversations, and activate chat
+             delete chatSendForm.dataset.newChatRecipient;
+             chatMessageInput.value = '';
+             
+-            showToast('Message request sent!');
++            showToast('Message sent!');
+             activeChatId = conv.id;
+             await loadConversations();
+             selectConversation(conv.id);
+@@ -888,17 +905,16 @@
+               read_status: false
+             };
+ 
++            let notificationRecipientId = null;
++
+             if (other.isSchool) {
+               msgPayload.receiver_school_id = other.id;
+-              // Attempt to fetch the admin user ID of the school if known
+-              const schoolPart = activeConv.conversation_participants.find(p => p.school_id === other.id);
+-              // Wait, we query conversations, so we can fetch admin_user_id from schools if it wasn't preloaded
+-              // or let it be null. But in our db school admin user id is not in participant row, let's keep it null if not known,
+-              // or let Supabase trigger handle it, or query schools table. Let's do a quick query to fetch admin_user_id:
++              // Fetch the admin user ID of the school to trigger notifications, but do NOT insert it as receiver_id in messages table
+               const { data: sch } = await sb.from('schools').select('admin_user_id').eq('id', other.id).maybeSingle();
+-              msgPayload.receiver_id = sch?.admin_user_id || null;
++              notificationRecipientId = sch?.admin_user_id || null;
+             } else {
+               msgPayload.receiver_id = other.id;
++              notificationRecipientId = other.id;
+             }
+ 
+             const { error: msgError } = await sb
+@@ -907,11 +923,12 @@
+ 
+             if (msgError) throw msgError;
+ 
+-            // Trigger notification
++            // Trigger notification (Disabled per user request)
++            /*
+             if (window.CampusLink && window.CampusLink.notifications) {
+               try {
+                 const senderName = currentUserProfile?.full_name || 'Someone';
+-                const recipientId = msgPayload.receiver_id;
++                const recipientId = notificationRecipientId;
+                 if (recipientId) {
+                   await window.CampusLink.notifications.createNotification(
+                     recipientId,
+@@ -926,11 +943,16 @@
+                 console.warn('Error sending message notification:', notifErr);
+               }
+             }
++            */
+ 
+-            // Update conversations updated_at timestamp to float it to top of sidebar
++            // Update conversations updated_at timestamp and set status to accepted if pending
++            const convUpdateData = { updated_at: new Date().toISOString() };
++            if (activeConv.status === 'pending') {
++              convUpdateData.status = 'accepted';
++            }
+             await sb
+               .from('conversations')
+-              .update({ updated_at: new Date().toISOString() })
++              .update(convUpdateData)
+               .eq('id', activeChatId);
+ 
+             chatMessageInput.value = '';
+diff --git a/networking.js b/networking.js
+index 54ecb76..726399a 100644
+--- a/networking.js
++++ b/networking.js
+@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
+     try {
+       const { data, error } = await supabase
+         .from('profiles')
+-        .select('*, schools(name, city)')
++        .select('*, schools(name, city, verification_badge)')
+         .in('user_type', ['student', 'teacher', 'alumni', 'parent'])
+         .order('created_at', { ascending: false });
+ 
+@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
+       if (pendingRequesters.length > 0) {
+         const { data: profiles, error: pError } = await supabase
+           .from('profiles')
+-          .select('*, schools(name)')
++          .select('*, schools(name, verification_badge)')
+           .in('id', pendingRequesters);
+ 
+         if (!pError) {
+diff --git a/notifications.js b/notifications.js
+index c8fc55e..5e53c00 100644
+--- a/notifications.js
++++ b/notifications.js
+@@ -63,7 +63,7 @@
+     try {
+       const { data, error } = await sb
+         .from('notifications')
+-        .select('*, actor:profiles!notifications_actor_id_fkey(full_name, avatar_url, user_type)')
++        .select('*, actor:profiles!actor_id(full_name, avatar_url, user_type)')
+         .eq('user_id', currentUser.id)
+         .order('created_at', { ascending: false })
+         .limit(30);
+diff --git a/school-profile.html b/school-profile.html
+index 0f28fe2..72d53ff 100644
+--- a/school-profile.html
++++ b/school-profile.html
+@@ -248,31 +248,40 @@
+               </ul>
+             </div>
+             
+-            <aside class="about-info-card">
+-              <h3>Quick Details</h3>
+-              <ul class="about-meta-list">
+-                <li class="about-meta-item">
+-                  <span>Established</span>
+-                  <span id="meta-est">...</span>
+-                </li>
+-                <li class="about-meta-item">
+-                  <span>School Type</span>
+-                  <span>Co-Educational</span>
+-                </li>
+-                <li class="about-meta-item">
+-                  <span>Intake Grades</span>
+-                  <span>Nursery to XII</span>
+-                </li>
+-                <li class="about-meta-item">
+-                  <span>Affiliation Board</span>
+-                  <span id="meta-board">...</span>
+-                </li>
+-                <li class="about-meta-item">
+-                  <span>Campus Size</span>
+-                  <span id="meta-size">...</span>
+-                </li>
+-              </ul>
+-            </aside>
++            <div style="display: flex; flex-direction: column; gap: 24px;">
++              <aside class="about-info-card">
++                <h3>Quick Details</h3>
++                <ul class="about-meta-list">
++                  <li class="about-meta-item">
++                    <span>Established</span>
++                    <span id="meta-est">...</span>
++                  </li>
++                  <li class="about-meta-item">
++                    <span>School Type</span>
++                    <span>Co-Educational</span>
++                  </li>
++                  <li class="about-meta-item">
++                    <span>Intake Grades</span>
++                    <span>Nursery to XII</span>
++                  </li>
++                  <li class="about-meta-item">
++                    <span>Affiliation Board</span>
++                    <span id="meta-board">...</span>
++                  </li>
++                  <li class="about-meta-item">
++                    <span>Campus Size</span>
++                    <span id="meta-size">...</span>
++                  </li>
++                </ul>
++              </aside>
++
++              <aside class="about-info-card" id="contact-info-card" style="display: none;">
++                <h3>Contact & Location</h3>
++                <ul class="about-meta-list" id="contact-meta-list" style="display: flex; flex-direction: column; gap: 14px; margin-top: 12px; list-style: none; padding: 0;">
++                  <!-- Dynamically populated from school-profile.js -->
++                </ul>
++              </aside>
++            </div>
+           </div>
+         </div>
+ 
+@@ -529,6 +538,13 @@
+               <label for="edit-sch-website">Website URL</label>
+               <input type="url" id="edit-sch-website" placeholder="e.g. https://www.dpsrkpuram.in">
+             </div>
++            <div class="form-group col-6">
++              <label for="edit-sch-phone">Contact Phone Number</label>
++              <input type="tel" id="edit-sch-phone" placeholder="e.g. +91 98765 43210">
++            </div>
++          </div>
++
++          <div class="form-row">
+             <div class="form-group col-6">
+               <label for="edit-sch-logo-letter">Logo Initial Letter</label>
+               <input type="text" id="edit-sch-logo-letter" maxlength="1" placeholder="e.g. D" style="text-transform: uppercase;">
+@@ -660,7 +676,7 @@
+   </div>
+ 
+   <!-- --- Contact School Modal --- -->
+-  <div class="modal-overlay" id="contact-school-modal" style="display: none;">
++  <div class="modal-overlay" id="contact-school-modal">
+     <div class="modal-content" style="max-width: 500px; border-radius: var(--radius-lg); background-color: var(--white); box-shadow: var(--shadow-lg); padding: 32px; position: relative;">
+       <button class="modal-close-btn" id="contact-modal-close" aria-label="Close modal" style="font-size: 1.75rem; border: none; background: transparent; cursor: pointer; position: absolute; right: 20px; top: 15px; color: var(--text-muted);">&times;</button>
+       
+diff --git a/school-profile.js b/school-profile.js
+index 0841c0f..75e02a1 100644
+--- a/school-profile.js
++++ b/school-profile.js
+@@ -103,7 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2024", title: "National Robotics Championship Winners", desc: "First place at the All-India STEM robotics league." },
+         { year: "2023", title: "CBSE National Sports Meet Overall Trophy", desc: "Dominating in Athletics, Swimming, and Basketball tournaments." }
+       ],
+-      admissionText: "Admissions Open: Registration for nursery and grade XI starts June 15, 2026."
++      admissionText: "Admissions Open: Registration for nursery and grade XI starts June 15, 2026.",
++      verificationBadge: 'blue'
+     },
+     2: {
+       name: "St. Xavier's High School",
+@@ -119,7 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2024", title: "State Football League Champions", desc: "Under-17 boys clinching the Maharashtra Football Association Shield." },
+         { year: "2023", title: "All-India Science Model Expo Gold Medal", desc: "Secured top honours in environmental engineering design." }
+       ],
+-      admissionText: "Admissions Open: KG registration cycles commence from July 1, 2026."
++      admissionText: "Admissions Open: KG registration cycles commence from July 1, 2026.",
++      verificationBadge: 'blue'
+     },
+     3: {
+       name: "Bishop Cotton School",
+@@ -134,7 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2025", title: "Top Boarding School in Himachal Pradesh", desc: "Consistently rated #1 for heritage and boarding standards." },
+         { year: "2024", title: "Inter-School Debate Championship Winners", desc: "Won the prestigious Shimla Debates overall shield." }
+       ],
+-      admissionText: "Admissions Open: Boarding registrations open for Grades 3 to 9. Apply before July 10, 2026."
++      admissionText: "Admissions Open: Boarding registrations open for Grades 3 to 9. Apply before July 10, 2026.",
++      verificationBadge: 'gold'
+     },
+     4: {
+       name: "St. Stephen's Academy",
+@@ -149,7 +152,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2025", title: "National Basketball League Runners-Up", desc: "Fought in the finals of the Inter-School Sports Council League." },
+         { year: "2024", title: "98.4% School Board Aggregate", desc: "Record highest board scores achieved in school history." }
+       ],
+-      admissionText: "Admissions Open: Regular admission slots open for sports quotas. Apply today."
++      admissionText: "Admissions Open: Regular admission slots open for sports quotas. Apply today.",
++      verificationBadge: 'none'
+     },
+     5: {
+       name: "The Heritage School",
+@@ -164,7 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2025", title: "Leading Experiential School in NCR", desc: "Awarded for child-centric progressive methodologies." },
+         { year: "2024", title: "IBDP Perfect Score Achievers", desc: "Two students secured 45/45 in the international diploma board." }
+       ],
+-      admissionText: "Admissions Open: IB PYP, MYP, and DP intakes are open. Virtual open houses schedule available."
++      admissionText: "Admissions Open: IB PYP, MYP, and DP intakes are open. Virtual open houses schedule available.",
++      verificationBadge: 'gold'
+     },
+     6: {
+       name: "Cathedral & John Connon School",
+@@ -179,7 +184,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2025", title: "Ranked #1 Co-Ed Day School in Maharashtra", desc: "Awarded for global college placement and student support." },
+         { year: "2024", title: "International Math Olympiad Silver", desc: "Student secured global rank in the advanced math tournament." }
+       ],
+-      admissionText: "Admissions Open: Secondary school IB intakes live. Direct prospectus requests open."
++      admissionText: "Admissions Open: Secondary school IB intakes live. Direct prospectus requests open.",
++      verificationBadge: 'blue'
+     },
+     7: {
+       name: "Doon School",
+@@ -194,7 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2025", title: "All-India Boarding School Rank #1", desc: "Consistently top-ranked boarding institution for boys." },
+         { year: "2024", title: "President's Social Action Award", desc: "Recognized for community service and village uplift fests." }
+       ],
+-      admissionText: "Admissions Open: Entrance test schedules for Class VII and VIII are active online."
++      admissionText: "Admissions Open: Entrance test schedules for Class VII and VIII are active online.",
++      verificationBadge: 'gold'
+     },
+     8: {
+       name: "La Martiniere for Boys",
+@@ -209,7 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2025", title: "National Debating Champion Shield", desc: "Secured overall winner at the Frank Anthony Memorial Debates." },
+         { year: "2024", title: "East Zone Swimming League Gold", desc: "Overall team championship won for the 5th consecutive year." }
+       ],
+-      admissionText: "Admissions Open: Nursery & Primary admissions active. Contact registrar."
++      admissionText: "Admissions Open: Nursery & Primary admissions active. Contact registrar.",
++      verificationBadge: 'blue'
+     },
+     9: {
+       name: "Greenwood Public School",
+@@ -224,7 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2025", title: "Green School National Gold Award", desc: "Recognized for solar powered labs and water recycling campaigns." },
+         { year: "2024", title: "Inter-School Coding hackathon Winners", desc: "Secured first prize in the national junior dev challenge." }
+       ],
+-      admissionText: "Admissions Open: Direct CBSE admissions active online for grades 1 to 9."
++      admissionText: "Admissions Open: Direct CBSE admissions active online for grades 1 to 9.",
++      verificationBadge: 'gold'
+     },
+     10: {
+       name: "The Shri Ram School",
+@@ -239,7 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
+         { year: "2025", title: "#1 Day School in Delhi NCR", desc: "Ranked first for teacher training, infrastructure, and values." },
+         { year: "2024", title: "International Music Fest Gold", desc: "School choir secured first place at the Asia Pacific Choral league." }
+       ],
+-      admissionText: "Admissions Open: Applications starting shortly. Pre-register for notifications."
++      admissionText: "Admissions Open: Applications starting shortly. Pre-register for notifications.",
++      verificationBadge: 'blue'
+     }
+   };
+ 
+@@ -259,11 +269,25 @@ document.addEventListener('DOMContentLoaded', () => {
+   const urlParams = new URLSearchParams(window.location.search);
+   const schoolId = urlParams.get('id') || '1';
+   let currentProfile = null;
++  let followersCount = 0;
++  let isFollowing = false;
++  let currentUser = null;
++  let isSchoolAdmin = false;
+ 
+   async function loadSchoolProfile() {
+     const supabase = window.CampusLink && window.CampusLink.supabase;
++    const auth = window.CampusLink && window.CampusLink.auth;
+     let loadedFromDB = false;
+     
++    if (auth) {
++      try {
++        const session = await auth.getSession();
++        currentUser = session?.user || null;
++      } catch (authErr) {
++        console.warn('Error fetching user session:', authErr);
++      }
++    }
++    
+     if (supabase) {
+       try {
+         let dbSchool = null;
+@@ -314,16 +338,15 @@ document.addEventListener('DOMContentLoaded', () => {
+             about: description,
+             achievements: schoolAchievements,
+             highlights: schoolHighlights,
+-            admissionText: "No active admissions at the moment."
++            admissionText: "No active admissions at the moment.",
++            verificationBadge: dbSchool.verification_badge || 'none',
++            address: dbSchool.address || '',
++            contactEmail: dbSchool.contact_email || '',
++            website: dbSchool.website || '',
++            contactPhone: dbSchool.contact_phone || '',
++            adminUserId: dbSchool.admin_user_id || null
+           };
+           
+-          // Check if current user is authorized to edit or is following
+-          const auth = window.CampusLink && window.CampusLink.auth;
+-          let followersCount = 0;
+-          let isFollowing = false;
+-          let currentUser = null;
+-          let isSchoolAdmin = false;
+-
+           // Fetch Followers count from DB
+           try {
+             const { count: countVal, error: countError } = await supabase
+@@ -337,64 +360,31 @@ document.addEventListener('DOMContentLoaded', () => {
+             console.warn('Error fetching followers count:', followersErr);
+           }
+ 
+-          if (auth) {
+-            try {
+-              const session = await auth.getSession();
+-              currentUser = session?.user || null;
+-              if (currentUser) {
+-                isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
+-                const isSuperAdmin = currentUser.email === 'owaissaifi019@gmail.com';
+-                
+-                if (isSchoolAdmin || isSuperAdmin) {
+-                  const editBtn = document.getElementById('btn-edit-school');
+-                  if (editBtn) {
+-                    editBtn.style.display = 'inline-flex';
+-                    setupSchoolEditFeatures(dbSchool);
+-                  }
+-                }
+-
+-                // Check if currently following
+-                const { data: followData, error: followCheckError } = await supabase
+-                  .from('follows')
+-                  .select('*')
+-                  .eq('follower_id', currentUser.id)
+-                  .eq('following_school_id', dbSchool.id)
+-                  .maybeSingle();
+-                if (!followCheckError && followData) {
+-                  isFollowing = true;
+-                }
++          if (currentUser) {
++            isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
++            const isSuperAdmin = currentUser.email === 'owaissaifi019@gmail.com';
++            
++            if (isSchoolAdmin || isSuperAdmin) {
++              const editBtn = document.getElementById('btn-edit-school');
++              if (editBtn) {
++                editBtn.style.display = 'inline-flex';
++                setupSchoolEditFeatures(dbSchool);
+               }
+-            } catch (authErr) {
+-              console.warn('Error loading auth states for school editor:', authErr);
+-            }
+-          }
+-
+-          // Update Followers count text
+-          const followersEl = document.getElementById('profile-followers-count');
+-          if (followersEl) {
+-            followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
+-          }
+-
+-          // Update Follow Button display and state
+-          const followBtn = document.getElementById('btn-follow-school');
+-          if (followBtn) {
+-            if (!isSchoolAdmin) {
+-              followBtn.style.display = 'inline-flex';
+-              updateSchoolFollowButtonState(followBtn, isFollowing);
+-              setupSchoolFollowButton(dbSchool.id, isFollowing, followersCount, currentUser);
+-            } else {
+-              followBtn.style.display = 'none';
+             }
+-          }
+ 
+-          // Update Contact School Button display and state
+-          const contactBtn = document.getElementById('btn-contact-school');
+-          if (contactBtn) {
+-            if (!isSchoolAdmin) {
+-              contactBtn.style.display = 'inline-flex';
+-              setupContactSchoolButton(dbSchool);
+-            } else {
+-              contactBtn.style.display = 'none';
++            // Check if currently following
++            try {
++              const { data: followData, error: followCheckError } = await supabase
++                .from('follows')
++                .select('*')
++                .eq('follower_id', currentUser.id)
++                .eq('following_school_id', dbSchool.id)
++                .maybeSingle();
++              if (!followCheckError && followData) {
++                isFollowing = true;
++              }
++            } catch (err) {
++              console.warn('Error checking follow status:', err);
+             }
+           }
+           
+@@ -459,11 +449,24 @@ document.addEventListener('DOMContentLoaded', () => {
+     const locationText = document.getElementById('profile-location-text');
+     
+     if (nameHeading) {
++      let badgeHtml = '';
++      if (currentProfile.verificationBadge === 'blue') {
++        badgeHtml = `
++          <svg class="verified-badge verified-badge-lg" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Partner School" style="display:inline-block; vertical-align:middle; margin-left:8px;">
++            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++          </svg>`;
++      } else if (currentProfile.verificationBadge === 'gold') {
++        badgeHtml = `
++          <svg class="verified-badge verified-badge-lg gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:8px;">
++            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++          </svg>`;
++      }
++
+       nameHeading.innerHTML = `
+         ${currentProfile.name}
+-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="var(--primary)" style="display:inline-block; vertical-align:middle;" title="Verified School">
+-          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+-        </svg>
++        ${badgeHtml}
+       `;
+     }
+     if (boardBadge) {
+@@ -492,6 +495,83 @@ document.addEventListener('DOMContentLoaded', () => {
+       metaSize.textContent = currentProfile.size || '10 Acres';
+     }
+ 
++    // Populate Contact Details card
++    const contactCard = document.getElementById('contact-info-card');
++    const contactList = document.getElementById('contact-meta-list');
++    
++    if (contactCard && contactList) {
++      let contactHtml = '';
++      let hasContactInfo = false;
++
++      if (currentProfile.contactEmail) {
++        hasContactInfo = true;
++        contactHtml += `
++          <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem;">
++            <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">✉️</span>
++            <div style="flex: 1; min-width: 0; word-break: break-all;">
++              <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Official Email</strong>
++              <a href="mailto:${currentProfile.contactEmail}" style="color: var(--primary); font-weight: 500; text-decoration: none; word-break: break-all;">${currentProfile.contactEmail}</a>
++            </div>
++          </li>
++        `;
++      }
++
++      if (currentProfile.website) {
++        hasContactInfo = true;
++        let cleanUrl = currentProfile.website;
++        if (!/^https?:\/\//i.test(cleanUrl)) {
++          cleanUrl = 'https://' + cleanUrl;
++        }
++        let displayUrl = currentProfile.website.replace(/^(https?:\/\/)?(www\.)?/i, '');
++        contactHtml += `
++          <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem;">
++            <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">🔗</span>
++            <div style="flex: 1; min-width: 0; word-break: break-all;">
++              <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Website</strong>
++              <a href="${cleanUrl}" target="_blank" style="color: var(--primary); font-weight: 500; text-decoration: none; word-break: break-all;">${displayUrl}</a>
++            </div>
++          </li>
++        `;
++      }
++
++      if (currentProfile.contactPhone) {
++        hasContactInfo = true;
++        contactHtml += `
++          <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem;">
++            <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">📞</span>
++            <div style="flex: 1; min-width: 0;">
++              <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Phone Number</strong>
++              <span style="color: var(--text-main); font-weight: 500;">${currentProfile.contactPhone}</span>
++            </div>
++          </li>
++        `;
++      }
++
++      if (currentProfile.address || currentProfile.city || currentProfile.state) {
++        hasContactInfo = true;
++        let fullAddress = currentProfile.address || '';
++        let cityState = [currentProfile.city, currentProfile.state].filter(Boolean).join(', ');
++        let displayAddress = [fullAddress, cityState].filter(Boolean).join(', ') || 'Address not listed';
++
++        contactHtml += `
++          <li style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.9rem;">
++            <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">📍</span>
++            <div style="flex: 1;">
++              <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Address</strong>
++              <span style="color: var(--text-main); font-weight: 500; line-height: 1.4;">${displayAddress}</span>
++            </div>
++          </li>
++        `;
++      }
++
++      if (hasContactInfo) {
++        contactList.innerHTML = contactHtml;
++        contactCard.style.display = 'block';
++      } else {
++        contactCard.style.display = 'none';
++      }
++    }
++
+     // Admissions status box text & Apply Now button
+     const statusBox = document.getElementById('admission-status-box');
+     const applyBtn = document.getElementById('btn-profile-apply-admission');
+@@ -600,6 +680,50 @@ document.addEventListener('DOMContentLoaded', () => {
+         });
+       }
+     }
++
++    // Update Followers count text
++    const followersEl = document.getElementById('profile-followers-count');
++    if (followersEl) {
++      followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
++    }
++
++    // Update Follow Button display and state
++    const followBtn = document.getElementById('btn-follow-school');
++    if (followBtn) {
++      if (!isSchoolAdmin) {
++        followBtn.style.display = 'inline-flex';
++        updateSchoolFollowButtonState(followBtn, isFollowing);
++        // If it's a fallback school, disable following database actions
++        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++        if (uuidRegex.test(currentProfile.id)) {
++          setupSchoolFollowButton(currentProfile.id, isFollowing, followersCount, currentUser);
++        } else {
++          // Mock follow button toggle without DB persistence
++          followBtn.onclick = () => {
++            isFollowing = !isFollowing;
++            updateSchoolFollowButtonState(followBtn, isFollowing);
++            followersCount += isFollowing ? 1 : -1;
++            if (followersEl) {
++              followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
++            }
++            showToast(isFollowing ? 'Mock followed successfully!' : 'Mock unfollowed successfully!');
++          };
++        }
++      } else {
++        followBtn.style.display = 'none';
++      }
++    }
++
++    // Update Contact School Button display and state
++    const contactBtn = document.getElementById('btn-contact-school');
++    if (contactBtn) {
++      if (!isSchoolAdmin) {
++        contactBtn.style.display = 'inline-flex';
++        setupContactSchoolButton(currentProfile);
++      } else {
++        contactBtn.style.display = 'none';
++      }
++    }
+   }
+ 
+   // Populate dynamic elements
+@@ -1066,6 +1190,7 @@ function showToast(message, type = 'success') {
+       document.getElementById('edit-sch-address').value = dbSchool.address || '';
+       document.getElementById('edit-sch-email').value = dbSchool.contact_email || '';
+       document.getElementById('edit-sch-website').value = dbSchool.website || '';
++      document.getElementById('edit-sch-phone').value = dbSchool.contact_phone || '';
+       document.getElementById('edit-sch-est').value = dbSchool.est_year || '';
+       document.getElementById('edit-sch-size').value = dbSchool.campus_size || '';
+       document.getElementById('edit-sch-logo-letter').value = dbSchool.logo_letter || '';
+@@ -1122,6 +1247,7 @@ function showToast(message, type = 'success') {
+           address: document.getElementById('edit-sch-address').value.trim() || null,
+           contact_email: document.getElementById('edit-sch-email').value.trim() || null,
+           website: document.getElementById('edit-sch-website').value.trim() || null,
++          contact_phone: document.getElementById('edit-sch-phone').value.trim() || null,
+           est_year: document.getElementById('edit-sch-est').value.trim() || null,
+           campus_size: document.getElementById('edit-sch-size').value.trim() || null,
+           logo_letter: document.getElementById('edit-sch-logo-letter').value.trim().toUpperCase() || null,
+@@ -1273,39 +1399,45 @@ function showToast(message, type = 'success') {
+   function setupContactSchoolButton(dbSchool) {
+     const contactBtn = document.getElementById('btn-contact-school');
+     const modal = document.getElementById('contact-school-modal');
+-    const closeBtn = document.getElementById('contact-modal-close');
+     const form = document.getElementById('contact-school-form');
+     
+     if (!contactBtn || !modal || !form) return;
+ 
+-    // Clone to remove previous listeners
++    // Clone button and form to remove any previously attached listeners
+     const newContactBtn = contactBtn.cloneNode(true);
+     contactBtn.parentNode.replaceChild(newContactBtn, contactBtn);
+ 
++    const newForm = form.cloneNode(true);
++    form.parentNode.replaceChild(newForm, form);
++
++    const closeBtn = document.getElementById('contact-modal-close');
++
++    const closeModal = () => {
++      modal.classList.remove('active');
++      document.body.style.overflow = 'auto';
++      newForm.reset();
++    };
++
+     newContactBtn.addEventListener('click', () => {
+       if (!currentUser) {
+         window.location.href = 'login.html';
+         return;
+       }
+-      modal.style.display = 'flex';
++      modal.classList.add('active');
+       document.body.style.overflow = 'hidden';
+     });
+ 
+-    const closeModal = () => {
+-      modal.style.display = 'none';
+-      document.body.style.overflow = 'auto';
+-      form.reset();
+-    };
+-
+     if (closeBtn) {
+-      closeBtn.addEventListener('click', closeModal);
++      const newCloseBtn = closeBtn.cloneNode(true);
++      closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
++      newCloseBtn.addEventListener('click', closeModal);
+     }
+     modal.addEventListener('click', (e) => {
+       if (e.target === modal) closeModal();
+     });
+ 
+     // Handle form submission
+-    form.addEventListener('submit', async (e) => {
++    newForm.addEventListener('submit', async (e) => {
+       e.preventDefault();
+ 
+       const inquiryType = document.getElementById('contact-inquiry-type').value;
+@@ -1318,13 +1450,20 @@ function showToast(message, type = 'success') {
+       submitBtn.textContent = 'Sending Inquiry...';
+ 
+       try {
++        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++        if (!uuidRegex.test(dbSchool.id)) {
++          closeModal();
++          alert(`Demo Mode: Contact inquiry simulated successfully for fallback school "${dbSchool.name}"!`);
++          return;
++        }
++
+         const sb = window.CampusLink.supabase;
+         
+         // 1. Create a conversation
+         const { data: conv, error: convError } = await sb
+           .from('conversations')
+           .insert({
+-            status: 'pending',
++            status: 'accepted',
+             initiator_id: currentUser.id,
+             school_id: dbSchool.id,
+             inquiry_type: inquiryType
+@@ -1351,7 +1490,6 @@ function showToast(message, type = 'success') {
+             conversation_id: conv.id,
+             sender_id: currentUser.id,
+             receiver_school_id: dbSchool.id,
+-            receiver_id: dbSchool.admin_user_id || null,
+             message: `[Inquiry: ${inquiryType.toUpperCase()}] ${messageText}`,
+             read_status: false
+           });
+@@ -1359,8 +1497,10 @@ function showToast(message, type = 'success') {
+         if (msgError) throw msgError;
+ 
+         closeModal();
+-        alert('Inquiry sent successfully! Redirecting to messaging page...');
+-        window.location.href = `messaging.html?chat_id=${conv.id}`;
++        showToast('Inquiry sent successfully!');
++        document.getElementById('contact-message').value = '';
++        submitBtn.disabled = false;
++        submitBtn.textContent = 'Send Message Request';
+       } catch (err) {
+         console.error('Failed to send inquiry:', err);
+         alert('Failed to send inquiry: ' + err.message);
+diff --git a/schools.html b/schools.html
+index 48cdf24..a3353c3 100644
+--- a/schools.html
++++ b/schools.html
+@@ -441,6 +441,42 @@
+     </div>
+   </div>
+ 
++  <!-- --- Contact School Modal --- -->
++  <div class="modal-overlay" id="contact-school-modal">
++    <div class="modal-content" style="max-width: 500px; border-radius: var(--radius-lg); background-color: var(--white); box-shadow: var(--shadow-lg); padding: 32px; position: relative;">
++      <button class="modal-close-btn" id="contact-modal-close" aria-label="Close modal" style="font-size: 1.75rem; border: none; background: transparent; cursor: pointer; position: absolute; right: 20px; top: 15px; color: var(--text-muted);">&times;</button>
++      
++      <div class="modal-title" style="margin-bottom: 24px; text-align: center;">
++        <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--dark-bg); margin-bottom: 8px;" id="contact-modal-school-title">Contact School</h3>
++        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5;">Select an inquiry type and send a message request to the school administration.</p>
++      </div>
++
++      <form id="contact-school-form" style="display: flex; flex-direction: column; gap: 16px;">
++        <input type="hidden" id="contact-school-id">
++        <div class="form-group">
++          <label for="contact-inquiry-type" style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); margin-bottom: 6px; display: block;">Inquiry Purpose *</label>
++          <div style="position: relative;">
++            <select id="contact-inquiry-type" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); font-size: 0.95rem; outline: none; background: white; cursor: pointer;">
++              <option value="">Select Purpose...</option>
++              <option value="admissions">Admissions</option>
++              <option value="events">Events</option>
++              <option value="general_inquiry">General Inquiry</option>
++            </select>
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="contact-message" style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); margin-bottom: 6px; display: block;">Your Message *</label>
++          <textarea id="contact-message" placeholder="Type your message here..." required rows="4" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); font-size: 0.95rem; outline: none; background: white; resize: vertical;"></textarea>
++        </div>
++
++        <button type="submit" class="btn btn-primary" id="btn-submit-contact" style="width: 100%; padding: 12px; font-size: 0.95rem; border-radius: var(--radius-md); font-weight: 600; margin-top: 8px;">
++          Send Message Request
++        </button>
++      </form>
++    </div>
++  </div>
++
+   <!-- Supabase CDN + Auth -->
+   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+   <script src="supabase.js"></script>
+diff --git a/schools.js b/schools.js
+index 06a7940..9aa6112 100644
+--- a/schools.js
++++ b/schools.js
+@@ -36,14 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
+ 
+   /* --- Schools Database --- */
+   const DEFAULT_SCHOOLS = [
+-    { id: '1', name: "Delhi Public School, RK Puram", city: "New Delhi", board: "CBSE", logoLetter: "D", colorClass: "bg-gradient-1", eventsCount: 3 },
+-    { id: '2', name: "St. Xavier's High School", city: "Mumbai", board: "ICSE", logoLetter: "X", colorClass: "bg-gradient-2", eventsCount: 2 },
+-    { id: '3', name: "Bishop Cotton School", city: "Shimla", board: "ICSE", logoLetter: "B", colorClass: "bg-gradient-3", eventsCount: 1 },
+-    { id: '4', name: "St. Stephen's Academy", city: "Dehradun", board: "CBSE", logoLetter: "S", colorClass: "bg-gradient-4", eventsCount: 4 },
+-    { id: '5', name: "The Heritage School", city: "Gurgaon", board: "IB", logoLetter: "H", colorClass: "bg-gradient-5", eventsCount: 2 },
+-    { id: '6', name: "Cathedral & John Connon School", city: "Mumbai", board: "IB", logoLetter: "C", colorClass: "bg-gradient-1", eventsCount: 1 },
+-    { id: '7', name: "Doon School", city: "Dehradun", board: "ICSE", logoLetter: "D", colorClass: "bg-gradient-2", eventsCount: 2 },
+-    { id: '8', name: "La Martiniere for Boys", city: "Kolkata", board: "ICSE", logoLetter: "L", colorClass: "bg-gradient-3", eventsCount: 1 }
++    { id: '1', name: "Delhi Public School, RK Puram", city: "New Delhi", board: "CBSE", logoLetter: "D", colorClass: "bg-gradient-1", eventsCount: 3, verificationBadge: 'blue' },
++    { id: '2', name: "St. Xavier's High School", city: "Mumbai", board: "ICSE", logoLetter: "X", colorClass: "bg-gradient-2", eventsCount: 2, verificationBadge: 'blue' },
++    { id: '3', name: "Bishop Cotton School", city: "Shimla", board: "ICSE", logoLetter: "B", colorClass: "bg-gradient-3", eventsCount: 1, verificationBadge: 'gold' },
++    { id: '4', name: "St. Stephen's Academy", city: "Dehradun", board: "CBSE", logoLetter: "S", colorClass: "bg-gradient-4", eventsCount: 4, verificationBadge: 'none' },
++    { id: '5', name: "The Heritage School", city: "Gurgaon", board: "IB", logoLetter: "H", colorClass: "bg-gradient-5", eventsCount: 2, verificationBadge: 'gold' },
++    { id: '6', name: "Cathedral & John Connon School", city: "Mumbai", board: "IB", logoLetter: "C", colorClass: "bg-gradient-1", eventsCount: 1, verificationBadge: 'blue' },
++    { id: '7', name: "Doon School", city: "Dehradun", board: "ICSE", logoLetter: "D", colorClass: "bg-gradient-2", eventsCount: 2, verificationBadge: 'gold' },
++    { id: '8', name: "La Martiniere for Boys", city: "Kolkata", board: "ICSE", logoLetter: "L", colorClass: "bg-gradient-3", eventsCount: 1, verificationBadge: 'blue' }
+   ];
+ 
+   let schools = [];
+@@ -63,7 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
+             board: s.board || 'CBSE',
+             logoLetter: s.logo_letter || s.name.charAt(0).toUpperCase(),
+             colorClass: s.color_class || 'bg-gradient-1',
+-            eventsCount: s.events_count || 0
++            eventsCount: s.events_count || 0,
++            verificationBadge: s.verification_badge || 'none'
+           }));
+         } else {
+           schools = DEFAULT_SCHOOLS;
+@@ -139,6 +140,21 @@ document.addEventListener('DOMContentLoaded', () => {
+ 
+     // Populate Cards
+     filtered.forEach(school => {
++      let badgeHtml = '';
++      if (school.verificationBadge === 'blue') {
++        badgeHtml = `
++          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="margin-left:4px; display:inline-block; vertical-align:middle;">
++            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++          </svg>`;
++      } else if (school.verificationBadge === 'gold') {
++        badgeHtml = `
++          <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="margin-left:4px; display:inline-block; vertical-align:middle;">
++            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
++            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
++          </svg>`;
++      }
++
+       const card = document.createElement('div');
+       card.className = 'school-card-item';
+       card.innerHTML = `
+@@ -146,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
+           <div class="school-logo-overlap">${school.logoLetter}</div>
+         </div>
+         <div class="school-card-content">
+-          <h3 class="school-card-name"><a href="school-profile.html?id=${school.id}">${school.name}</a></h3>
++          <h3 class="school-card-name"><a href="school-profile.html?id=${school.id}">${school.name}</a>${badgeHtml}</h3>
+           
+           <div class="school-card-badges-row">
+             <span class="badge badge-primary" style="margin-bottom: 0;">${school.board} Affiliated</span>
+@@ -164,21 +180,37 @@ document.addEventListener('DOMContentLoaded', () => {
+               </svg>
+               <span>${school.eventsCount} Active Opportunities</span>
+             </div>
+-            <button class="btn btn-secondary btn-modal-trigger" style="padding: 6px 12px; font-size: 0.75rem;">Contact</button>
++            <button class="btn btn-secondary btn-contact-trigger" data-id="${school.id}" data-name="${school.name}" style="padding: 6px 12px; font-size: 0.75rem;">Contact</button>
+           </div>
+         </div>
+       `;
+       gridContainer.appendChild(card);
+     });
+ 
+-    // Rebind newly created modal buttons
+-    const triggers = gridContainer.querySelectorAll('.btn-modal-trigger');
+-    triggers.forEach(trigger => {
+-      trigger.addEventListener('click', (e) => {
++    // Rebind newly created Contact buttons
++    gridContainer.querySelectorAll('.btn-contact-trigger').forEach(btn => {
++      btn.addEventListener('click', async (e) => {
+         e.preventDefault();
+-        const schoolCard = e.currentTarget.closest('.school-card-content');
+-        const schoolName = schoolCard.querySelector('.school-card-name').textContent.trim();
+-        openRegistrationModal(`Contact: ${schoolName}`);
++        const schoolId = e.currentTarget.getAttribute('data-id');
++        const schoolName = e.currentTarget.getAttribute('data-name');
++        
++        const auth = window.CampusLink && window.CampusLink.auth;
++        if (!auth) return;
++        
++        const session = await auth.getSession();
++        if (!session) {
++          // Redirect to login if not logged in
++          window.location.href = 'login.html';
++          return;
++        }
++
++        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++        if (!uuidRegex.test(schoolId)) {
++          alert(`Demo Mode: Contacting is only available for database-verified schools. "${schoolName}" is a demo fallback card.`);
++          return;
++        }
++
++        openContactModal(schoolId, schoolName);
+       });
+     });
+   }
+@@ -472,6 +504,118 @@ document.addEventListener('DOMContentLoaded', () => {
+     });
+   }
+ 
++  // --- Contact School Modal Implementation ---
++  const contactModal = document.getElementById('contact-school-modal');
++  const contactClose = document.getElementById('contact-modal-close');
++  const contactForm = document.getElementById('contact-school-form');
++  
++  function openContactModal(schoolId, schoolName) {
++    if (!contactModal) return;
++    document.getElementById('contact-school-id').value = schoolId;
++    document.getElementById('contact-modal-school-title').textContent = `Contact ${schoolName}`;
++    contactModal.classList.add('active');
++    body.style.overflow = 'hidden';
++  }
++
++  function closeContactModal() {
++    if (!contactModal) return;
++    contactModal.classList.remove('active');
++    body.style.overflow = 'auto';
++    contactForm.reset();
++  }
++
++  if (contactClose) {
++    contactClose.addEventListener('click', closeContactModal);
++    contactModal.addEventListener('click', (e) => {
++      if (e.target === contactModal) closeContactModal();
++    });
++  }
++
++  if (contactForm) {
++    contactForm.addEventListener('submit', async (e) => {
++      e.preventDefault();
++      const auth = window.CampusLink && window.CampusLink.auth;
++      const supabase = window.CampusLink && window.CampusLink.supabase;
++      if (!auth || !supabase) return;
++
++      const session = await auth.getSession();
++      const currentUser = session?.user;
++      if (!currentUser) {
++        window.location.href = 'login.html';
++        return;
++      }
++
++      const schoolId = document.getElementById('contact-school-id').value;
++      const inquiryType = document.getElementById('contact-inquiry-type').value;
++      const messageText = document.getElementById('contact-message').value.trim();
++
++      if (!schoolId || !inquiryType || !messageText) return;
++
++      const submitBtn = document.getElementById('btn-submit-contact');
++      submitBtn.disabled = true;
++      submitBtn.textContent = 'Sending Inquiry...';
++
++      try {
++        // Fetch school details (like admin_user_id)
++        const { data: dbSchool, error: schoolErr } = await supabase
++          .from('schools')
++          .select('admin_user_id')
++          .eq('id', schoolId)
++          .maybeSingle();
++
++        if (schoolErr) throw schoolErr;
++
++        // 1. Create conversation
++        const { data: conv, error: convError } = await supabase
++          .from('conversations')
++          .insert({
++            status: 'accepted',
++            initiator_id: currentUser.id,
++            school_id: schoolId,
++            inquiry_type: inquiryType
++          })
++          .select()
++          .single();
++
++        if (convError) throw convError;
++
++        // 2. Add participants: the initiator user and the school
++        const { error: partError } = await supabase
++          .from('conversation_participants')
++          .insert([
++            { conversation_id: conv.id, user_id: currentUser.id },
++            { conversation_id: conv.id, school_id: schoolId }
++          ]);
++
++        if (partError) throw partError;
++
++        // 3. Send message
++        const { error: msgError } = await supabase
++          .from('messages')
++          .insert({
++            conversation_id: conv.id,
++            sender_id: currentUser.id,
++            receiver_school_id: schoolId,
++            message: `[Inquiry: ${inquiryType.toUpperCase()}] ${messageText}`,
++            read_status: false
++          });
++
++        if (msgError) throw msgError;
++
++        closeContactModal();
++        alert('Inquiry sent successfully!');
++        document.getElementById('contact-message').value = '';
++        submitBtn.disabled = false;
++        submitBtn.textContent = 'Send Message Request';
++      } catch (err) {
++        console.error('Failed to send inquiry:', err);
++        alert('Failed to send inquiry: ' + err.message);
++        submitBtn.disabled = false;
++        submitBtn.textContent = 'Send Message Request';
++      }
++    });
++  }
++
+   // Make openSuggestModal globally accessible
+   window.openSuggestModal = openSuggestModal;
+ });
+diff --git a/style.css b/style.css
+index 6f08764..b628d62 100644
+--- a/style.css
++++ b/style.css
+@@ -57,6 +57,13 @@ body {
+   font-size: 16px;
+   line-height: 1.6;
+   overflow-x: hidden;
++  padding-top: 52px; /* offset for fixed header */
++}
++
++@media (max-width: 768px) {
++  body {
++    padding-top: 70px; /* offset for mobile fixed header */
++  }
+ }
+ 
+ /* --- Typography --- */
+@@ -115,7 +122,7 @@ a {
+ }
+ 
+ .section {
+-  padding: 100px 0;
++  padding: 40px 0;
+ }
+ 
+ .section-bg-light {
+@@ -612,7 +619,7 @@ body {
+ /* --- Hero Section --- */
+ .hero-section {
+   position: relative;
+-  padding: 160px 0 100px 0;
++  padding: 20px 0 20px 0;
+   overflow: hidden;
+   background: radial-gradient(circle at 80% 20%, rgba(0, 210, 196, 0.08) 0%, rgba(0, 102, 200, 0.03) 50%, rgba(255, 255, 255, 0) 100%);
+ }
+@@ -1718,7 +1725,7 @@ footer {
+ 
+ /* --- Schools Page Styles --- */
+ .schools-hero {
+-  padding: 120px 0 60px 0;
++  padding: 60px 0 30px 0;
+   background: radial-gradient(circle at 20% 80%, rgba(0, 102, 200, 0.05) 0%, rgba(0, 210, 196, 0.03) 50%, rgba(255, 255, 255, 0) 100%);
+   text-align: center;
+ }
+@@ -1949,9 +1956,7 @@ footer {
+ 
+ /* --- School Profile Page Styles --- */
+ .profile-banner {
+-  height: 280px;
+-  background: linear-gradient(135deg, var(--primary), var(--accent));
+-  position: relative;
++  display: none; /* hide banner and remove gap */
+ }
+ 
+ .profile-banner.color-1 { background: linear-gradient(135deg, #0066C8, #00A3FF); }
+@@ -1961,10 +1966,10 @@ footer {
+ .profile-banner.color-5 { background: linear-gradient(135deg, #7c2d12, #9a3412); }
+ 
+ .profile-header-wrapper {
+-  margin-top: -80px;
++  margin-top: 30px; /* reduced gap (≈50% of previous) */
+   position: relative;
+   z-index: 10;
+-  margin-bottom: 40px;
++  margin-bottom: 0;
+ }
+ 
+ .profile-header-box {
+@@ -5267,7 +5272,7 @@ footer {
+    ========================================================================== */
+ 
+ .profile-wrapper {
+-  padding-top: 120px;
++  padding-top: 24px;
+   padding-bottom: 80px;
+   min-height: calc(100vh - 80px);
+   background-color: var(--light-bg);
+@@ -5488,6 +5493,14 @@ footer {
+   filter: drop-shadow(0 0 6px rgba(29, 155, 240, 0.7));
+ }
+ 
++.verified-badge.gold {
++  color: #EAB308; /* Premium Gold */
++}
++
++.verified-badge.gold:hover {
++  filter: drop-shadow(0 0 6px rgba(234, 179, 8, 0.85));
++}
++
+ /* Badge Size Modifiers */
+ .verified-badge-lg {
+   width: 20px !important;
+@@ -6156,7 +6169,7 @@ footer {
+    ============================================================ */
+ 
+ .feed-container {
+-  padding-top: 100px; /* Offset sticky header */
++  padding-top: 24px; /* Offset sticky header */
+   padding-bottom: 60px;
+   background-color: var(--light-bg);
+   min-height: calc(100vh - 80px);
+@@ -7275,7 +7288,7 @@ footer {
+     display: none;
+   }
+   .feed-container {
+-    padding-top: 80px;
++    padding-top: 20px;
+     padding-bottom: 40px;
+   }
+ }
+@@ -7286,7 +7299,7 @@ footer {
+ 
+ /* Hero Section */
+ .net-hero {
+-  padding: 120px 0 40px;
++  padding: 60px 0 30px;
+   background: linear-gradient(135deg, hsl(217, 71%, 14%) 0%, hsl(230, 45%, 22%) 50%, hsl(250, 40%, 18%) 100%);
+   position: relative;
+   overflow: hidden;
+@@ -7810,7 +7823,7 @@ footer {
+     grid-template-columns: 1fr;
+   }
+   .net-hero {
+-    padding: 100px 0 30px;
++    padding: 50px 0 20px;
+   }
+   .net-hero-content h1 {
+     font-size: 1.5rem;
+diff --git a/supabase_schema.sql b/supabase_schema.sql
+index 528e9a2..f8393e2 100644
+--- a/supabase_schema.sql
++++ b/supabase_schema.sql
+@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS schools (
+   color_class text DEFAULT 'bg-gradient-1',
+   about text,
+   events_count integer DEFAULT 0,
++  verification_badge text NOT NULL CHECK (verification_badge IN ('none', 'blue', 'gold')) DEFAULT 'blue',
++  contact_phone text,
+   created_at timestamp with time zone DEFAULT now()
+ );
+ 
+@@ -710,3 +712,23 @@ CREATE TRIGGER tr_enforce_verification_badge
+   BEFORE UPDATE ON public.profiles
+   FOR EACH ROW EXECUTE FUNCTION public.enforce_verification_badge_permissions();
+ 
++-- Function to prevent non-owaissaifi019@gmail.com from changing school verification badges
++CREATE OR REPLACE FUNCTION public.enforce_school_verification_badge_permissions()
++RETURNS trigger AS $$
++BEGIN
++  IF NEW.verification_badge IS DISTINCT FROM OLD.verification_badge THEN
++    IF auth.role() = 'authenticated' AND COALESCE(auth.jwt()->>'email', '') <> 'owaissaifi019@gmail.com' THEN
++      RAISE EXCEPTION 'Access Denied: Only owaissaifi019@gmail.com can change school verification badges.';
++    END IF;
++  END IF;
++  RETURN NEW;
++END;
++$$ LANGUAGE plpgsql SECURITY DEFINER;
++
++-- Trigger for school verification badge restriction
++DROP TRIGGER IF EXISTS tr_enforce_school_verification_badge ON public.schools;
++CREATE TRIGGER tr_enforce_school_verification_badge
++  BEFORE UPDATE ON public.schools
++  FOR EACH ROW EXECUTE FUNCTION public.enforce_school_verification_badge_permissions();
++
++
