@@ -111,23 +111,21 @@
     const connCount = Array.from(userConnections.values()).filter(c => c.status === 'accepted').length;
     const followCount = userFollows.users.size;
     const schoolFollowCount = userFollows.schools.size;
-    const alumniCount = allProfiles.filter(p => p.user_type === 'alumni').length;
+    const alumniCount = allProfiles.filter(p => p.user_type === 'alumni' && userConnections.get(p.id)?.status === 'accepted').length;
 
     const elConn = document.getElementById('stat-connections-count');
     const elFollow = document.getElementById('stat-following-count');
     const elSchool = document.getElementById('stat-schools-count');
     const elAlumni = document.getElementById('stat-alumni-count');
-    const elEvents = document.getElementById('stat-events-count');
 
     const elConnMob = document.getElementById('mobile-stat-connections-count');
     const elFollowMob = document.getElementById('mobile-stat-following-count');
     const elSchoolMob = document.getElementById('mobile-stat-schools-count');
     const elAlumniMob = document.getElementById('mobile-stat-alumni-count');
-    const elEventsMob = document.getElementById('mobile-stat-events-count');
 
     function updateBadge(el, val, show) {
       if (!el) return;
-      if (show) {
+      if (show && val > 0) {
         el.textContent = val;
         el.style.display = 'inline-block';
       } else {
@@ -139,13 +137,11 @@
     updateBadge(elFollow, followCount, isLogged);
     updateBadge(elSchool, schoolFollowCount, isLogged);
     updateBadge(elAlumni, alumniCount, isLogged);
-    updateBadge(elEvents, 0, false);
 
     updateBadge(elConnMob, connCount, isLogged);
     updateBadge(elFollowMob, followCount, isLogged);
     updateBadge(elSchoolMob, schoolFollowCount, isLogged);
     updateBadge(elAlumniMob, alumniCount, isLogged);
-    updateBadge(elEventsMob, 0, false);
   }
 
   /* --- Load suggested schools to follow --- */
@@ -383,9 +379,6 @@
         ? `<img src="${p.avatar_url}" alt="${displayName}" class="invitation-avatar" onerror="this.onerror=null; this.outerHTML='<div class=&quot;invitation-avatar invitation-avatar-placeholder&quot;>${initial}</div>';">`
         : `<div class="invitation-avatar invitation-avatar-placeholder">${initial}</div>`;
 
-      // Pseudo-random mutual connections count
-      const mutualCount = (p.id.charCodeAt(0) + p.id.charCodeAt(p.id.length - 1 || 0)) % 15 + 2;
-
       let profileUrl = `profile.html?id=${p.id}`;
 
       card.innerHTML = `
@@ -396,7 +389,6 @@
           <div class="invitation-details">
             <a href="${profileUrl}" class="invitation-name">${displayName}${verifiedBadge}</a>
             <span class="invitation-headline">${typeLabel}${schoolName ? ` at ${schoolName}` : ''}</span>
-            <span class="invitation-mutual">👥 ${mutualCount} mutual connections</span>
           </div>
         </div>
         <div class="invitation-actions">
@@ -420,6 +412,14 @@
         const conn = userConnections.get(p.id);
         const isConn = conn && conn.status === 'accepted';
         if (!isConn) return false;
+        if (!q) return true;
+        return matchProfile(p, q);
+      });
+    } else if (activeFilter === 'following') {
+      // Followed users only
+      people = allProfiles.filter(p => {
+        if (currentUser && p.id === currentUser.id) return false;
+        if (!userFollows.users.has(p.id)) return false;
         if (!q) return true;
         return matchProfile(p, q);
       });
@@ -466,12 +466,81 @@
            (p.skills || []).some(s => s.toLowerCase().includes(q));
   }
 
+  function createSchoolCard(school) {
+    const card = document.createElement('div');
+    card.className = 'net-card net-person-card';
+    card.dataset.schoolId = school.id;
+
+    const badgeHtml = school.verificationBadge === 'blue' ? `
+      <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="margin-left:4px; display:inline-block; vertical-align:middle;">
+        <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+        <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+      </svg>` : school.verificationBadge === 'gold' ? `
+      <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="margin-left:4px; display:inline-block; vertical-align:middle;">
+        <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+        <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+      </svg>` : '';
+    let profileUrl = `school-profile.html?id=${school.id}`;
+
+    card.innerHTML = `
+      <div class="net-card-banner ${school.colorClass}"></div>
+      <div class="net-card-body">
+        <a href="${profileUrl}" class="net-card-avatar-link">
+          <div class="net-card-avatar-placeholder school-logo">${school.logoLetter}</div>
+        </a>
+        <a href="${profileUrl}" class="net-card-name">${school.name}${badgeHtml}</a>
+        <span class="net-card-headline">📍 ${school.city}</span>
+      </div>
+      <div class="net-card-footer">
+        <button class="btn btn-following" data-follow-type="school" data-follow-id="${school.id}">
+          Following
+        </button>
+      </div>
+    `;
+    return card;
+  }
+
+  function syncFilterUI() {
+    // Sync suggestion tabs active state
+    const tabs = document.querySelectorAll('.net-tab');
+    tabs.forEach(t => {
+      if (t.dataset.filter === activeFilter) {
+        t.classList.add('active');
+      } else {
+        t.classList.remove('active');
+      }
+    });
+
+    // Sync sidebar items active state
+    const sidebarItems = document.querySelectorAll('.manage-network-item');
+    sidebarItems.forEach(item => {
+      item.classList.remove('active');
+    });
+
+    if (activeFilter === 'connections') {
+      const item = document.getElementById('manage-item-connections');
+      if (item) item.classList.add('active');
+    } else if (activeFilter === 'following') {
+      const item = document.getElementById('manage-item-following');
+      if (item) item.classList.add('active');
+    } else if (activeFilter === 'schools') {
+      const item = document.getElementById('manage-item-schools');
+      if (item) item.classList.add('active');
+    } else if (activeFilter === 'alumni') {
+      const item = document.getElementById('manage-item-alumni');
+      if (item) item.classList.add('active');
+    }
+  }
+
   /* --- Render --- */
   function renderCards() {
     const grid = document.getElementById('net-card-grid');
     const emptyState = document.getElementById('net-empty-state');
     const countEl = document.getElementById('net-results-count');
     if (!grid) return;
+
+    updateNetworkStats();
+    syncFilterUI();
 
     if (profilesError) {
       grid.innerHTML = `
@@ -483,6 +552,34 @@
       `;
       if (emptyState) emptyState.style.display = 'none';
       if (countEl) countEl.textContent = 'Error loading results';
+      return;
+    }
+
+    if (activeFilter === 'schools') {
+      const followedSchools = suggestedSchools.filter(school => userFollows.schools.has(school.id));
+      const totalCount = followedSchools.length;
+
+      if (countEl) {
+        countEl.textContent = `${totalCount} school${totalCount !== 1 ? 's' : ''} followed`;
+      }
+
+      if (totalCount === 0) {
+        grid.innerHTML = '';
+        if (emptyState) {
+          const titleEl = emptyState.querySelector('h3');
+          const descEl = emptyState.querySelector('p');
+          if (titleEl) titleEl.textContent = 'No schools followed yet';
+          if (descEl) descEl.textContent = 'Explore suggested schools below to follow them.';
+          emptyState.style.display = 'flex';
+        }
+        return;
+      }
+
+      if (emptyState) emptyState.style.display = 'none';
+      grid.innerHTML = '';
+      followedSchools.forEach(school => {
+        grid.appendChild(createSchoolCard(school));
+      });
       return;
     }
 
@@ -501,7 +598,26 @@
 
     if (totalCount === 0) {
       grid.innerHTML = '';
-      if (emptyState) emptyState.style.display = 'flex';
+      if (emptyState) {
+        const titleEl = emptyState.querySelector('h3');
+        const descEl = emptyState.querySelector('p');
+        
+        if (activeFilter === 'connections') {
+          if (titleEl) titleEl.textContent = 'No connections found';
+          if (descEl) descEl.textContent = 'Start connecting with people to build your network.';
+        } else if (activeFilter === 'following') {
+          if (titleEl) titleEl.textContent = 'No followers found';
+          if (descEl) descEl.textContent = 'You are not following anyone yet.';
+        } else if (activeFilter === 'alumni') {
+          if (titleEl) titleEl.textContent = 'No alumni connections found';
+          if (descEl) descEl.textContent = 'No alumni connections match this filter.';
+        } else {
+          if (titleEl) titleEl.textContent = 'No results found';
+          if (descEl) descEl.textContent = 'Try adjusting your search or filter to find more people.';
+        }
+        
+        emptyState.style.display = 'flex';
+      }
       return;
     }
 
@@ -596,8 +712,6 @@
       profileUrl = `school-profile.html?id=${p.school_id}`;
     }
 
-    const mutualCount = (p.id.charCodeAt(0) + p.id.charCodeAt(p.id.length - 1 || 0)) % 25 + 3;
-
     card.innerHTML = `
       <div class="net-card-banner ${getColorClass(p.user_type)}"></div>
       <div class="net-card-body">
@@ -606,7 +720,6 @@
         </a>
         <a href="${profileUrl}" class="net-card-name">${displayName}${verifiedBadge}</a>
         <span class="net-card-headline">${bio ? truncate(bio, 55) : `${typeLabel}${schoolName ? ` at ${schoolName}` : ''}`}</span>
-        <span class="net-card-mutual">👥 ${mutualCount} mutual connections</span>
       </div>
       <div class="net-card-footer">
         ${currentUser && currentUser.id !== p.id ? `
@@ -834,10 +947,33 @@
     const tabs = document.querySelectorAll('.net-tab');
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
         activeFilter = tab.dataset.filter;
         renderCards();
+      });
+    });
+
+    // Desktop Sidebar Manage My Network Click Event Listeners
+    const sidebarItems = document.querySelectorAll('.manage-network-item');
+    sidebarItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const id = item.id;
+        let filter = 'all';
+        if (id === 'manage-item-connections') filter = 'connections';
+        else if (id === 'manage-item-following') filter = 'following';
+        else if (id === 'manage-item-schools') filter = 'schools';
+        else if (id === 'manage-item-alumni') filter = 'alumni';
+
+        // Direct click on corresponding tab if available and visible
+        let matchedTab = null;
+        if (filter === 'connections') matchedTab = document.getElementById('net-tab-connections');
+        else if (filter === 'alumni') matchedTab = document.querySelector('.net-tab[data-filter="alumni"]');
+
+        if (matchedTab && matchedTab.style.display !== 'none') {
+          matchedTab.click();
+        } else {
+          activeFilter = filter;
+          renderCards();
+        }
       });
     });
 
@@ -1105,8 +1241,6 @@
           }
         } else if (filter === 'following') {
           // Filter dynamically
-          const tabsList = document.querySelectorAll('.net-tab');
-          tabsList.forEach(t => t.classList.remove('active'));
           activeFilter = 'following';
           renderCards();
           const suggestionsSec = document.querySelector('.suggestions-card');
@@ -1114,12 +1248,13 @@
             suggestionsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         } else if (filter === 'schools') {
-          const schoolsSec = document.getElementById('schools-suggestion-section');
-          if (schoolsSec) {
-            schoolsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Filter dynamically inside the main suggestions grid
+          activeFilter = 'schools';
+          renderCards();
+          const suggestionsSec = document.querySelector('.suggestions-card');
+          if (suggestionsSec) {
+            suggestionsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-        } else if (filter === 'events') {
-          window.location.href = 'events.html';
         }
 
         closeBottomSheet();
@@ -1232,7 +1367,6 @@
         ? `<img src="${p.avatar_url}" alt="${displayName}" class="result-avatar" onerror="this.onerror=null; this.outerHTML='<div class=&quot;result-avatar result-avatar-placeholder&quot;>${initial}</div>';">`
         : `<div class="result-avatar result-avatar-placeholder">${initial}</div>`;
       
-      const mutualCount = (p.id.charCodeAt(0) + p.id.charCodeAt(p.id.length - 1 || 0)) % 15 + 2;
       const profileUrl = `profile.html?id=${p.id}`;
 
       let actionBtnHtml = '';
@@ -1276,7 +1410,6 @@
         <div class="result-info">
           <a href="${profileUrl}" class="result-name">${displayName}${verifiedBadge}</a>
           <span class="result-headline">${typeLabel}${schoolName ? ` at ${schoolName}` : ''}</span>
-          <span class="result-subtext">👥 ${mutualCount} mutual connections</span>
         </div>
         <div class="result-actions">
           ${actionBtnHtml}

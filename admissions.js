@@ -198,6 +198,19 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedBoard = '';
   let selectedClassLevel = '';
 
+  function getSchoolLogoInfo(schoolName) {
+    const firstLetter = schoolName ? schoolName.replace(/^(The|St\.|St)\s+/i, '').charAt(0).toUpperCase() : 'S';
+    let hash = 0;
+    for (let i = 0; i < schoolName.length; i++) {
+      hash = schoolName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash % 5) + 1;
+    return {
+      letter: firstLetter,
+      colorClass: `bg-gradient-${idx}`
+    };
+  }
+
   function renderAdmissions() {
     if (!gridContainer) return;
 
@@ -221,9 +234,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // Clear grid
     gridContainer.innerHTML = '';
 
-    // Update count label
+    // Update count label and clear button visibility on mobile
+    const isMobile = window.innerWidth < 768;
+    const isFilterActive = searchQuery !== '' || selectedCity !== '' || selectedBoard !== '' || selectedClassLevel !== '';
+
+    if (clearBtn) {
+      if (isMobile) {
+        clearBtn.style.display = isFilterActive ? 'inline-block' : 'none';
+      } else {
+        clearBtn.style.display = 'inline-block';
+      }
+    }
+
     if (countLabel) {
-      countLabel.textContent = `Showing ${filtered.length} admission cycle${filtered.length === 1 ? '' : 's'}`;
+      if (isMobile) {
+        if (isFilterActive) {
+          countLabel.style.display = 'inline-block';
+          countLabel.textContent = `${filtered.length} cycle${filtered.length === 1 ? '' : 's'} found`;
+        } else {
+          countLabel.style.display = 'none';
+        }
+      } else {
+        countLabel.style.display = 'inline-block';
+        countLabel.textContent = `Showing ${filtered.length} admission cycle${filtered.length === 1 ? '' : 's'}`;
+      }
     }
 
     if (filtered.length === 0) {
@@ -242,10 +276,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Populate Cards
     filtered.forEach(item => {
+      const logoInfo = getSchoolLogoInfo(item.schoolName);
       const card = document.createElement('div');
       card.className = `admission-card-item status-${item.status}`;
       card.innerHTML = `
-        <div class="admission-card-content">
+        <!-- Desktop Layout (dt-only) -->
+        <div class="admission-card-content dt-only">
           <h3 class="admission-card-school"><a href="school-profile.html?id=${item.schoolId}">${item.schoolName}</a></h3>
           
           <div class="admission-card-badges-row">
@@ -274,6 +310,36 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="display: flex; gap: 12px; margin-top: auto;">
             <a href="school-profile.html?id=${item.schoolId}#admissions" class="btn btn-secondary" style="flex-grow: 1; padding: 10px 16px; font-size: 0.85rem; text-align: center;">View Details</a>
             <a href="apply-admission.html?school_id=${item.schoolId}" class="btn btn-primary btn-apply-action" style="flex-grow: 1; padding: 10px 16px; font-size: 0.85rem; text-align: center; text-decoration: none;">Apply Now</a>
+          </div>
+        </div>
+
+        <!-- Mobile Layout (mobile-only) -->
+        <div class="admission-mobile-card-content mobile-only">
+          <div class="admission-card-banner-bg ${logoInfo.colorClass}"></div>
+          <div class="admission-mobile-body">
+            <div class="school-mobile-identity">
+              <div class="school-mobile-logo-box ${logoInfo.colorClass}">${logoInfo.letter}</div>
+              <div class="school-mobile-info">
+                <h3 class="school-mobile-name"><a href="school-profile.html?id=${item.schoolId}">${item.schoolName}</a></h3>
+                <div class="school-mobile-meta">
+                  <span class="school-mobile-board">${item.board}</span>
+                  <span class="school-mobile-bullet">•</span>
+                  <span class="school-mobile-loc">${item.city}</span>
+                  <span class="school-mobile-bullet">•</span>
+                  <span class="admission-status-tag ${item.status}">${item.status.toUpperCase()}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="admission-mobile-details-list">
+              <p class="admission-mobile-detail-item">🎓 <strong>Classes:</strong> ${item.classesOpen}</p>
+              <p class="admission-mobile-detail-item">📅 <strong>Deadline:</strong> <span style="${item.status === 'closing' ? 'color: #EF4444; font-weight: 700;' : ''}">${item.lastDate}</span></p>
+            </div>
+
+            <div class="school-card-actions">
+              <a href="school-profile.html?id=${item.schoolId}#contact" class="btn btn-secondary btn-contact-school-trigger">Contact School</a>
+              <a href="apply-admission.html?school_id=${item.schoolId}" class="btn btn-primary btn-apply-action">View Admission</a>
+            </div>
           </div>
         </div>
       `;

@@ -1,0 +1,455 @@
+/* schools.css - Mobile optimization stylesheet for Schools directory page */
+
+/* Desktop Default: hide expanded card contents and tabs to preserve original layout */
+.school-card-expanded-content {
+  display: none;
+}
+
+#school-filter-tabs {
+  display: none;
+}
+
+.school-mobile-identity {
+  display: none;
+}
+
+/* Mobile-only layout optimization (<768px) */
+@media (max-width: 768px) {
+  /* 1. Header Cleanup & Spacing */
+  #nav-messaging-link span {
+    display: none !important;
+  }
+
+  .header-nav .nav-list > .nav-msg-item,
+  .header-nav .nav-list > #nav-notif-item,
+  .header-nav .nav-list > .nav-notif-item,
+  #nav-messaging-link,
+  #notif-bell-btn {
+    display: none !important;
+  }
+
+  .header-nav .nav-list > .nav-admissions-item {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .header-nav .nav-list > .nav-admissions-item a {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    color: #4b5563 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    transition: background-color 0.15s ease !important;
+    text-decoration: none !important;
+  }
+
+  .header-nav .nav-list > .nav-admissions-item a:hover {
+    background-color: rgba(15, 23, 42, 0.05) !important;
+  }
+
+  .header-nav .nav-list > .nav-admissions-item a span {
+    display: none !important;
+  }
+
+  body {
+    padding-bottom: 90px !important; /* bottom safe area to prevent overlap with global mobile nav */
+  }
+
+  /* Spacing reductions across page (30-40% reduction) */
+  .section {
+    padding: 20px 0 !important;
+  }
+
+  .schools-hero {
+    padding: 24px 0 16px 0 !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
+  }
+
+  .schools-filter-section {
+    padding: 8px 0 !important;
+  }
+
+  .schools-grid-section {
+    padding: 10px 0 !important;
+  }
+
+  /* 2. Hero Section Compactness */
+  .schools-hero h1 {
+    font-size: 1.4rem !important;
+    letter-spacing: -0.01em !important;
+    margin-bottom: 6px !important;
+  }
+
+  .schools-hero p {
+    font-size: 0.8rem !important;
+    max-width: 85% !important;
+    margin: 0 auto !important;
+    line-height: 1.4 !important;
+  }
+
+  .schools-hero .badge {
+    font-size: 0.65rem !important;
+    padding: 3px 8px !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* 3. Search and Filters Bar */
+  .filter-bar {
+    gap: 12px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .filter-controls {
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .filter-select-wrapper {
+    display: none !important; /* Hide dropdowns on mobile */
+  }
+
+  #btn-suggest-school-top {
+    display: none !important; /* Hide suggest top button on mobile */
+  }
+
+  .filter-input-wrapper {
+    max-width: 100% !important;
+    height: 38px !important;
+    width: 100% !important;
+  }
+
+  .filter-input-wrapper input {
+    height: 100% !important;
+    padding: 6px 10px 6px 32px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .filter-input-wrapper svg {
+    left: 10px !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .btn-clear-filters {
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 0.8rem !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  .schools-count-label {
+    font-size: 0.72rem !important;
+  }
+
+  /* 4. Filter category tabs - Horizontally scrollable row */
+  #school-filter-tabs {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 8px !important;
+    padding: 6px 12px !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    scrollbar-width: none !important; /* Firefox */
+  }
+
+  #school-filter-tabs::-webkit-scrollbar {
+    display: none !important; /* Chrome, Safari, Opera */
+  }
+
+  #school-filter-tabs .tab-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: max-content !important;
+    height: 26px !important;
+    padding: 0 10px !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    border-radius: 13px !important;
+    border: 1px solid var(--border-color) !important;
+    background-color: var(--white) !important;
+    color: var(--text-muted) !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transition: all 0.15s ease !important;
+  }
+
+  #school-filter-tabs .tab-btn.active {
+    background-color: rgba(0, 102, 200, 0.08) !important;
+    color: var(--primary) !important;
+    border-color: rgba(0, 102, 200, 0.4) !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+  }
+
+  /* Suggest School Banner Compactness */
+  .suggest-school-banner {
+    padding: 12px 16px !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .suggest-school-banner span[style*="font-size: 1.8rem"] {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1.3rem !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  .suggest-school-banner h4 {
+    font-size: 0.88rem !important;
+  }
+
+  .suggest-school-banner p {
+    font-size: 0.72rem !important;
+  }
+
+  .suggest-school-banner button {
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* 5. 1-Column Grid Layout for Mobile */
+  .schools-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    padding: 0 12px !important;
+  }
+
+  /* 6. Compact Card Styles (LinkedIn-Style matching Event Cards) */
+  .school-card-item {
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--white) !important;
+    cursor: pointer !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Active press feedback state for mobile touch screens */
+  .school-card-item:active {
+    transform: scale(0.98) !important;
+    background-color: var(--light-bg) !important;
+    box-shadow: none !important;
+  }
+
+  .school-card-banner-bg {
+    height: 40px !important;
+    position: relative !important;
+  }
+
+  .dt-only {
+    display: none !important;
+  }
+
+  .school-mobile-identity {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .school-mobile-logo-box {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: var(--radius-sm) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: var(--white) !important;
+    font-weight: 800 !important;
+    font-size: 1.3rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  .school-mobile-logo-box.bg-gradient-1 { background: linear-gradient(135deg, #FF6B6B, #FF8E53) !important; }
+  .school-mobile-logo-box.bg-gradient-2 { background: linear-gradient(135deg, #4E65FF, #92EFFD) !important; }
+  .school-mobile-logo-box.bg-gradient-3 { background: linear-gradient(135deg, #11998E, #38EF7D) !important; }
+  .school-mobile-logo-box.bg-gradient-4 { background: linear-gradient(135deg, #7F00FF, #E100FF) !important; }
+  .school-mobile-logo-box.bg-gradient-5 { background: linear-gradient(135deg, #F9D423, #FF4E50) !important; }
+
+  .school-mobile-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    flex-grow: 1 !important;
+    overflow: hidden !important;
+  }
+
+  .school-mobile-name {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--dark-bg) !important;
+    margin: 0 !important;
+    line-height: 1.3 !important;
+    display: flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .school-mobile-name a {
+    color: inherit !important;
+    text-decoration: none !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: calc(100% - 24px) !important;
+  }
+
+  .school-mobile-name svg.verified-badge {
+    flex-shrink: 0 !important;
+    margin-left: 4px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .school-mobile-meta {
+    font-size: 12px !important;
+    color: var(--text-muted) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+    line-height: 1.2 !important;
+  }
+
+  .school-mobile-bullet {
+    color: var(--text-muted) !important;
+    opacity: 0.5 !important;
+    user-select: none !important;
+  }
+
+  .school-mobile-board,
+  .school-mobile-loc,
+  .school-mobile-opps {
+    white-space: nowrap !important;
+  }
+
+  .school-mobile-opps {
+    font-weight: 600 !important;
+    color: var(--primary) !important;
+  }
+
+  .school-card-content {
+    padding: 12px !important;
+    flex-grow: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .school-short-desc {
+    font-size: 13px !important;
+    color: var(--text-muted) !important;
+    line-height: 1.4 !important;
+    margin-bottom: 12px !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-height: 2.8em !important;
+  }
+
+  /* 7. Tap expansion content smooth transition rules */
+  .school-card-expanded-content {
+    display: block !important;
+    max-height: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin: 0 !important;
+    border-top: 1px dashed transparent !important;
+    padding-top: 0 !important;
+  }
+
+  .school-card-item.expanded .school-card-expanded-content {
+    max-height: 220px !important;
+    opacity: 1 !important;
+    margin: 8px 0 10px 0 !important;
+    border-top: 1px dashed var(--border-color) !important;
+    padding-top: 8px !important;
+  }
+
+  .school-expanded-details {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  .details-item {
+    font-size: 11px !important;
+    color: var(--text-main) !important;
+  }
+
+  .school-full-desc {
+    font-size: 11px !important;
+    color: var(--text-muted) !important;
+    line-height: 1.35 !important;
+    margin-top: 6px !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Card footer and action button layout */
+  .school-card-footer {
+    padding-top: 12px !important;
+    margin-top: auto !important;
+    border-top: 1px solid var(--border-color) !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  .school-events-badge {
+    display: none !important;
+  }
+
+  .school-card-actions {
+    display: flex !important;
+    width: 100% !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .school-card-footer .school-card-actions button.btn-contact-trigger,
+  .school-card-footer .school-card-actions a.btn-view-school {
+    flex: 1 !important;
+    height: 34px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    border-radius: var(--radius-sm) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+}

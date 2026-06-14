@@ -1,0 +1,292 @@
+/* events.css - Mobile optimization stylesheet for Events page */
+
+/* Desktop Default: hide expanded card contents to preserve original layout */
+.event-card-expanded-content {
+  display: none;
+}
+
+/* Mobile-only layout optimization (<768px) */
+@media (max-width: 768px) {
+  /* 1. Header Cleanup & Spacing */
+  #nav-messaging-link span {
+    display: none !important;
+  }
+
+  body {
+    padding-bottom: 90px !important; /* bottom safe area to prevent overlap with global mobile nav */
+  }
+
+  /* Spacing reductions across page (30-40% reduction) */
+  .section {
+    padding: 20px 0 !important;
+  }
+
+  .schools-hero {
+    padding: 24px 0 16px 0 !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
+  }
+
+  .schools-filter-section {
+    padding: 8px 0 !important;
+  }
+
+  .schools-grid-section {
+    padding: 10px 0 !important;
+  }
+
+  /* 2. Hero Section Compactness */
+  .schools-hero h1 {
+    font-size: 1.4rem !important;
+    letter-spacing: -0.01em !important;
+    margin-bottom: 6px !important;
+  }
+
+  .schools-hero p {
+    font-size: 0.8rem !important;
+    max-width: 85% !important;
+    margin: 0 auto !important;
+    line-height: 1.4 !important;
+  }
+
+  .schools-hero .badge {
+    font-size: 0.65rem !important;
+    padding: 3px 8px !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* 3. Search and Filters Bar */
+  .filter-bar {
+    gap: 12px !important;
+  }
+
+  .filter-input-wrapper {
+    max-width: 100% !important;
+    height: 38px !important;
+  }
+
+  .filter-input-wrapper input {
+    height: 100% !important;
+    padding: 6px 10px 6px 32px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .filter-input-wrapper svg {
+    left: 10px !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .btn-clear-filters {
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 0.8rem !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  .schools-count-label {
+    font-size: 0.72rem !important;
+  }
+
+  /* 4. Filter category tabs - Horizontally scrollable row */
+  .showcase-tabs {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 8px !important;
+    padding: 6px 12px !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    scrollbar-width: none !important; /* Firefox */
+  }
+
+  .showcase-tabs::-webkit-scrollbar {
+    display: none !important; /* Chrome, Safari, Opera */
+  }
+
+  .showcase-tabs .tab-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: max-content !important;
+    height: 32px !important;
+    padding: 0 14px !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    border-radius: 16px !important;
+    border: 1px solid var(--border-color) !important;
+    background-color: var(--white) !important;
+    color: var(--text-muted) !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .showcase-tabs .tab-btn.active {
+    background-color: var(--primary-light) !important;
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+  }
+
+  /* 5. 2-Column Compact Grid */
+  .schools-cards-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    padding: 0 !important;
+  }
+
+  /* 6. Compact Card Styles (LinkedIn-Style) */
+  .event-card-grid-item {
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--white) !important;
+    cursor: pointer !important;
+  }
+
+  /* Active press feedback state for mobile touch screens */
+  .event-card-grid-item:active {
+    transform: scale(0.97) !important;
+    background-color: var(--light-bg) !important;
+    box-shadow: none !important;
+  }
+
+  .event-card-banner-img {
+    height: 80px !important;
+    font-size: 1.6rem !important;
+  }
+
+  .event-card-banner-badge {
+    font-size: 0.6rem !important;
+    padding: 2px 6px !important;
+    top: 6px !important;
+    right: 6px !important;
+  }
+
+  .event-card-grid-content {
+    padding: 10px !important;
+    flex-grow: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .event-card-grid-content .badge-primary {
+    font-size: 0.65rem !important;
+    padding: 2px 6px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .event-card-grid-title {
+    font-size: 0.82rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 6px !important;
+    height: 32px !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .event-card-grid-title a {
+    color: var(--dark-bg) !important;
+  }
+
+  .event-card-host {
+    font-size: 0.72rem !important;
+    margin-bottom: 6px !important;
+    gap: 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .event-card-meta-row {
+    flex-direction: column !important;
+    gap: 4px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .event-card-meta-item {
+    font-size: 0.7rem !important;
+    gap: 4px !important;
+  }
+
+  .event-card-meta-item svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  /* 7. Tap expansion content smooth transition rules */
+  .event-card-expanded-content {
+    display: block !important;
+    max-height: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin: 0 !important;
+    border-top: 1px dashed transparent !important;
+    padding-top: 0 !important;
+  }
+
+  .event-card-grid-item.expanded .event-card-expanded-content {
+    max-height: 200px !important;
+    opacity: 1 !important;
+    margin: 8px 0 10px 0 !important;
+    border-top: 1px dashed var(--border-color) !important;
+    padding-top: 8px !important;
+  }
+
+  .event-description {
+    font-size: 0.72rem !important;
+    color: var(--text-muted) !important;
+    line-height: 1.3 !important;
+    margin-bottom: 6px !important;
+  }
+
+  .event-details-bullets {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+  }
+
+  .bullet-item {
+    font-size: 0.7rem !important;
+    color: var(--text-main) !important;
+  }
+
+  /* Card footer and action button size reductions */
+  .event-card-grid-content > div:last-child {
+    padding-top: 8px !important;
+    margin-top: auto !important;
+    border-top: 1px solid var(--border-color) !important;
+  }
+
+  .event-card-grid-content > div:last-child span[style*="font-size: 0.9rem"] {
+    font-size: 0.78rem !important;
+  }
+
+  .event-card-grid-content > div:last-child span[style*="font-size: 0.65rem"] {
+    font-size: 0.58rem !important;
+  }
+
+  .btn-register-action {
+    padding: 0 10px !important;
+    font-size: 0.75rem !important;
+    height: 28px !important;
+    border-radius: var(--radius-sm) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}

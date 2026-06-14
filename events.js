@@ -280,6 +280,15 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
 
+          <div class="event-card-expanded-content">
+            <p class="event-description">${item.description || 'Join this exciting opportunity to showcase your talent, collaborate with peers, and win prestigious awards. Hosted on campus with expert jury panels.'}</p>
+            <div class="event-details-bullets">
+              <div class="bullet-item">📅 <strong>Deadline:</strong> Register 3 days before start</div>
+              <div class="bullet-item">🏆 <strong>Awards:</strong> Certificates & Trophies</div>
+              <div class="bullet-item">👥 <strong>Eligibility:</strong> Open to school students</div>
+            </div>
+          </div>
+
           <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px;">
             <div style="display: flex; flex-direction: column;">
               <span style="font-size: 0.9rem; font-weight: 700; color: var(--dark-bg);">${String(item.registrations || '0').split(' ')[0]}</span>
@@ -289,6 +298,18 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       `;
+      
+      // Tap/click to expand card smoothly on mobile
+      card.addEventListener('click', (e) => {
+        // Do not trigger expand if clicking a link (event title) or a button (register)
+        if (e.target.closest('a') || e.target.closest('button')) {
+          return;
+        }
+        if (window.innerWidth < 768) {
+          card.classList.toggle('expanded');
+        }
+      });
+
       gridContainer.appendChild(card);
     });
 

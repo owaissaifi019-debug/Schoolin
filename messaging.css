@@ -807,28 +807,18 @@
 
 /* --- Responsive Adaptations --- */
 @media (max-width: 900px) {
-  /* Full screen chat screen configuration: hides standard header and bottom-nav */
-  body:has(.messaging-card.chat-open) header {
-    display: none !important;
-  }
-  body:has(.messaging-card.chat-open) .mobile-bottom-nav {
-    display: none !important;
-  }
-  body:has(.messaging-card.chat-open) {
-    padding-top: 0 !important;
+  /* ── 1. Reduce top gap: messaging card starts closer to header ── */
+  body.messaging-page-body {
+    padding-top: 52px !important;
   }
 
   .messaging-container {
-    padding: 0 8px !important;
-    margin-top: 60px !important;
-    height: calc(100vh - 126px) !important;
-  }
-
-  /* When chat is open, messaging container is true full-screen */
-  .messaging-container:has(.messaging-card.chat-open) {
-    margin-top: 0 !important;
-    height: 100vh !important;
     padding: 0 !important;
+    margin-top: 0 !important;    /* align directly below header */
+    margin-bottom: 0 !important;
+    height: calc(100vh - 52px) !important;
+    height: calc(100dvh - 52px) !important;
+    border-radius: 0 !important;
   }
 
   .messaging-card {
@@ -836,16 +826,20 @@
     border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
+    height: 100%;
   }
 
+  /* ── 2. Inbox: full-width stacked layout ── */
   .inbox-sidebar, .chat-viewport, .chat-profile-panel {
     width: 100% !important;
     max-width: 100% !important;
+    min-width: 0 !important;
   }
 
-  /* Split Pane Slide animation toggle on mobile */
+  /* Default: show inbox, hide chat pane */
   .inbox-sidebar {
     display: flex;
+    height: 100% !important;
   }
 
   .chat-viewport {
@@ -856,37 +850,64 @@
     display: none !important;
   }
 
-  /* Slide transition class */
+  /* ── 3. Chat-Open mode: full-screen immersive experience ── */
+  /* Hide global top header */
+  body:has(.messaging-card.chat-open) header {
+    display: none !important;
+  }
+
+  /* Hide ALL bottom navigation (both old and new mobile nav) */
+  body:has(.messaging-card.chat-open) .mobile-bottom-nav,
+  body:has(.messaging-card.chat-open) .global-mobile-nav {
+    display: none !important;
+  }
+
+  /* Remove body top padding so chat fills edge-to-edge */
+  body:has(.messaging-card.chat-open) {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Container fills full viewport when chat is open */
+  .messaging-container:has(.messaging-card.chat-open) {
+    margin-top: 0 !important;
+    height: 100dvh !important;      /* dynamic viewport height for mobile browsers */
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Chat viewport takes full screen */
   .messaging-card.chat-open .inbox-sidebar {
     display: none;
   }
 
   .messaging-card.chat-open .chat-viewport {
     display: flex;
+    flex-direction: column;
     position: absolute;
     top: 0;
     left: 0;
     width: 100% !important;
-    height: 100%;
+    height: 100% !important;
     z-index: 10;
   }
 
-  /* Compact conversation item */
+  /* ── 4. Compact conversation list items ── */
   .conversation-item {
     padding: 10px 14px !important;
     gap: 10px !important;
   }
-  
+
   .conversation-avatar {
-    width: 38px !important;
-    height: 38px !important;
+    width: 40px !important;
+    height: 40px !important;
     font-size: 0.9rem !important;
   }
 
   .conversation-name {
     font-size: 0.85rem !important;
   }
-  
+
   .conversation-time {
     font-size: 0.68rem !important;
   }
@@ -900,38 +921,103 @@
     padding: 1px 6px !important;
   }
 
-  /* Chat Screen Elements Sizing */
+  /* ── 5. Compact chat header with back button ── */
   .chat-header {
-    padding: 10px 14px !important;
+    padding: 0 12px !important;
     gap: 10px !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    flex-shrink: 0 !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    background: var(--white) !important;
+    /* Safe area top on notched phones */
+    padding-top: env(safe-area-inset-top, 0px) !important;
   }
 
+  /* Back arrow: visible and properly sized */
   .btn-chat-back {
-    display: inline-flex;
-    min-height: 36px;
-    align-items: center;
-    padding: 4px !important;
-    margin-right: -4px;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    margin-left: -6px !important;
+    color: var(--text-main) !important;
+    transition: background-color 0.15s ease !important;
   }
 
+  .btn-chat-back:hover,
+  .btn-chat-back:active {
+    background-color: rgba(15, 23, 42, 0.06) !important;
+    color: var(--primary) !important;
+  }
+
+  .btn-chat-back svg {
+    width: 20px !important;
+    height: 20px !important;
+    stroke-width: 2.2 !important;
+  }
+
+  /* Chat recipient avatar: compact */
   .chat-recipient-avatar {
     width: 36px !important;
     height: 36px !important;
-    font-size: 0.9rem !important;
+    font-size: 0.88rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Recipient name and headline */
+  .chat-recipient-info {
+    flex: 1 !important;
+    min-width: 0 !important;
   }
 
   .chat-recipient-info h4 {
-    font-size: 0.9rem !important;
+    font-size: 0.92rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .chat-recipient-info p {
-    font-size: 0.72rem !important;
-    max-width: 200px !important;
+    font-size: 0.7rem !important;
+    max-width: none !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Header actions: compact icon buttons */
+  .chat-header-actions {
+    flex-shrink: 0 !important;
+    gap: 4px !important;
+  }
+
+  .btn-toggle-profile {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+  }
+
+  /* ── 6. Optimised message viewport: maximise conversation area ── */
+  .chat-active-interface {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    overflow: hidden !important;
   }
 
   .message-history {
+    flex: 1 !important;
+    min-height: 0 !important;
     padding: 12px 10px !important;
-    gap: 10px !important;
+    gap: 8px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .message-bubble-wrapper {
@@ -944,17 +1030,192 @@
     line-height: 1.4 !important;
   }
 
+  .message-time-meta {
+    font-size: 0.65rem !important;
+  }
+
+  /* ── 7. Message composer: full-width, safe-area aware ── */
   .chat-input-panel {
+    flex-shrink: 0 !important;
     padding: 8px 12px !important;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    background: var(--white) !important;
+    border-top: 1px solid var(--border-color) !important;
+  }
+
+  #chat-send-form {
+    display: flex !important;
+    gap: 8px !important;
+    align-items: flex-end !important;
+    width: 100% !important;
   }
 
   .chat-input-panel textarea {
-    padding: 8px 12px !important;
-    font-size: 0.88rem !important;
-    border-radius: 20px !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+    padding: 10px 14px !important;
+    font-size: 0.9rem !important;
+    border-radius: 22px !important;
+    max-height: 100px !important;
+    resize: none !important;
+    line-height: 1.4 !important;
   }
 
   .chat-input-panel .btn-icon {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* ── 8. Message request bar: compact ── */
+  .message-request-bar {
+    padding: 8px 12px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .request-bar-content {
+    gap: 8px !important;
+  }
+
+  .request-bar-content p {
+    font-size: 0.82rem !important;
+  }
+
+  .request-actions .btn {
+    font-size: 0.75rem !important;
+    padding: 5px 12px !important;
+  }
+
+  /* ── Inbox header: tighten spacing ── */
+  .inbox-header {
+    padding: 12px 16px !important;
+  }
+
+  .inbox-header h3 {
+    font-size: 1.1rem !important;
+    margin-bottom: 10px !important;
+  }
+
+  .inbox-tab-btn {
+    padding: 10px !important;
+    font-size: 0.82rem !important;
+  }
+}
+
+/* ── Extra compact at 375px and below ── */
+@media (max-width: 375px) {
+  .chat-header {
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 0 8px !important;
+  }
+
+  .btn-chat-back svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .chat-recipient-avatar {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .chat-recipient-info h4 {
+    font-size: 0.85rem !important;
+  }
+
+  .chat-recipient-info p {
+    font-size: 0.65rem !important;
+  }
+
+  .message-history {
+    padding: 8px !important;
+  }
+
+  .chat-input-panel {
+    padding: 6px 8px !important;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .chat-input-panel textarea {
+    font-size: 0.85rem !important;
+    padding: 8px 12px !important;
+  }
+}
+
+/* ── 320px: smallest phone support ── */
+@media (max-width: 320px) {
+  .chat-header {
+    height: 48px !important;
+    min-height: 48px !important;
+    gap: 6px !important;
+  }
+
+  .chat-recipient-avatar {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .message-bubble {
+    font-size: 0.82rem !important;
+    padding: 6px 10px !important;
+  }
+
+  .message-bubble-wrapper {
+    max-width: 88% !important;
+  }
+
+  .chat-input-panel .btn-icon {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+  }
+}
+
+/* ── Mobile-only layout tweaks below 768px ── */
+@media (max-width: 768px) {
+  body.messaging-page-body {
+    padding-top: 60px !important; /* matches mobile header height (60px) in style.css */
+  }
+
+  .messaging-container {
+    margin-top: 0 !important;
+    height: calc(100vh - 60px) !important;
+    height: calc(100dvh - 60px) !important;
+  }
+
+  /* Remove duplicate "Messaging" page title and tighten header spacing */
+  .inbox-header {
+    padding: 8px 12px !important;
+  }
+
+  .inbox-header h3 {
+    display: none !important;
+  }
+
+  /* Remove "Messaging" text label from the top mobile header */
+  #nav-messaging-link span {
+    display: none !important;
+  }
+
+  /* Compact tabs and list items to show more conversations above the fold */
+  .inbox-tab-btn {
+    padding: 8px 10px !important;
+  }
+
+  .conversation-item {
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+
+  .conversation-avatar {
     width: 36px !important;
     height: 36px !important;
   }

@@ -86,10 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const cityFilter = document.getElementById('school-city-filter');
   const boardFilter = document.getElementById('school-board-filter');
   const clearBtn = document.getElementById('btn-clear-filters');
+  let tabButtons = [];
 
   let searchQuery = '';
   let selectedCity = '';
   let selectedBoard = '';
+  let activeTabFilter = 'all';
 
   function renderSchools() {
     if (!gridContainer) return;
@@ -103,15 +105,47 @@ document.addEventListener('DOMContentLoaded', () => {
       const matchesCity = !selectedCity || school.city === selectedCity;
       const matchesBoard = !selectedBoard || school.board === selectedBoard;
 
-      return matchesSearch && matchesCity && matchesBoard;
+      // Category tab filter matching
+      let matchesTab = true;
+      if (activeTabFilter !== 'all') {
+        if (activeTabFilter === 'verified') {
+          matchesTab = school.verificationBadge === 'blue' || school.verificationBadge === 'gold';
+        } else {
+          matchesTab = school.board.toLowerCase().includes(activeTabFilter.toLowerCase()) || 
+                       (activeTabFilter === 'IB' && school.board === 'IB');
+        }
+      }
+
+      return matchesSearch && matchesCity && matchesBoard && matchesTab;
     });
 
     // Clear grid
     gridContainer.innerHTML = '';
 
-    // Update count label
+    // Update count label and clear button visibility on mobile
+    const isMobile = window.innerWidth < 768;
+    const isFilterActive = searchQuery !== '' || selectedCity !== '' || selectedBoard !== '' || activeTabFilter !== 'all';
+
+    if (clearBtn) {
+      if (isMobile) {
+        clearBtn.style.display = isFilterActive ? 'inline-block' : 'none';
+      } else {
+        clearBtn.style.display = 'inline-block';
+      }
+    }
+
     if (countLabel) {
-      countLabel.textContent = `Showing ${filtered.length} school${filtered.length === 1 ? '' : 's'}`;
+      if (isMobile) {
+        if (isFilterActive) {
+          countLabel.style.display = 'inline-block';
+          countLabel.textContent = `${filtered.length} school${filtered.length === 1 ? '' : 's'} found`;
+        } else {
+          countLabel.style.display = 'none';
+        }
+      } else {
+        countLabel.style.display = 'inline-block';
+        countLabel.textContent = `Showing ${filtered.length} school${filtered.length === 1 ? '' : 's'}`;
+      }
     }
 
     if (filtered.length === 0) {
@@ -159,31 +193,72 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = 'school-card-item';
       card.innerHTML = `
         <div class="school-card-banner-bg ${school.colorClass}">
-          <div class="school-logo-overlap">${school.logoLetter}</div>
+          <div class="school-logo-overlap dt-only">${school.logoLetter}</div>
         </div>
         <div class="school-card-content">
-          <h3 class="school-card-name"><a href="school-profile.html?id=${school.id}">${school.name}</a>${badgeHtml}</h3>
+          <!-- Mobile Specific inline School Identity -->
+          <div class="school-mobile-identity">
+            <div class="school-mobile-logo-box ${school.colorClass}">${school.logoLetter}</div>
+            <div class="school-mobile-info">
+              <h3 class="school-mobile-name"><a href="school-profile.html?id=${school.id}">${school.name}</a>${badgeHtml}</h3>
+              <div class="school-mobile-meta">
+                <span class="school-mobile-board">${school.board}</span>
+                <span class="school-mobile-bullet">•</span>
+                <span class="school-mobile-loc">${school.city}</span>
+                <span class="school-mobile-bullet">•</span>
+                <span class="school-mobile-opps">${school.eventsCount} Opportunities</span>
+              </div>
+            </div>
+          </div>
+
+          <h3 class="school-card-name dt-only"><a href="school-profile.html?id=${school.id}">${school.name}</a>${badgeHtml}</h3>
           
-          <div class="school-card-badges-row">
-            <span class="badge badge-primary" style="margin-bottom: 0;">${school.board} Affiliated</span>
+          <div class="school-card-badges-row dt-only">
+            <span class="badge badge-primary" style="margin-bottom: 0;">${school.board}</span>
             <span class="badge badge-accent" style="margin-bottom: 0; background-color: #F1F5F9; color: var(--text-muted);">${school.city}</span>
           </div>
 
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
+          <p class="school-short-desc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
             Verified academic partner school since 2026. Actively participating in national fests and updates.
           </p>
 
-          <div class="school-info-meta">
-            <div class="school-events-badge">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14">
+          <div class="school-card-expanded-content">
+            <div class="school-expanded-details">
+              <div class="details-item">🎓 <strong>Programs:</strong> Primary, Middle, Secondary & Senior Secondary</div>
+              <div class="details-item">✉️ <strong>Admissions:</strong> Open for Session 2026-2027</div>
+              <div class="details-item">🌐 <strong>Website:</strong> <a href="#" style="color: var(--primary); font-weight: 600;">visit website</a></div>
+              <p class="school-full-desc" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+                Offers a balanced curriculum focusing on academic excellence, sports development, science olympiads, and cultural programs. Fully equipped science labs and sports infrastructure.
+              </p>
+            </div>
+          </div>
+
+          <div class="school-card-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px;">
+            <div class="school-events-badge" style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--text-muted);">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="color: var(--text-muted); fill: currentColor;">
                 <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/>
               </svg>
-              <span>${school.eventsCount} Active Opportunities</span>
+              <span>${school.eventsCount} Opportunities</span>
             </div>
-            <button class="btn btn-secondary btn-contact-trigger" data-id="${school.id}" data-name="${school.name}" style="padding: 6px 12px; font-size: 0.75rem;">Contact</button>
+            <div style="display: flex; gap: 6px; align-items: center;" class="school-card-actions">
+              <button class="btn btn-secondary btn-contact-trigger" data-id="${school.id}" data-name="${school.name}" style="padding: 6px 12px; font-size: 0.75rem; border-color: var(--border-color); color: var(--text-main);">Contact</button>
+              <a href="school-profile.html?id=${school.id}" class="btn btn-primary btn-view-school" style="padding: 6px 12px; font-size: 0.75rem; color: white; display: inline-flex; align-items: center; justify-content: center; height: 30px; border-radius: var(--radius-sm);">View School</a>
+            </div>
           </div>
         </div>
       `;
+      
+      // Tap to expand school card smoothly on mobile
+      card.addEventListener('click', (e) => {
+        // Ignore tap expand if clicking links or buttons
+        if (e.target.closest('a') || e.target.closest('button')) {
+          return;
+        }
+        if (window.innerWidth < 768) {
+          card.classList.toggle('expanded');
+        }
+      });
+
       gridContainer.appendChild(card);
     });
 
@@ -199,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const session = await auth.getSession();
         if (!session) {
-          // Redirect to login if not logged in
           window.location.href = 'login.html';
           return;
         }
@@ -219,10 +293,16 @@ document.addEventListener('DOMContentLoaded', () => {
     searchQuery = '';
     selectedCity = '';
     selectedBoard = '';
+    activeTabFilter = 'all';
     
     if (searchInput) searchInput.value = '';
     if (cityFilter) cityFilter.value = '';
     if (boardFilter) boardFilter.value = '';
+    
+    tabButtons.forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.getAttribute('data-filter') === 'all') btn.classList.add('active');
+    });
     
     renderSchools();
   }
@@ -252,6 +332,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (clearBtn) {
     clearBtn.addEventListener('click', resetAllFilters);
   }
+
+  // Mobile Category Pill Tabs listeners
+  tabButtons = document.querySelectorAll('#school-filter-tabs .tab-btn');
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      tabButtons.forEach(b => b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      activeTabFilter = e.currentTarget.getAttribute('data-filter');
+      renderSchools();
+    });
+  });
 
   // Init
   loadSchools();

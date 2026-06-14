@@ -1468,9 +1468,8 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }
 
-      // Generate a stable count of mock shares and reactions for visual fidelity matching
-      const mockSharesCount = (post.content.length % 12) + 2;
-      const interactionsCount = likes.length + (post.content.length % 20) + 5;
+      // Keep shares count as 0 since we don't track it
+      const sharesCount = 0;
 
       card.innerHTML = `
         <div class="post-header" style="position: relative;">
@@ -1523,13 +1522,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="post-stats-row">
           <div class="post-stats-left">
-            <div class="reactions-icons-group">
+            <div class="reactions-icons-group" style="display: ${likes.length > 0 ? 'flex' : 'none'};">
               <span class="reaction-badge-icon react-like">👍</span>
               <span class="reaction-badge-icon react-heart">❤️</span>
               <span class="reaction-badge-icon react-clap">👏</span>
             </div>
             <span class="likes-count-display">
-              <span class="likes-number">${interactionsCount}</span> interactions
+              ${likes.length > 0 ? '<span class="likes-emoji">👍</span> ' : ''}<span class="likes-number">${likes.length}</span> ${likes.length === 1 ? 'like' : 'likes'}
             </span>
           </div>
           <div class="post-stats-right">
@@ -1537,7 +1536,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="comments-number">${comments.length}</span> comments
             </span>
             <span class="shares-count-display">
-              • <span class="shares-number">${mockSharesCount}</span> shares
+              • <span class="shares-number">${sharesCount}</span> shares
             </span>
           </div>
         </div>
@@ -1914,7 +1913,15 @@ document.addEventListener('DOMContentLoaded', () => {
       currentLikes++;
     }
     likeNumSpan.textContent = currentLikes;
-    likesCountDisplay.innerHTML = `<span class="likes-emoji">👍</span> <span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
+    const reactionsGroup = btn.closest('.feed-post-card').querySelector('.reactions-icons-group');
+    if (reactionsGroup) {
+      reactionsGroup.style.display = currentLikes > 0 ? 'flex' : 'none';
+    }
+    if (currentLikes > 0) {
+      likesCountDisplay.innerHTML = `<span class="likes-emoji">👍</span> <span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
+    } else {
+      likesCountDisplay.innerHTML = `<span class="likes-number">${currentLikes}</span> likes`;
+    }
 
     try {
       if (isLiked) {
@@ -1973,7 +1980,15 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLikes = Math.max(0, currentLikes - 1);
       }
       likeNumSpan.textContent = currentLikes;
-      likesCountDisplay.innerHTML = `<span class="likes-emoji">👍</span> <span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
+      const reactionsGroupFallback = btn.closest('.feed-post-card').querySelector('.reactions-icons-group');
+      if (reactionsGroupFallback) {
+        reactionsGroupFallback.style.display = currentLikes > 0 ? 'flex' : 'none';
+      }
+      if (currentLikes > 0) {
+        likesCountDisplay.innerHTML = `<span class="likes-emoji">👍</span> <span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
+      } else {
+        likesCountDisplay.innerHTML = `<span class="likes-number">${currentLikes}</span> likes`;
+      }
       alert('Could not update like. Please try again.');
     }
   }
