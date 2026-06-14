@@ -159,99 +159,220 @@
     </div>
   </header>
 
-  <!-- --- Page Hero --- -->
-  <section class="net-hero">
-    <div class="container">
-      <div class="net-hero-content">
-        <h1>Build Your Campus Network</h1>
-        <p>Discover and connect with students, teachers, alumni, and schools across India. Grow your academic circle.</p>
-      </div>
-
-      <!-- Search Bar -->
-      <div class="net-search-wrapper">
-        <div class="net-search-bar">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input type="text" id="net-search-input" placeholder="Search by name, school, city, or skill..." autocomplete="off">
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- --- Main Content --- -->
+  <!-- --- Main Content (LinkedIn-Style Redesigned Layout) --- -->
   <main class="net-main">
     <div class="container">
-
-      <!-- Filter Tabs -->
-      <div class="net-filter-tabs" id="net-filter-tabs">
-        <button class="net-tab active" data-filter="all">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span>All People</span>
-        </button>
-        <button class="net-tab" data-filter="student">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 4 3 6 3s6-1 6-3v-5"/></svg>
-          <span>Students</span>
-        </button>
-        <button class="net-tab" data-filter="teacher">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          <span>Teachers</span>
-        </button>
-        <button class="net-tab" data-filter="alumni">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
-          <span>Alumni</span>
-        </button>
-
-        <button class="net-tab" data-filter="connections" id="net-tab-connections" style="display: none;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-          <span>My Network</span>
+      
+      <!-- Mobile Top Controls Row (Only visible on mobile below 768px) -->
+      <div class="mobile-controls-row">
+        <div class="mobile-search-bar-container">
+          <svg class="mob-search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="mobile-search-input" placeholder="Search people, schools..." autocomplete="off">
+          <button class="btn-clear-mobile-search" id="btn-clear-mobile-search" aria-label="Clear search text" style="display: none;">&times;</button>
+        </div>
+        <button class="btn-mobile-network" id="btn-mobile-network" aria-label="Open Network Directory">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+          <span>Network</span>
         </button>
       </div>
 
-      <!-- Pending Connection Requests (visible only when user has pending incoming requests) -->
-      <div class="connections-inbox-section" id="connections-requests-inbox" style="display: none;">
-        <h2>
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-          <span>Pending Connection Requests</span>
-        </h2>
-        <div class="connections-inbox-grid" id="connections-requests-grid">
-          <!-- Request cards will be injected dynamically -->
+      <!-- Mobile Search Results Panel (Same-page, temporarily hides other content when active) -->
+      <div class="mobile-inline-search-results" id="mobile-inline-search-results" style="display: none;">
+        <div class="search-results-chips-row">
+          <button class="search-filter-chip active" data-type="all">All</button>
+          <button class="search-filter-chip" data-type="student">Students</button>
+          <button class="search-filter-chip" data-type="alumni">Alumni</button>
+          <button class="search-filter-chip" data-type="teacher">Teachers</button>
+          <button class="search-filter-chip" data-type="school">Schools</button>
+        </div>
+        <div class="search-results-list" id="mobile-inline-results-list">
+          <!-- Inline search results injected here -->
         </div>
       </div>
 
-      <!-- Results Stats -->
-      <div class="net-results-bar">
-        <span id="net-results-count">Loading...</span>
-      </div>
 
-      <!-- Card Grid -->
-      <div class="net-card-grid" id="net-card-grid">
-        <!-- Loading skeleton -->
-        <div class="net-card-skeleton animate-pulse">
-          <div class="skeleton-banner"></div>
-          <div class="skeleton-avatar"></div>
-          <div class="skeleton-line short"></div>
-          <div class="skeleton-line"></div>
-        </div>
-        <div class="net-card-skeleton animate-pulse">
-          <div class="skeleton-banner"></div>
-          <div class="skeleton-avatar"></div>
-          <div class="skeleton-line short"></div>
-          <div class="skeleton-line"></div>
-        </div>
-        <div class="net-card-skeleton animate-pulse">
-          <div class="skeleton-banner"></div>
-          <div class="skeleton-avatar"></div>
-          <div class="skeleton-line short"></div>
-          <div class="skeleton-line"></div>
-        </div>
-      </div>
+      <div class="net-layout-grid">
+        
+        <!-- Left Sidebar Column: Manage My Network -->
+        <aside class="net-sidebar">
+          <div class="manage-network-card" id="manage-network-card">
+            <div class="manage-network-header" id="manage-network-header">
+              <h3>Manage my network</h3>
+              <svg class="chevron-icon" id="manage-network-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <ul class="manage-network-content" id="manage-network-content">
+              <li class="manage-network-item" id="manage-item-connections">
+                <div class="manage-item-left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                  <span>Connections</span>
+                </div>
+                <span class="manage-item-badge" id="stat-connections-count" style="display: none;">0</span>
+              </li>
+              <li class="manage-network-item" id="manage-item-following">
+                <div class="manage-item-left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                  </svg>
+                  <span>Following & Followers</span>
+                </div>
+                <span class="manage-item-badge" id="stat-following-count" style="display: none;">0</span>
+              </li>
+              <li class="manage-network-item" id="manage-item-schools">
+                <div class="manage-item-left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
+                  </svg>
+                  <span>Schools Following</span>
+                </div>
+                <span class="manage-item-badge" id="stat-schools-count" style="display: none;">0</span>
+              </li>
+              <li class="manage-network-item" id="manage-item-alumni">
+                <div class="manage-item-left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="7"></circle>
+                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                  </svg>
+                  <span>Alumni Network</span>
+                </div>
+                <span class="manage-item-badge" id="stat-alumni-count" style="display: none;">0</span>
+              </li>
+              <li class="manage-network-item" id="manage-item-events">
+                <div class="manage-item-left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <span>Events</span>
+                </div>
+                <span class="manage-item-badge" id="stat-events-count" style="display: none;">0</span>
+              </li>
+            </ul>
+          </div>
+        </aside>
 
-      <!-- Empty State -->
-      <div class="net-empty-state" id="net-empty-state" style="display: none;">
-        <div class="empty-icon">🔍</div>
-        <h3>No results found</h3>
-        <p>Try adjusting your search or filter to find more people and schools.</p>
+        <!-- Right Main Content Column -->
+        <div class="net-content">
+          
+          <!-- Modern Search Bar Wrapper -->
+          <div class="net-search-wrapper">
+            <div class="net-search-bar">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="net-search-input" placeholder="Search by name, school, city, or skill..." autocomplete="off">
+            </div>
+          </div>
+
+          <!-- Invitations Card -->
+          <div class="invitations-card" id="connections-requests-inbox" style="display: none;">
+            <div class="invitations-header">
+              <h3 id="invitations-title">Invitations (0)</h3>
+              <button class="btn-view-all-invitations" id="btn-view-all-invitations">View All</button>
+            </div>
+            <div class="invitations-list" id="connections-requests-grid">
+              <!-- Request cards will be injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Suggestions Section (People You May Know) -->
+          <div class="suggestions-card">
+            <div class="suggestions-header-row">
+              <h2>People you may know</h2>
+              <button class="btn-see-all-suggestions" id="btn-see-all-suggestions" style="display:none;">See all</button>
+            </div>
+            
+            <!-- Filter Tabs -->
+            <div class="net-filter-tabs" id="net-filter-tabs">
+              <button class="net-tab active" data-filter="all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>All People</span>
+              </button>
+              <button class="net-tab" data-filter="student">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 4 3 6 3s6-1 6-3v-5"/></svg>
+                <span>Students</span>
+              </button>
+              <button class="net-tab" data-filter="teacher">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span>Teachers</span>
+              </button>
+              <button class="net-tab" data-filter="alumni">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+                <span>Alumni</span>
+              </button>
+              <button class="net-tab" data-filter="connections" id="net-tab-connections" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                <span>My Network</span>
+              </button>
+            </div>
+
+            <!-- Results Stats -->
+            <div class="net-results-bar">
+              <span id="net-results-count">Loading...</span>
+            </div>
+
+            <!-- Suggestions Grid -->
+            <div class="net-card-grid" id="net-card-grid">
+              <!-- Loading skeleton -->
+              <div class="net-card-skeleton animate-pulse">
+                <div class="skeleton-banner"></div>
+                <div class="skeleton-avatar"></div>
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-line"></div>
+              </div>
+              <div class="net-card-skeleton animate-pulse">
+                <div class="skeleton-banner"></div>
+                <div class="skeleton-avatar"></div>
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-line"></div>
+              </div>
+              <div class="net-card-skeleton animate-pulse">
+                <div class="skeleton-banner"></div>
+                <div class="skeleton-avatar"></div>
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-line"></div>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="net-empty-state" id="net-empty-state" style="display: none;">
+              <div class="empty-icon">🔍</div>
+              <h3>No results found</h3>
+              <p>Try adjusting your search or filter to find more people.</p>
+            </div>
+          </div>
+
+          <!-- Suggested Schools to Follow -->
+          <div class="schools-suggestion-card" id="schools-suggestion-section" style="display: none;">
+            <div class="suggestions-header-row">
+              <h2>Schools you may follow</h2>
+            </div>
+            <div class="schools-suggestion-grid" id="schools-suggestions-grid">
+              <!-- Dynamically populated school cards -->
+            </div>
+          </div>
+
+        </div>
       </div>
 
     </div>
@@ -298,6 +419,78 @@
     </div>
   </footer>
 
+  <!-- Mobile Overlays: Bottom Sheet & Full-screen Search -->
+  <div class="mobile-network-overlay" id="mobile-network-overlay"></div>
+  <div class="mobile-network-sheet" id="mobile-network-sheet">
+    <div class="mobile-sheet-header">
+      <div class="mobile-sheet-handle"></div>
+      <h3>Manage My Network</h3>
+      <button class="btn-close-sheet" id="btn-close-sheet" aria-label="Close bottom sheet">&times;</button>
+    </div>
+    <div class="mobile-sheet-content">
+      <ul class="mobile-network-list">
+        <li class="mobile-network-item" data-filter="connections">
+          <div class="item-left">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Connections</span>
+          </div>
+          <span class="manage-item-badge" id="mobile-stat-connections-count" style="display: none;">0</span>
+        </li>
+        <li class="mobile-network-item" data-filter="following">
+          <div class="item-left">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7" r="4"></circle>
+              <line x1="20" y1="8" x2="20" y2="14"></line>
+              <line x1="23" y1="11" x2="17" y2="11"></line>
+            </svg>
+            <span>Following & Followers</span>
+          </div>
+          <span class="manage-item-badge" id="mobile-stat-following-count" style="display: none;">0</span>
+        </li>
+        <li class="mobile-network-item" data-filter="schools">
+          <div class="item-left">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+              <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
+            </svg>
+            <span>Schools Following</span>
+          </div>
+          <span class="manage-item-badge" id="mobile-stat-schools-count" style="display: none;">0</span>
+        </li>
+        <li class="mobile-network-item" data-filter="alumni">
+          <div class="item-left">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="7"></circle>
+              <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+            </svg>
+            <span>Alumni Network</span>
+          </div>
+          <span class="manage-item-badge" id="mobile-stat-alumni-count" style="display: none;">0</span>
+        </li>
+        <li class="mobile-network-item" data-filter="events">
+          <div class="item-left">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>Events</span>
+          </div>
+          <span class="manage-item-badge" id="mobile-stat-events-count" style="display: none;">0</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+
+
   <!-- Toast container -->
   <div id="toast-container" class="toast-container"></div>
 
@@ -307,29 +500,8 @@
   <script src="auth.js"></script>
   <script src="notifications.js"></script>
 
-  <!-- Mobile Bottom Navigation Bar -->
-  <div class="mobile-bottom-nav">
-    <a href="index.html" class="mobile-nav-item" id="mobile-nav-home">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Home</span>
-    </a>
-    <a href="schools.html" class="mobile-nav-item" id="mobile-nav-schools">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-      <span>Schools</span>
-    </a>
-    <a href="networking.html" class="mobile-nav-item" id="mobile-nav-network">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span>Connect</span>
-    </a>
-    <a href="messaging.html" class="mobile-nav-item" id="mobile-nav-messages">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      <span>Messages</span>
-    </a>
-    <a href="profile.html" class="mobile-nav-item" id="mobile-nav-profile">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Profile</span>
-    </a>
-  </div>
+  <!-- Shared Global Mobile Navigation -->
+  <script src="mobile-nav.js"></script>
 
   <!-- Page JS Script -->
   <script src="networking.js"></script>

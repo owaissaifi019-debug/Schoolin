@@ -1,0 +1,594 @@
+/* =====================================================
+   Admin Dashboard — Mobile Responsive CSS
+   Phase 6: SchoolIn Admin Mobile Optimization
+   ===================================================== */
+
+/* ── Hamburger Button (hidden on desktop) ── */
+.admin-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-color);
+  background: var(--white);
+  color: var(--dark-bg);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: var(--transition-fast);
+}
+.admin-hamburger:hover {
+  background: var(--light-bg);
+}
+
+/* ── Admin Sidebar Close Button ── */
+.admin-sidebar-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: #94A3B8;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: var(--transition-fast);
+}
+.admin-sidebar-close:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--white);
+}
+
+/* ── Sidebar Overlay Backdrop (mobile) ── */
+.admin-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 998;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.admin-sidebar-overlay.admin-sidebar-overlay-visible {
+  display: block;
+  opacity: 1;
+}
+
+/* ── Dashboard search/filter inputs — unified look ── */
+.dashboard-workspace input[type="text"],
+.dashboard-workspace select {
+  font-family: inherit;
+  color: var(--text-main);
+  background: var(--white);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+}
+.dashboard-workspace input[type="text"]:focus,
+.dashboard-workspace select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 102, 200, 0.1);
+}
+
+/* ── Table mobile data-label attribute support ── */
+@media (max-width: 768px) {
+  .dash-table-responsive tbody tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .dash-table-responsive thead {
+    display: none;
+  }
+
+  .dash-table-responsive tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    font-size: 0.82rem !important;
+    min-height: 44px;
+    gap: 8px;
+  }
+
+  .dash-table-responsive tbody td:last-child {
+    border-bottom: none !important;
+  }
+
+  .dash-table-responsive tbody td::before {
+    content: attr(data-label);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+    min-width: 90px;
+  }
+
+  .dash-table-responsive tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Row action buttons become full-row in card mode */
+  .dash-table-responsive tbody td .btn-action-group {
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+
+  .dash-table-responsive tbody td .btn-action,
+  .dash-table-responsive tbody td .btn-delete-action,
+  .dash-table-responsive tbody td .btn-edit-action,
+  .dash-table-responsive tbody td .btn-approve,
+  .dash-table-responsive tbody td .btn-reject {
+    font-size: 0.72rem !important;
+    padding: 5px 8px !important;
+  }
+
+  /* Make status badge look clean in card mode */
+  .dash-table-responsive .badge-status {
+    font-size: 0.68rem !important;
+    padding: 2px 8px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TABLET BREAKPOINT — 992px
+   ═══════════════════════════════════════════ */
+@media (max-width: 992px) {
+  /* Show hamburger; hide sidebar close by default */
+  .admin-hamburger {
+    display: inline-flex;
+  }
+
+  /* Sidebar becomes a fixed full-height drawer */
+  .dashboard-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 260px !important;
+    z-index: 999 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    flex-direction: column !important;
+    border-right: none !important;
+    overflow-y: auto !important;
+  }
+
+  /* When open via JS class */
+  .dashboard-sidebar.admin-sidebar-open {
+    transform: translateX(0) !important;
+  }
+
+  /* Show close button inside sidebar */
+  .admin-sidebar-close {
+    display: inline-flex;
+  }
+
+  /* Logo section: space-between for close button */
+  .dashboard-logo-section {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 20px 20px !important;
+  }
+
+  /* Nav is vertical again (full sidebar drawer) */
+  .dashboard-nav {
+    flex-direction: column !important;
+    padding: 16px 12px !important;
+    gap: 4px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: none !important;
+    flex-grow: 1 !important;
+  }
+  .dashboard-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Nav links — full vertical style */
+  .dashboard-nav-link {
+    white-space: nowrap !important;
+    padding: 11px 14px !important;
+    font-size: 0.88rem !important;
+  }
+
+  /* Active link border goes back to left side */
+  .dashboard-nav-link.active {
+    border-left: 4px solid var(--accent) !important;
+    border-bottom: none !important;
+    padding-left: 10px !important;
+    padding-bottom: 11px !important;
+  }
+
+  /* Show logout footer in drawer */
+  .dashboard-sidebar-footer {
+    display: block !important;
+    padding: 16px 20px !important;
+  }
+
+  /* Main content fills the full width */
+  .dashboard-layout {
+    flex-direction: row !important;
+  }
+
+  .dashboard-main-content {
+    width: 100% !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    margin-left: 0 !important;
+  }
+
+  /* Top bar — compact, hamburger visible */
+  .dashboard-top-bar {
+    padding: 10px 16px !important;
+    gap: 12px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+  }
+
+  .dashboard-workspace {
+    padding: 16px !important;
+    max-width: 100% !important;
+  }
+
+  /* Stats grid: 2-column on tablet */
+  .dash-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+    margin-bottom: 20px !important;
+  }
+
+  /* Stat cards more compact */
+  .dash-stat-card {
+    padding: 16px !important;
+  }
+
+  .dash-stat-info .stat-value {
+    font-size: 1.65rem !important;
+  }
+
+  .dash-stat-icon {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 1.2rem !important;
+  }
+
+  /* Analytics grid: 2-col on tablet */
+  .dash-stats-grid[style*="repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Overview 2-col cards → single col on small */
+  div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Table card header filter row → stack */
+  .dash-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .dash-card-header > div[style*="flex; gap: 12px"] {
+    max-width: 100% !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Typography limits */
+  #top-bar-title {
+    font-size: 1.1rem !important;
+  }
+
+  #current-date-display {
+    font-size: 0.72rem !important;
+  }
+
+  .dash-table-card > div[style*="padding: 24px"] h3,
+  .dash-table-card h3 {
+    font-size: 1rem !important;
+  }
+
+  /* Modal — full-width on tablet/mobile */
+  .modal-content {
+    max-width: 95vw !important;
+    padding: 20px !important;
+    margin: 16px !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Modal detail grids → single col */
+  .modal-content div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  #modal-school-name {
+    font-size: 1.2rem !important;
+  }
+
+  /* Toast container — full width on mobile */
+  .toast-container {
+    top: auto !important;
+    bottom: 80px !important;
+    right: 12px !important;
+    left: 12px !important;
+  }
+
+  .toast-alert {
+    padding: 12px 16px !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE BREAKPOINT — 768px
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Stats grid: 2-column (same as tablet) */
+  .dash-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Analytics cards: 2-col */
+  .dash-stats-grid[style*="repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Workspace padding even more compact */
+  .dashboard-workspace {
+    padding: 12px !important;
+  }
+
+  /* Table wrapper — allow horizontal scroll as last resort */
+  .dash-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Body text caps */
+  body {
+    font-size: 15px;
+  }
+
+  h3 {
+    font-size: 1.1rem !important;
+  }
+
+  /* Dashboard table — slightly smaller text */
+  .dash-table th,
+  .dash-table td {
+    padding: 10px 14px !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap;
+  }
+
+  /* Table card — no padding on itself, let inner handle */
+  .dash-table-card[style*="padding: 24px"] {
+    padding: 14px !important;
+  }
+
+  /* Search inputs and selects — full width on mobile */
+  .dash-card-header input[type="text"],
+  .dash-card-header select {
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Filter row always stacks vertically */
+  .dash-card-header > div[style] {
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 8px !important;
+  }
+
+  /* Stat values */
+  .dash-stat-info .stat-value {
+    font-size: 1.5rem !important;
+  }
+
+  .dash-stat-info h4 {
+    font-size: 0.72rem !important;
+  }
+
+  /* Dashboard top bar — compact height */
+  .dashboard-top-bar {
+    padding: 8px 12px !important;
+    min-height: 56px !important;
+  }
+
+  /* User info — hide text label on tiny screens */
+  .dashboard-user-info > div {
+    display: none;
+  }
+
+  /* Form rows → single col */
+  .dash-form-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Overview analytics cards — all single col */
+  .dash-stats-grid > .dash-table-card {
+    padding: 16px !important;
+  }
+
+  .dash-stats-grid > .dash-table-card h4 {
+    font-size: 0.82rem !important;
+    margin-bottom: 10px !important;
+  }
+
+  /* System health about-meta-list */
+  .about-meta-list {
+    gap: 10px !important;
+  }
+
+  .about-meta-item {
+    font-size: 0.82rem !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  /* Quick actions manage button */
+  #go-to-schools-btn {
+    padding: 10px !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Platform analytics header */
+  div[style*="margin-top: 32px"] > h3 {
+    font-size: 1rem !important;
+    margin-bottom: 12px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   SMALL MOBILE — 480px
+   ═══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  /* Stats grid → single column on very small */
+  .dash-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Stat card horizontal layout */
+  .dash-stat-card {
+    padding: 14px 16px !important;
+  }
+
+  .dash-stat-info .stat-value {
+    font-size: 1.4rem !important;
+  }
+
+  .dash-stat-icon {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 1.1rem !important;
+  }
+
+  /* Analytics grid → single col on tiny */
+  .dash-stats-grid[style*="repeat(4"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Top bar — ultra compact */
+  .dashboard-top-bar {
+    padding: 8px 10px !important;
+    gap: 8px !important;
+  }
+
+  #top-bar-title {
+    font-size: 1rem !important;
+  }
+
+  /* Sidebar — slightly narrower on very small screens */
+  .dashboard-sidebar {
+    width: 240px !important;
+  }
+
+  /* Workspace */
+  .dashboard-workspace {
+    padding: 10px !important;
+  }
+
+  /* Table cards */
+  .dash-table-card {
+    border-radius: var(--radius-sm) !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Action buttons */
+  .btn-action,
+  .btn-approve,
+  .btn-reject,
+  .btn-delete-action,
+  .btn-edit-action {
+    font-size: 0.72rem !important;
+    padding: 5px 8px !important;
+  }
+
+  /* Modal close button */
+  .modal-close-btn {
+    font-size: 1.5rem !important;
+    right: 14px !important;
+    top: 10px !important;
+  }
+
+  /* Toast — bottom positioned */
+  .toast-container {
+    bottom: 70px !important;
+    left: 8px !important;
+    right: 8px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   GLOBAL ADMIN POLISH
+   ═══════════════════════════════════════════ */
+
+/* Smooth transitions on nav links */
+.dashboard-nav-link {
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease !important;
+}
+
+/* Auth loading overlay — always full cover */
+.auth-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.auth-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: adminSpin 0.8s linear infinite;
+}
+
+@keyframes adminSpin {
+  to { transform: rotate(360deg); }
+}
+
+.auth-loading-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Hidden state for auth overlay when done */
+.auth-loading-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}

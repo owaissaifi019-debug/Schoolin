@@ -7,6 +7,7 @@
   <meta name="description" content="CampusLink Administrator Control Panel for monitoring and platform management.">
   <!-- Stylesheets -->
   <link rel="stylesheet" href="../style.css?v=1.1">
+  <link rel="stylesheet" href="../admin.css?v=1.0">
 </head>
 <body style="overflow: hidden;">
 
@@ -16,14 +17,21 @@
     <span class="auth-loading-text">Verifying administrator credentials...</span>
   </div>
 
+  <!-- Sidebar Overlay (mobile backdrop) -->
+  <div class="admin-sidebar-overlay" id="admin-sidebar-overlay"></div>
+
   <div class="dashboard-layout">
     
     <!-- --- Sidebar Navigation --- -->
-    <aside class="dashboard-sidebar">
+    <aside class="dashboard-sidebar" id="admin-sidebar">
       <div class="dashboard-logo-section">
         <a href="../index.html" class="logo" style="margin-bottom: 0;">
           <span>CampusLink</span><span class="logo-dot"></span>
         </a>
+        <!-- Close button inside sidebar on mobile -->
+        <button class="admin-sidebar-close" id="admin-sidebar-close" aria-label="Close menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       
       <div style="font-size: 0.65rem; color: #64748B; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 10px 16px;">System Control</div>
@@ -83,6 +91,12 @@
           </span>
           Post Management
         </a>
+        <a class="dashboard-nav-link" data-tab="moderation" id="tab-link-moderation">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          Content Moderation
+        </a>
       </nav>
       
       <div class="dashboard-sidebar-footer">
@@ -100,6 +114,10 @@
       
       <!-- Top header bar -->
       <header class="dashboard-top-bar">
+        <!-- Hamburger button (mobile only) -->
+        <button class="admin-hamburger" id="admin-hamburger" aria-label="Open menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <div>
           <h2 style="font-size: 1.4rem; margin-bottom: 0;" id="top-bar-title">Super Admin Dashboard</h2>
           <p style="font-size: 0.8rem; color: var(--text-muted);" id="current-date-display">Thursday, June 4, 2026</p>
@@ -240,7 +258,7 @@
         
         <!-- ================= SCHOOLS TAB ================= -->
         <section id="schools-tab" class="dashboard-tab-panel">
-          <div class="dash-table-card" style="padding: 24px;">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
             <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
               <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">School Registry</h3>
               
@@ -282,7 +300,7 @@
 
         <!-- ================= SUGGESTIONS TAB ================= -->
         <section id="suggestions-tab" class="dashboard-tab-panel">
-          <div class="dash-table-card" style="padding: 24px;">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
             <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
               <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">School Suggestions</h3>
               
@@ -319,7 +337,7 @@
         
         <!-- ================= EVENTS TAB ================= -->
         <section id="events-tab" class="dashboard-tab-panel">
-          <div class="dash-table-card" style="padding: 24px;">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
             <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
               <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">Event Registry</h3>
               
@@ -361,7 +379,7 @@
 
         <!-- ================= ADMISSIONS TAB ================= -->
         <section id="admissions-tab" class="dashboard-tab-panel">
-          <div class="dash-table-card" style="padding: 24px;">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
             <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
               <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">Admission Registrations</h3>
               
@@ -402,7 +420,7 @@
 
         <!-- ================= APPLICATIONS TAB ================= -->
         <section id="applications-tab" class="dashboard-tab-panel">
-          <div class="dash-table-card" style="padding: 24px;">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
             <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
               <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">Global Admission Applications</h3>
               
@@ -447,7 +465,7 @@
         
         <!-- ================= CONTACT REQUESTS TAB ================= -->
         <section id="contact-requests-tab" class="dashboard-tab-panel">
-          <div class="dash-table-card" style="padding: 24px;">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
             <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
               <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">Global Contact Requests</h3>
               
@@ -490,7 +508,7 @@
 
         <!-- ================= USERS TAB ================= -->
         <section id="users-tab" class="dashboard-tab-panel">
-          <div class="dash-table-card" style="padding: 24px;">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
             <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
               <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">User Accounts Management</h3>
               
@@ -526,7 +544,7 @@
 
         <!-- ================= POSTS TAB ================= -->
         <section id="posts-tab" class="dashboard-tab-panel">
-          <div class="dash-table-card" style="padding: 24px;">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
             <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
               <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">Feed Posts Registry</h3>
               
@@ -565,8 +583,35 @@
             </div>
           </div>
         </section>
-        
-        </div>
+
+        <!-- ================= CONTENT MODERATION ================= -->
+        <section id="moderation-tab" class="dashboard-tab-panel">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
+            <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+              <div>
+                <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 4px;">Content Moderation</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Review content reports and enforce community guidelines.</p>
+              </div>
+            </div>
+
+            <!-- Sub Navigation Tabs for Moderation -->
+            <div class="feed-filter-tabs" style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 2px;">
+              <button class="feed-filter-tab active" data-mod-section="posts" style="background: none; border: none; font-size: 0.9rem; font-weight: 600; padding: 8px 16px; cursor: pointer; color: var(--primary); border-bottom: 3px solid var(--primary); transition: all 0.2s; outline: none; margin-bottom: -2px;">Reported Posts</button>
+              <button class="feed-filter-tab" data-mod-section="comments" disabled style="background: none; border: none; font-size: 0.9rem; font-weight: 500; padding: 8px 16px; cursor: default; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all 0.2s; outline: none; margin-bottom: -2px; opacity: 0.5;">Reported Comments (Coming Soon)</button>
+              <button class="feed-filter-tab" data-mod-section="users" disabled style="background: none; border: none; font-size: 0.9rem; font-weight: 500; padding: 8px 16px; cursor: default; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all 0.2s; outline: none; margin-bottom: -2px; opacity: 0.5;">Reported Users (Coming Soon)</button>
+            </div>
+
+            <!-- Reported Posts Feed / List -->
+            <div id="reported-posts-list" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+              <!-- Cards dynamically rendered by admin.js -->
+              <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                Loading moderation reports...
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
     </main>
   </div>
 
@@ -619,6 +664,39 @@
     </div>
   </div>
 
+  <!-- --- Reported Post Details Modal --- -->
+  <div class="modal-overlay" id="reported-post-details-modal">
+    <div class="modal-content" style="max-width: 600px; padding: 32px; border-radius: var(--radius-lg); background-color: var(--white); box-shadow: var(--shadow-lg); position: relative;">
+      <button class="modal-close-btn" id="post-details-modal-close" style="font-size: 1.75rem; border: none; background: transparent; cursor: pointer; position: absolute; right: 20px; top: 15px; color: var(--text-muted);">&times;</button>
+      
+      <div style="margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+        <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--dark-bg); margin-bottom: 8px;">Reported Post Details</h3>
+        <span id="modal-post-author" class="badge badge-primary" style="font-weight: 700; background-color: rgba(59, 130, 246, 0.1); color: var(--primary); padding: 4px 8px; border-radius: 4px;">Author: Name</span>
+        <span id="modal-reports-count" class="badge badge-accent" style="font-weight: 700; margin-left: 8px; background-color: #FEF2F2; color: #EF4444; padding: 4px 8px; border-radius: 4px;">Reports: 0</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+        <div>
+          <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Post Text Content</h4>
+          <div id="modal-post-content" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); margin: 0; background-color: var(--light-bg); padding: 12px; border-radius: 4px; border: 1px solid var(--border-color); white-space: pre-wrap;">
+            Post content...
+          </div>
+        </div>
+        
+        <div>
+          <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Reports Log</h4>
+          <div id="modal-reports-log" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+            <!-- Individual reports listed here -->
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 20px; gap: 12px;">
+        <button class="btn btn-secondary" id="post-details-modal-close-btn" style="padding: 10px 20px; font-size: 0.85rem; border-radius: var(--radius-sm);">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
@@ -629,5 +707,37 @@
 
   <!-- Admin JavaScript Code -->
   <script src="admin.js"></script>
+
+  <!-- Mobile Sidebar Toggle -->
+  <script>
+    (function() {
+      const hamburger = document.getElementById('admin-hamburger');
+      const sidebar = document.getElementById('admin-sidebar');
+      const overlay = document.getElementById('admin-sidebar-overlay');
+      const closeBtn = document.getElementById('admin-sidebar-close');
+
+      function openSidebar() {
+        sidebar.classList.add('admin-sidebar-open');
+        overlay.classList.add('admin-sidebar-overlay-visible');
+        document.body.style.overflow = 'hidden';
+      }
+      function closeSidebar() {
+        sidebar.classList.remove('admin-sidebar-open');
+        overlay.classList.remove('admin-sidebar-overlay-visible');
+        document.body.style.overflow = '';
+      }
+
+      if (hamburger) hamburger.addEventListener('click', openSidebar);
+      if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+      if (overlay) overlay.addEventListener('click', closeSidebar);
+
+      // Close sidebar when a nav link is clicked on mobile
+      document.querySelectorAll('.dashboard-nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth < 992) closeSidebar();
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

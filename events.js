@@ -177,9 +177,19 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('Error loading events from Supabase, using defaults:', err);
         events = localEvents || defaultEvents;
       }
-    } else {
-      events = localEvents || defaultEvents;
     }
+    events = events.map(e => ({
+      id: e.id,
+      title: e.title || 'Untitled Opportunity',
+      school: e.school || e.school_name || 'Partner School',
+      city: e.city || 'India',
+      category: e.category || 'other',
+      date: e.date || e.event_date || 'Date TBA',
+      tag: e.tag || 'Opportunity',
+      registrations: e.registrations || '0 Registered',
+      logoLetter: e.logoLetter || e.logo_letter || '🎉',
+      bannerImg: e.bannerImg || e.banner_img || null
+    }));
     renderEvents();
   }
 
@@ -272,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px;">
             <div style="display: flex; flex-direction: column;">
-              <span style="font-size: 0.9rem; font-weight: 700; color: var(--dark-bg);">${item.registrations.split(' ')[0]}</span>
+              <span style="font-size: 0.9rem; font-weight: 700; color: var(--dark-bg);">${String(item.registrations || '0').split(' ')[0]}</span>
               <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Registrations</span>
             </div>
             <button class="btn btn-primary btn-register-action" style="padding: 8px 16px; font-size: 0.85rem;" data-title="${item.title}">Register</button>

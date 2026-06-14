@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Tab Navigation ───────────────────────────────────────
   tabLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
+    link.addEventListener('click', async (e) => {
       e.preventDefault();
       const tabTarget = link.getAttribute('data-tab');
       
@@ -133,6 +133,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tabTarget === 'contact-requests') pageTitle = 'Global Contact Requests';
       if (tabTarget === 'users') pageTitle = 'User Account Directory';
       if (tabTarget === 'posts') pageTitle = 'Feed Posts Management';
+      if (tabTarget === 'moderation') {
+        pageTitle = 'Content Moderation Panel';
+        await loadModerationReports();
+      }
       if (topBarTitle) topBarTitle.textContent = pageTitle;
     });
   });
@@ -1800,6 +1804,280 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // ── Content Moderation Functions ─────────────────────────
+  async function loadModerationReports() {
+    if (!supabase) return;
+    const listContainer = document.getElementById('reported-posts-list');
+    if (!listContainer) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('post_reports')
+        .select(`
+          *,
+          reporter:profiles!reporter_id (
+            full_name,
+            email
+          ),
+          author:profiles!post_author_id (
+            full_name,
+            email
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Group reports by post_id
+      const grouped = {};
+      (data || []).forEach(r => {
+        if (!grouped[r.post_id]) {
+          grouped[r.post_id] = [];
+        }
+        grouped[r.post_id].push(r);
+      });
+
+      renderModerationReports(grouped);
+    } catch (e) {
+      console.error('Failed to load moderation reports:', e);
+      listContainer.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #EF4444;">
+          Failed to fetch moderation reports: ${e.message}
+        </div>
+      `;
+    }
+  }
+
+  function renderModerationReports(groupedReports) {
+    const listContainer = document.getElementById('reported-posts-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+
+    const postIds = Object.keys(groupedReports);
+    // Filter only postIds that have at least one 'pending' report
+    const pendingPostIds = postIds.filter(postId => 
+      groupedReports[postId].some(r => r.status === 'pending')
+    );
+
+    if (pendingPostIds.length === 0) {
+      listContainer.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">
+          🎉 No reported content pending review. All clear!
+        </div>
+      `;
+      return;
+    }
+
+    pendingPostIds.forEach(postId => {
+      const reports = groupedReports[postId].filter(r => r.status === 'pending');
+      const firstReport = reports[0];
+      const postContent = firstReport.post_content || '[No Content]';
+      const authorName = firstReport.author ? (firstReport.author.full_name || 'Anonymous') : 'Anonymous';
+      const authorEmail = firstReport.author ? (firstReport.author.email || 'N/A') : 'N/A';
+      const authorId = firstReport.post_author_id || 'N/A';
+      
+      const reportCount = reports.length;
+      const reasonsSet = new Set(reports.map(r => r.reason));
+      const reasons = Array.from(reasonsSet).join(', ');
+      
+      const reporterList = reports.map(r => {
+        const name = r.reporter ? (r.reporter.full_name || 'Anonymous') : 'Anonymous';
+        const email = r.reporter ? ` (${r.reporter.email || 'N/A'})` : '';
+        return `${name}${email}`;
+      }).join(', ');
+
+      const latestReportDate = new Date(Math.max(...reports.map(r => new Date(r.created_at))));
+      const formattedDate = latestReportDate.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const card = document.createElement('div');
+      card.className = 'dash-table-card moderation-card';
+      card.style = 'padding: 20px; border-left: 4px solid #EF4444; margin-bottom: 16px; transition: all 0.3s ease; text-align: left;';
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <span class="badge-status status-rejected" style="font-weight: 700; background-color: #FEF2F2; color: #EF4444; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem;">PENDING REVIEW</span>
+            <span style="margin-left: 8px; font-weight: 700; color: #EF4444; font-size: 0.8rem; background-color: #FEF2F2; padding: 3px 8px; border-radius: 4px;">Reports: ${reportCount}</span>
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Latest report: ${formattedDate}</span>
+        </div>
+        
+        <div style="background-color: var(--light-bg); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--dark-bg);">${authorName} <span style="font-weight: 500; color: var(--text-muted); font-size: 0.75rem;">(${authorEmail})</span></div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace; margin-left: auto;">Owner ID: ${authorId}</span>
+          </div>
+          <p style="font-size: 0.88rem; line-height: 1.5; color: var(--text-main); margin: 0; white-space: pre-wrap;">${postContent}</p>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 0.82rem; color: var(--text-main); margin-bottom: 16px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
+          <div>
+            <span style="font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; text-transform: uppercase;">Reporter(s)</span>
+            <span style="line-height: 1.4;">${reporterList}</span>
+          </div>
+          <div>
+            <span style="font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; text-transform: uppercase;">Reason(s)</span>
+            <span style="color: #EF4444; font-weight: 700; line-height: 1.4;">${reasons}</span>
+          </div>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-view-reported-post" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Details</button>
+          <button class="btn btn-secondary btn-ignore-report" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); border-color: #D1D5DB; color: #374151; background: transparent;">Ignore Report</button>
+          <button class="btn btn-primary btn-delete-reported-post" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); background-color: #EF4444; border-color: #EF4444; color: white;">Delete Post</button>
+        </div>
+      `;
+      listContainer.appendChild(card);
+    });
+
+    // Bind moderation actions
+    listContainer.querySelectorAll('.btn-view-reported-post').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const postId = e.currentTarget.getAttribute('data-post-id');
+        openReportedPostDetailsModal(postId, groupedReports[postId]);
+      });
+    });
+
+    listContainer.querySelectorAll('.btn-ignore-report').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const postId = e.currentTarget.getAttribute('data-post-id');
+        if (confirm('Are you sure you want to ignore all reports for this post? This will keep the post active and resolve these reports.')) {
+          await ignorePostReports(postId);
+        }
+      });
+    });
+
+    listContainer.querySelectorAll('.btn-delete-reported-post').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const postId = e.currentTarget.getAttribute('data-post-id');
+        if (confirm('Are you sure you want to delete this reported post? This will permanently remove the post from the feed and resolve these reports as deleted.')) {
+          await deleteReportedPost(postId);
+        }
+      });
+    });
+  }
+
+  async function ignorePostReports(postId) {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('post_reports')
+        .update({
+          status: 'ignored',
+          resolved_at: new Date().toISOString(),
+          resolved_by: session?.user?.id || null
+        })
+        .eq('post_id', postId)
+        .eq('status', 'pending');
+
+      if (error) throw error;
+
+      showToast('Reports successfully ignored!', 'success');
+      await loadModerationReports();
+    } catch (e) {
+      console.error('Failed to ignore post reports:', e);
+      showToast(`Failed to ignore reports: ${e.message}`, 'error');
+    }
+  }
+
+  async function deleteReportedPost(postId) {
+    if (!supabase) return;
+    try {
+      // 1. Physically delete the post from posts table
+      const { error: deleteError } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+
+      if (deleteError) throw deleteError;
+
+      // 2. Mark the reports as deleted/resolved in reports table
+      const { error: updateError } = await supabase
+        .from('post_reports')
+        .update({
+          status: 'deleted',
+          resolved_at: new Date().toISOString(),
+          resolved_by: session?.user?.id || null
+        })
+        .eq('post_id', postId)
+        .eq('status', 'pending');
+
+      if (updateError) throw updateError;
+
+      showToast('Post successfully deleted and reports resolved!', 'success');
+      await loadSystemStats();
+      await loadPostsData();
+      await loadModerationReports();
+      renderAnalytics();
+    } catch (e) {
+      console.error('Failed to delete reported post:', e);
+      showToast(`Failed to delete reported post: ${e.message}`, 'error');
+    }
+  }
+
+  function openReportedPostDetailsModal(postId, postReports) {
+    const postDetailsModal = document.getElementById('reported-post-details-modal');
+    if (!postDetailsModal) return;
+
+    const modalAuthor = document.getElementById('modal-post-author');
+    const modalReportsCount = document.getElementById('modal-reports-count');
+    const modalPostContent = document.getElementById('modal-post-content');
+    const modalReportsLog = document.getElementById('modal-reports-log');
+
+    const firstReport = postReports[0];
+    const authorName = firstReport.author ? (firstReport.author.full_name || 'Anonymous') : 'Anonymous';
+    
+    if (modalAuthor) modalAuthor.textContent = `Author: ${authorName}`;
+    if (modalReportsCount) modalReportsCount.textContent = `Reports: ${postReports.length}`;
+    if (modalPostContent) modalPostContent.textContent = firstReport.post_content || '';
+
+    if (modalReportsLog) {
+      modalReportsLog.innerHTML = '';
+      postReports.forEach(r => {
+        const reporterName = r.reporter ? (r.reporter.full_name || 'Anonymous') : 'Anonymous';
+        const dateStr = new Date(r.created_at).toLocaleString();
+        const detailsStr = r.details ? `<div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; border-left: 2px solid var(--border-color); padding-left: 8px;">${r.details}</div>` : '';
+        
+        const item = document.createElement('div');
+        item.style = 'background: #f8fafc; padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.82rem; margin-bottom: 8px; text-align: left;';
+        item.innerHTML = `
+          <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 2px;">
+            <span>${reporterName}</span>
+            <span style="color: #EF4444;">${r.reason}</span>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">${dateStr}</div>
+          ${detailsStr}
+        `;
+        modalReportsLog.appendChild(item);
+      });
+    }
+
+    postDetailsModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  // Bind close buttons for post details modal
+  const postDetailsCloseBtns = [
+    document.getElementById('post-details-modal-close'),
+    document.getElementById('post-details-modal-close-btn')
+  ];
+  postDetailsCloseBtns.forEach(btn => {
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const postDetailsModal = document.getElementById('reported-post-details-modal');
+        if (postDetailsModal) {
+          postDetailsModal.classList.remove('active');
+          document.body.style.overflow = 'auto';
+        }
+      });
+    }
+  });
+
   // ── Initial Data Load ────────────────────────────────────
   if (supabase) {
     await loadSystemStats();
@@ -1811,6 +2089,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadApplicationsData();
     await loadPostsData();
     await loadContactRequestsData();
+    await loadModerationReports();
     renderAnalytics();
   }
 });

@@ -17,11 +17,26 @@
   <header>
     <div class="container">
       <div class="header-left">
-        <a href="index.html" class="header-logo-box" id="header-logo">CampusLink<span style="color: var(--accent);">.</span></a>
+        <a href="index.html" class="header-logo-box" id="header-logo">
+          <svg class="header-logo-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-right: 6px; display: none; vertical-align: middle;">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+            <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
+          </svg>
+          <span class="logo-text">CampusLink</span><span style="color: var(--accent);">.</span>
+        </a>
       </div>
       
       <nav class="header-nav">
         <ul class="nav-list">
+          <!-- Mobile search icon (hidden on desktop) -->
+          <li class="mobile-search-item" style="display: none;">
+            <button class="mobile-search-btn" id="mobile-search-btn" title="Search">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
+          </li>
           <li>
             <a href="index.html" class="active" id="nav-home-link">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -71,7 +86,7 @@
               <span>Admissions</span>
             </a>
           </li>
-          <li class="member-only">
+          <li class="member-only nav-msg-item">
             <a href="messaging.html" id="nav-messaging-link">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -79,7 +94,7 @@
               <span>Messaging</span>
             </a>
           </li>
-          <li id="nav-notif-item">
+          <li id="nav-notif-item" class="nav-notif-item">
             <button class="notif-bell-btn" id="notif-bell-btn" title="Notifications" aria-label="Notifications">
               <div style="position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 3px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -109,7 +124,7 @@
               </div>
             </div>
           </li>
-          <li class="member-only" id="nav-me-item">
+          <li class="member-only nav-me-item" id="nav-me-item">
             <button class="nav-me-btn" id="nav-me-btn">
               <div class="nav-me-avatar" id="nav-me-avatar-img">?</div>
               <div class="nav-me-label-row">
@@ -132,7 +147,7 @@
               <button class="me-dropdown-signout" id="me-dropdown-signout-btn">Sign Out</button>
             </div>
           </li>
-          <li class="guest-only"><a href="login.html" class="btn-signin" id="nav-btn-signin">
+          <li class="guest-only nav-signin-item"><a href="login.html" class="btn-signin" id="nav-btn-signin">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; display: inline-block; vertical-align: middle;">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                 <polyline points="10 17 15 12 10 7"></polyline>
@@ -140,7 +155,7 @@
               </svg>
               Sign In
             </a></li>
-          <li class="guest-only"><a href="login.html#register" class="btn-join" id="nav-btn-join">
+          <li class="guest-only nav-join-item"><a href="login.html#register" class="btn-join" id="nav-btn-join">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; display: inline-block; vertical-align: middle;">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                 <circle cx="9" cy="7" r="4"></circle>
@@ -159,6 +174,20 @@
       </button>
     </div>
   </header>
+
+  <!-- Collapsible Mobile Search Input Bar (hidden on desktop) -->
+  <div class="mobile-search-bar-container" id="mobile-search-bar-container" style="display: none;">
+    <div class="container">
+      <div class="mobile-search-input-wrapper">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-input-icon">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="search" placeholder="Search CampusLink..." id="mobile-search-input" class="mobile-search-input">
+      </div>
+    </div>
+  </div>
+
 
   <!-- --- Main Feed Layout --- -->
   <main class="feed-container">
@@ -193,8 +222,11 @@
 
         <!-- Feed Filter Tabs -->
         <div class="feed-filter-tabs" id="feed-filter-tabs" style="display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 2px;">
-          <button class="feed-filter-tab active" data-filter="all" style="background: none; border: none; font-size: 0.95rem; font-weight: 600; padding: 8px 16px; cursor: pointer; color: var(--primary); border-bottom: 3px solid var(--primary); transition: all 0.2s; outline: none; margin-bottom: -2px;">All Posts</button>
+          <button class="feed-filter-tab active" data-filter="all" style="background: none; border: none; font-size: 0.95rem; font-weight: 600; padding: 8px 16px; cursor: pointer; color: var(--primary); border-bottom: 3px solid var(--primary); transition: all 0.2s; outline: none; margin-bottom: -2px;">For You</button>
           <button class="feed-filter-tab" data-filter="following" style="background: none; border: none; font-size: 0.95rem; font-weight: 500; padding: 8px 16px; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all 0.2s; outline: none; margin-bottom: -2px;">Following</button>
+          <button class="feed-filter-tab filter-tab-mobile-only" data-filter="schools" style="display: none; background: none; border: none; font-size: 0.95rem; font-weight: 500; padding: 8px 16px; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all 0.2s; outline: none; margin-bottom: -2px;">Schools</button>
+          <button class="feed-filter-tab filter-tab-mobile-only" data-filter="events" style="display: none; background: none; border: none; font-size: 0.95rem; font-weight: 500; padding: 8px 16px; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all 0.2s; outline: none; margin-bottom: -2px;">Events</button>
+          <button class="feed-filter-tab filter-tab-mobile-only" data-filter="opportunities" style="display: none; background: none; border: none; font-size: 0.95rem; font-weight: 500; padding: 8px 16px; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all 0.2s; outline: none; margin-bottom: -2px;">Opportunities</button>
         </div>
 
         <div id="social-feed" class="social-feed-list">
@@ -268,6 +300,45 @@
         <div class="form-navigation" style="margin-top: 24px; justify-content: flex-end; gap: 12px;">
           <button type="button" class="btn btn-secondary" id="post-modal-cancel" style="padding: 10px 20px;">Cancel</button>
           <button type="submit" class="btn btn-primary" id="post-submit-btn" style="padding: 10px 24px;">Post</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- --- Report Post Modal --- -->
+  <div class="modal-overlay" id="report-post-modal">
+    <div class="modal-content post-modal-content">
+      <button class="modal-close-btn" id="report-modal-close" aria-label="Close modal">&times;</button>
+      
+      <div class="modal-title">
+        <h3>Report Post</h3>
+        <p>Please select a reason for reporting this post. Our team will review it.</p>
+      </div>
+
+      <form id="report-post-form">
+        <div class="form-group">
+          <label for="report-reason-select">Reason</label>
+          <div class="select-wrapper">
+            <select id="report-reason-select" required>
+              <option value="" disabled selected>Select a reason...</option>
+              <option value="Spam">Spam</option>
+              <option value="Harassment / Bullying">Harassment / Bullying</option>
+              <option value="Inappropriate Content">Inappropriate Content</option>
+              <option value="Fake Information">Fake Information</option>
+              <option value="Copyright Violation">Copyright Violation</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group" id="report-details-group" style="display: none; margin-top: 12px;">
+          <label for="report-details-textarea">Additional Details (Optional)</label>
+          <textarea id="report-details-textarea" placeholder="Please describe the issue..." rows="3"></textarea>
+        </div>
+        
+        <div class="form-navigation" style="margin-top: 24px; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary" id="report-modal-cancel" style="padding: 10px 20px;">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="report-submit-btn" style="padding: 10px 24px; background-color: var(--accent); border-color: var(--accent);">Submit Report</button>
         </div>
       </form>
     </div>
@@ -438,31 +509,115 @@
   <script src="auth.js"></script>
   <script src="notifications.js"></script>
 
-  <!-- Mobile Bottom Navigation Bar -->
-  <div class="mobile-bottom-nav">
-    <a href="index.html" class="mobile-nav-item" id="mobile-nav-home">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Home</span>
-    </a>
-    <a href="schools.html" class="mobile-nav-item" id="mobile-nav-schools">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-      <span>Schools</span>
-    </a>
-    <a href="networking.html" class="mobile-nav-item" id="mobile-nav-network">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span>Connect</span>
-    </a>
-    <a href="messaging.html" class="mobile-nav-item" id="mobile-nav-messages">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      <span>Messages</span>
-    </a>
-    <a href="profile.html" class="mobile-nav-item" id="mobile-nav-profile">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Profile</span>
-    </a>
-  </div>
+  <!-- Shared Global Mobile Navigation -->
+  <script src="mobile-nav.js"></script>
 
   <!-- Page JS Script -->
   <script src="app.js"></script>
+
+  <!-- Mobile UX Interaction Script (Toggles and Filters) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Mobile Search Toggle and Client-side filtering
+      const searchBtn = document.getElementById('mobile-search-btn');
+      const searchContainer = document.getElementById('mobile-search-bar-container');
+      const searchInput = document.getElementById('mobile-search-input');
+      
+      if (searchBtn && searchContainer) {
+        searchBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          searchContainer.classList.toggle('active');
+          if (searchContainer.classList.contains('active')) {
+            searchContainer.style.display = 'block';
+            searchInput?.focus();
+          } else {
+            searchContainer.style.display = 'none';
+            if (searchInput) {
+              searchInput.value = '';
+              // Reset filtering when hiding search bar
+              const cards = document.querySelectorAll('.feed-post-card');
+              cards.forEach(card => card.style.display = 'block');
+            }
+          }
+        });
+      }
+      
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase().trim();
+          const cards = document.querySelectorAll('.feed-post-card');
+          cards.forEach(card => {
+            const text = card.querySelector('.post-text-content')?.textContent.toLowerCase() || '';
+            const author = card.querySelector('.post-author-name')?.textContent.toLowerCase() || '';
+            if (text.includes(query) || author.includes(query)) {
+              card.style.display = 'block';
+            } else {
+              card.style.display = 'none';
+            }
+          });
+        });
+      }
+
+      // 2. Client-side Category Filter Tabs for Mobile
+      const filterTabsContainer = document.getElementById('feed-filter-tabs');
+      if (filterTabsContainer) {
+        filterTabsContainer.addEventListener('click', (e) => {
+          const tab = e.target.closest('.feed-filter-tab');
+          if (!tab) return;
+          const filter = tab.getAttribute('data-filter');
+          if (filter === 'all' || filter === 'following') {
+            // Let app.js's feed filters handle it (re-load default feed)
+            return;
+          }
+          
+          // Apply client-side filters for Schools, Events, Opportunities
+          setTimeout(() => {
+            const cards = document.querySelectorAll('.feed-post-card');
+            cards.forEach(card => {
+              if (filter === 'schools') {
+                const isSchool = card.querySelector('.profile-card-badge.school_representative') || 
+                                 card.querySelector('.post-author-role.school_representative') || 
+                                 card.querySelector('.post-author-headline')?.textContent.includes('Affiliated') ||
+                                 card.querySelector('.post-author-role.school_admin');
+                card.style.display = isSchool ? 'block' : 'none';
+              } else if (filter === 'events') {
+                const isEvent = card.querySelector('.post-type-badge')?.classList.contains('type-event') || 
+                                card.querySelector('.badge-icon')?.textContent.includes('📅') || 
+                                card.querySelector('.badge-icon')?.textContent.includes('📢');
+                card.style.display = isEvent ? 'block' : 'none';
+              } else if (filter === 'opportunities') {
+                const text = card.textContent.toLowerCase();
+                const isOpp = text.includes('internship') || 
+                              text.includes('opportunity') || 
+                              text.includes('project') || 
+                              text.includes('admission') || 
+                              card.querySelector('.post-type-badge')?.classList.contains('type-project') ||
+                              card.querySelector('.post-type-badge')?.classList.contains('type-event') && text.includes('apply');
+                card.style.display = isOpp ? 'block' : 'none';
+              }
+            });
+          }, 300); // Small timeout to ensure app.js reload finishes first
+        });
+      }
+
+      // 3. Post button Modal trigger
+      const mobilePostBtn = document.getElementById('mobile-nav-post');
+      if (mobilePostBtn) {
+        mobilePostBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const modal = document.getElementById('create-post-modal');
+          if (modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            // Focus textarea if exists
+            setTimeout(() => {
+              document.getElementById('post-content-textarea')?.focus();
+            }, 100);
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>

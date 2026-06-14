@@ -505,6 +505,12 @@
                 meDropdown.classList.remove('active');
               }
             });
+
+            document.addEventListener('keydown', (e) => {
+              if (e.key === 'Escape') {
+                meDropdown.classList.remove('active');
+              }
+            });
           }
 
           // Bind signout button
