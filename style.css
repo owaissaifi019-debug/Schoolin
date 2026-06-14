@@ -8120,16 +8120,16 @@ footer {
   font-weight: 700;
   cursor: pointer;
   transition: var(--transition-smooth);
-  background: var(--accent);
+  background: var(--primary);
   color: var(--white);
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid var(--primary);
 }
 
 .btn-connect:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 4px 12px rgba(0, 102, 200, 0.2);
 }
 
 .btn-requested {
@@ -8143,15 +8143,14 @@ footer {
   font-weight: 700;
   cursor: pointer;
   transition: var(--transition-smooth);
-  background: var(--light-bg);
-  color: var(--text-muted);
+  background: #f3f4f6;
+  color: var(--text-main);
   border: 1.5px solid var(--border-color);
 }
 
 .btn-requested:hover {
-  background: #fee2e2;
-  color: #ef4444;
-  border-color: #fca5a5;
+  background: #e5e7eb;
+  color: var(--text-main);
 }
 
 .btn-connected {
@@ -8165,13 +8164,13 @@ footer {
   font-weight: 700;
   cursor: pointer;
   transition: var(--transition-smooth);
-  background: var(--white);
-  color: #10b981; /* Emerald/green for connected */
-  border: 1.5px solid #10b981;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1.5px solid var(--primary-light);
 }
 
 .btn-connected:hover {
-  background: #fee2e2; /* On hover, allow disconnecting */
+  background: #fee2e2;
   color: #ef4444;
   border-color: #fca5a5;
 }
@@ -11102,30 +11101,31 @@ html, body {
   }
 
   .net-card {
-    border-radius: var(--radius-md) !important;
+    border-radius: 10px !important;
   }
 
   .net-card-banner {
-    height: 45px !important;
+    height: 0 !important;
+    display: none !important;
   }
 
   .net-card-avatar-img,
   .net-card-avatar-placeholder {
-    width: 50px !important;
-    height: 50px !important;
-    margin-top: -25px !important;
-    margin-bottom: 8px !important;
-    font-size: 1.1rem !important;
+    width: 40px !important;
+    height: 40px !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    font-size: 1rem !important;
     border-width: 2px !important;
   }
 
   .net-card-body {
-    padding: 0 12px 12px !important;
+    padding: 2px 6px 2px !important;
   }
 
   .net-card-name {
-    font-size: 0.88rem !important;
-    margin-bottom: 4px !important;
+    font-size: 0.76rem !important;
+    margin-bottom: 1px !important;
   }
 
   .net-card-type-badge {
@@ -11156,9 +11156,9 @@ html, body {
   }
 
   .net-card-footer {
-    padding: 10px 12px !important;
-    gap: 6px !important;
-    border-top: 1px solid var(--border-color) !important;
+    padding: 0 6px 6px !important;
+    gap: 4px !important;
+    border-top: none !important;
   }
 
   /* Compact button row on cards */
@@ -11168,16 +11168,21 @@ html, body {
   .net-card-footer .btn-requested,
   .net-card-footer .btn-connected,
   .net-card-footer .btn-view-profile {
-    font-size: 0.75rem !important;
-    padding: 6px 8px !important;
-    height: 32px !important;
-    border-radius: var(--radius-sm) !important;
+    font-size: 0.68rem !important;
+    padding: 0 8px !important;
+    height: 26px !important;
+    max-height: 26px !important;
+    min-height: 0 !important;
+    border-radius: 9999px !important;
     flex: 1 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 4px !important;
     margin: 0 !important;
+    box-sizing: border-box !important;
+    line-height: 1 !important;
+    overflow: hidden !important;
   }
 
   .net-card-footer .btn-follow svg,
@@ -13095,51 +13100,74 @@ html, body {
 @media (max-width: 768px) {
   /* 1. Page Spacing & Bottom Nav Offset */
   .net-main {
-    padding: 12px 0 110px !important; /* Reduce vertical padding at top and add 110px padding-bottom so navbar does not overlap content */
+    padding: 8px 0 100px !important;
   }
   
   .container {
-    padding: 0 12px !important; /* Increase width efficiency on sides */
+    padding: 0 10px !important;
   }
   
   .net-layout-grid {
     margin-top: 0 !important;
-    gap: 12px !important; /* Spacing between Manage My Network -> Search */
+    gap: 8px !important;
   }
   
   .net-search-wrapper {
-    margin-bottom: 12px !important; /* Spacing between Search -> People You May Know */
+    margin-bottom: 8px !important;
   }
   
   .manage-network-card {
-    margin-bottom: 12px !important;
+    margin-bottom: 8px !important;
   }
   
   .suggestions-card {
-    padding: 12px 10px !important; /* Less internal padding */
-    margin-bottom: 12px !important;
+    padding: 8px 6px !important;
+    margin-bottom: 8px !important;
   }
   
   .suggestions-header-row {
-    margin-bottom: 10px !important;
+    margin-bottom: 6px !important;
+  }
+  
+  .suggestions-header-row h2 {
+    font-size: 18px !important;
+    font-weight: 600 !important;
   }
   
   .net-filter-tabs {
-    margin-bottom: 12px !important;
+    margin-bottom: 6px !important;
+    gap: 4px !important;
+  }
+
+  .net-tab {
+    padding: 5px 10px !important;
+    font-size: 0.72rem !important;
+    height: 28px !important;
+  }
+
+  .net-tab svg {
+    width: 12px !important;
+    height: 12px !important;
   }
   
   .net-results-bar {
-    margin-bottom: 10px !important;
+    margin-bottom: 6px !important;
   }
 
-  /* 2. 2-Column Mobile Layout (45-48% width each) */
+  #net-results-count {
+    font-size: 0.72rem !important;
+    color: var(--text-muted) !important;
+    font-weight: 500 !important;
+  }
+
+  /* 2. 2-Column Mobile Layout */
   .suggestions-card .net-card-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
-    margin-top: 10px !important;
+    gap: 6px !important;
+    margin-top: 6px !important;
   }
   
-  /* 3. Compact Suggestions Cards */
+  /* 3. Ultra-Compact Suggestion Cards */
   .net-person-card {
     border-radius: 10px !important;
     min-height: auto !important;
@@ -13147,14 +13175,14 @@ html, body {
     padding: 0 !important;
   }
   
-  /* Hide colored banner to significantly reduce card height and match reference screenshot */
+  /* Hide colored banner to reduce card height */
   .net-card-banner {
     display: none !important;
   }
   
   .net-card-avatar-link {
-    margin-top: 8px !important;
-    margin-bottom: 2px !important;
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
     display: flex !important;
     justify-content: center !important;
     width: 100% !important;
@@ -13165,38 +13193,46 @@ html, body {
   
   .net-card-avatar-img,
   .net-card-avatar-placeholder {
-    width: 46px !important; /* Compact centered avatar */
-    height: 46px !important;
-    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+    width: 40px !important;
+    height: 40px !important;
+    border: 2px solid var(--white) !important;
     border-radius: 50% !important;
     object-fit: cover !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+    flex-shrink: 0 !important;
+    margin-top: 0 !important;
   }
   
   .net-card-body {
-    padding: 0 6px 4px !important; /* Reduce internal padding to minimize whitespace */
+    padding: 2px 6px 2px !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     text-align: center !important;
+    gap: 0 !important;
+    flex-grow: 1 !important;
   }
   
   .net-card-name {
-    font-size: 0.8rem !important; /* Clean name sizing */
+    font-size: 0.76rem !important;
     font-weight: 700 !important;
-    line-height: 1.2 !important;
-    margin-bottom: 2px !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
+    line-height: 1.15 !important;
+    margin-bottom: 1px !important;
+    margin-top: 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   
   .net-card-headline {
-    font-size: 0.68rem !important;
-    line-height: 1.2 !important;
-    height: 24px !important; /* Compact headline to save space */
-    margin-top: 0px !important;
-    margin-bottom: 4px !important;
+    font-size: 0.65rem !important;
+    line-height: 1.15 !important;
+    height: auto !important;
+    max-height: 28px !important;
+    margin-top: 0 !important;
+    margin-bottom: 2px !important;
     color: var(--text-muted) !important;
     display: -webkit-box !important;
     -webkit-line-clamp: 2 !important;
@@ -13205,19 +13241,46 @@ html, body {
   }
   
   .net-card-mutual {
-    font-size: 0.65rem !important;
-    font-weight: 600 !important;
-    color: hsl(215, 15%, 45%) !important;
-    margin-bottom: 6px !important;
+    font-size: 0.6rem !important;
+    font-weight: 500 !important;
+    color: hsl(215, 15%, 52%) !important;
+    margin-bottom: 2px !important;
     margin-top: auto !important;
+  }
+
+  .net-card-type-badge {
+    font-size: 0.58rem !important;
+    padding: 1px 6px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .net-card-school {
+    font-size: 0.65rem !important;
+    margin-bottom: 2px !important;
+  }
+
+  .net-card-bio {
+    font-size: 0.65rem !important;
+    margin-bottom: 2px !important;
+    line-height: 1.2 !important;
+  }
+
+  .net-card-skills {
+    gap: 2px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .net-skill-chip {
+    font-size: 0.58rem !important;
+    padding: 1px 4px !important;
   }
   
   .net-card-footer {
-    padding: 0 6px 8px !important; /* Compact footer margins */
+    padding: 0 6px 6px !important;
     border-top: none !important;
   }
   
-  /* 4. Hide Follow button and style compact Connect button */
+  /* 4. Hide Follow on mobile, compact Connect */
   .net-person-card .btn-follow,
   .net-person-card .btn-following {
     display: none !important;
@@ -13229,10 +13292,10 @@ html, body {
   }
   
   .suggestion-actions-row button {
-    height: 30px !important; /* Compact action button height */
+    height: 26px !important;
     width: 100% !important;
-    font-size: 0.72rem !important;
-    padding: 0 !important;
+    font-size: 0.68rem !important;
+    padding: 0 6px !important;
     flex: 1 1 100% !important;
     border-radius: 9999px !important;
     font-weight: 600 !important;
@@ -13240,7 +13303,7 @@ html, body {
   
   .suggestion-actions-row .btn-connect {
     border: 1px solid var(--primary) !important;
-    background: var(--primary) !important; /* Filled blue for professional look */
+    background: var(--primary) !important;
     color: var(--white) !important;
   }
   
@@ -13252,7 +13315,7 @@ html, body {
   .suggestion-actions-row .btn-requested {
     background: #f3f4f6 !important;
     border: 1px solid #e5e7eb !important;
-    color: #9ca3af !important;
+    color: var(--text-main) !important;
     pointer-events: none !important;
     box-shadow: none !important;
   }
@@ -13263,24 +13326,36 @@ html, body {
     color: var(--primary) !important;
   }
 
-  /* --- Mobile controls row --- */
+  /* 5. Compact View Profile button for guests */
+  .net-card-footer .btn-view-profile {
+    font-size: 0.68rem !important;
+    padding: 4px 8px !important;
+    height: 26px !important;
+    width: 100% !important;
+    border-radius: 9999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* --- Mobile controls row (compact 36px) --- */
   .mobile-controls-row {
     display: flex !important;
-    gap: 8px !important;
-    margin-bottom: 12px !important;
-    margin-top: 4px !important;
+    gap: 6px !important;
+    margin-bottom: 8px !important;
+    margin-top: 2px !important;
     width: 100% !important;
   }
   .mobile-search-bar-container {
-    flex: 0 0 75% !important;
+    flex: 0 0 76% !important;
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
+    gap: 6px !important;
     background: var(--white) !important;
     border: 1px solid rgba(15, 23, 42, 0.08) !important;
     border-radius: var(--radius-md) !important;
-    padding: 4px 12px !important;
-    height: 40px !important;
+    padding: 2px 10px !important;
+    height: 36px !important;
     position: relative !important;
   }
   .mobile-search-bar-container input {
@@ -13289,7 +13364,7 @@ html, body {
     background: transparent !important;
     width: 100% !important;
     height: 100% !important;
-    font-size: 0.85rem !important;
+    font-size: 0.82rem !important;
     color: var(--text-main) !important;
   }
   .mobile-search-bar-container input::placeholder {
@@ -13299,33 +13374,35 @@ html, body {
   .mob-search-icon {
     color: var(--text-muted) !important;
     flex-shrink: 0 !important;
+    width: 14px !important;
+    height: 14px !important;
   }
   .btn-clear-mobile-search {
     background: none !important;
     border: none !important;
-    font-size: 1.25rem !important;
+    font-size: 1.1rem !important;
     color: var(--text-muted) !important;
     cursor: pointer !important;
-    padding: 2px 6px !important;
+    padding: 2px 4px !important;
     flex-shrink: 0 !important;
   }
 
-  /* Inline mobile search results styles inside media query */
+  /* Inline mobile search results */
   .mobile-inline-search-results {
     width: 100% !important;
     background: var(--white) !important;
     border: 1px solid rgba(15, 23, 42, 0.08) !important;
     border-radius: var(--radius-md) !important;
-    margin-bottom: 12px !important;
-    padding: 12px 14px !important;
+    margin-bottom: 8px !important;
+    padding: 8px 10px !important;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02) !important;
   }
   .search-results-chips-row {
     display: flex !important;
-    gap: 6px !important;
+    gap: 4px !important;
     overflow-x: auto !important;
-    padding-bottom: 8px !important;
-    margin-bottom: 8px !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 6px !important;
     border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
     white-space: nowrap !important;
   }
@@ -13338,18 +13415,18 @@ html, body {
     gap: 2px !important;
   }
   .btn-mobile-network {
-    flex: 0 0 calc(25% - 8px) !important;
+    flex: 0 0 calc(24% - 6px) !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
+    gap: 4px !important;
     background: var(--white) !important;
     border: 1px solid rgba(15, 23, 42, 0.08) !important;
     border-radius: var(--radius-md) !important;
-    height: 40px !important;
+    height: 36px !important;
     padding: 0 !important;
     color: var(--text-main) !important;
-    font-size: 0.8rem !important;
+    font-size: 0.72rem !important;
     font-weight: 600 !important;
     cursor: pointer !important;
     transition: var(--transition-fast) !important;
@@ -13359,9 +13436,14 @@ html, body {
   }
   .btn-mobile-network svg {
     color: var(--text-main) !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+  .btn-mobile-network span {
+    display: none !important;
   }
 
-  /* Hide desktop network sidebar & search */
+  /* Hide desktop sidebar & search on mobile */
   .net-sidebar,
   .net-search-wrapper {
     display: none !important;
@@ -13669,19 +13751,32 @@ html, body {
   border-radius: 9999px;
   cursor: pointer;
   border: 1.5px solid var(--primary) !important;
-  background: transparent;
-  color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: var(--white) !important;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.search-result-row .result-actions button:hover {
+  background: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
 }
 .search-result-row .result-actions button.btn-connected {
   background: var(--primary-light) !important;
   border-color: var(--primary-light) !important;
   color: var(--primary) !important;
 }
+.search-result-row .result-actions button.btn-connected:hover {
+  background: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+  color: #ef4444 !important;
+}
 .search-result-row .result-actions button.btn-requested {
-  background: var(--light-bg) !important;
+  background: #f3f4f6 !important;
   border-color: rgba(15, 23, 42, 0.08) !important;
-  color: var(--text-muted) !important;
+  color: var(--text-main) !important;
 }
 .search-result-row .result-actions button.btn-following {
   background: var(--light-bg) !important;
@@ -13759,14 +13854,15 @@ html, body {
 
 .suggestion-actions-row .btn-connect {
   flex: 2;
-  background: transparent;
+  background: var(--primary) !important;
   border: 1.5px solid var(--primary) !important;
-  color: var(--primary) !important;
+  color: var(--white) !important;
 }
 
 .suggestion-actions-row .btn-connect:hover {
-  background-color: var(--primary-light) !important;
-  color: var(--primary-hover) !important;
+  background-color: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+  color: var(--white) !important;
 }
 
 .suggestion-actions-row .btn-follow {
@@ -13802,7 +13898,7 @@ html, body {
   border-radius: 9999px !important;
   background: #f3f4f6 !important;
   border: 1px solid #e5e7eb !important;
-  color: #9ca3af !important;
+  color: var(--text-main) !important;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -13984,6 +14080,10 @@ html, body {
   background: var(--white) !important;
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 4px var(--primary-light) !important;
+}
+
+#cl-debug-block {
+  display: none !important;
 }
 
 

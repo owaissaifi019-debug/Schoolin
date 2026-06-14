@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+(function () {
   'use strict';
 
   // Update navigation based on auth state
@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let searchQuery = '';
   let showAllInvitations = false;
   let suggestedSchools = [];
+  let profilesError = null;
 
   const DEFAULT_SCHOOLS = [
     { id: '1', name: "Delhi Public School, RK Puram", city: "New Delhi", logoLetter: "D", colorClass: "bg-gradient-1", verificationBadge: 'blue' },
@@ -237,8 +238,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* --- Data Loading --- */
   async function loadProfiles() {
-    if (!supabase) return;
+    if (!supabase) {
+      profilesError = 'Supabase client not initialized.';
+      return;
+    }
     try {
+      profilesError = null;
       const { data, error } = await supabase
         .from('profiles')
         .select('*, schools(name, city, verification_badge)')
@@ -249,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
       allProfiles = data || [];
     } catch (err) {
       console.warn('Error loading profiles:', err);
+      profilesError = err.message || err;
     }
   }
 
@@ -418,16 +424,30 @@ document.addEventListener('DOMContentLoaded', () => {
         return matchProfile(p, q);
       });
     } else if (activeFilter === 'all') {
-      // People
+      // People suggestions
       people = allProfiles.filter(p => {
         if (currentUser && p.id === currentUser.id) return false;
+        
+        // Exclude Connected, Requested, and Pending users from suggestions
+        if (currentUser) {
+          const conn = userConnections.get(p.id);
+          if (conn && (conn.status === 'accepted' || conn.status === 'pending')) return false;
+        }
+        
         if (!q) return true;
         return matchProfile(p, q);
       });
     } else {
-      // Specific user type
+      // Specific user type suggestions
       people = allProfiles.filter(p => {
         if (currentUser && p.id === currentUser.id) return false;
+        
+        // Exclude Connected, Requested, and Pending users from suggestions
+        if (currentUser) {
+          const conn = userConnections.get(p.id);
+          if (conn && (conn.status === 'accepted' || conn.status === 'pending')) return false;
+        }
+        
         if (p.user_type !== activeFilter) return false;
         if (!q) return true;
         return matchProfile(p, q);
@@ -452,6 +472,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyState = document.getElementById('net-empty-state');
     const countEl = document.getElementById('net-results-count');
     if (!grid) return;
+
+    if (profilesError) {
+      grid.innerHTML = `
+        <div class="net-error-state" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #EF4444;">
+          <div style="font-size: 2rem; margin-bottom: 12px;">⚠️</div>
+          <h3>Failed to load profiles</h3>
+          <p>${profilesError}</p>
+        </div>
+      `;
+      if (emptyState) emptyState.style.display = 'none';
+      if (countEl) countEl.textContent = 'Error loading results';
+      return;
+    }
 
     const { people } = getFilteredResults();
     const totalCount = people.length;
@@ -1087,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } else if (filter === 'events') {
           window.location.href = 'events.html';
-
+        }
 
         closeBottomSheet();
       });
@@ -1332,5 +1365,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Boot
-  init();
-});
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

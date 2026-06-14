@@ -14,3 +14,26 @@ const _supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Expose globally for other scripts
 window.CampusLink = window.CampusLink || {};
 window.CampusLink.supabase = _supabaseClient;
+
+// Automatically detect and remove external debug JSON injection block from the UI/DOM
+(function() {
+  const removeDebugBlock = () => {
+    const el = document.getElementById('cl-debug-block');
+    if (el) {
+      el.remove();
+    }
+  };
+  removeDebugBlock();
+  
+  const observer = new MutationObserver((mutations) => {
+    removeDebugBlock();
+  });
+  
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  });
+  
+  document.addEventListener('DOMContentLoaded', removeDebugBlock);
+  window.addEventListener('load', removeDebugBlock);
+})();
