@@ -1746,29 +1746,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bind Dropdown Delete Post clicks
     feedContainer.querySelectorAll('.btn-delete-post').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.stopPropagation();
+        const postId = e.currentTarget.getAttribute('data-post-id');
         const card = e.currentTarget.closest('.feed-post-card');
-        if (card) {
-          card.style.transition = 'all 0.4s ease';
-          card.style.opacity = '0';
-          card.style.transform = 'scale(0.95)';
-          setTimeout(() => {
-            card.remove();
+
+        if (card && postId) {
+          try {
+            const { error } = await supabase
+              .from('posts')
+              .delete()
+              .eq('id', postId);
+
+            if (error) throw error;
             
-            // Check if feed is now empty
-            const remaining = feedContainer.querySelectorAll('.feed-post-card');
-            if (remaining.length === 0) {
-              feedContainer.innerHTML = `
-                <div class="feed-empty-state">
-                  <div class="empty-icon">📣</div>
-                  <h3>No posts yet</h3>
-                  <p>Be the first to share an achievement, competition win, or project!</p>
-                </div>
-              `;
-            }
-          }, 400);
-          showToast('Post deleted successfully!');
+            card.style.transition = 'all 0.4s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+              card.remove();
+
+              // Check if feed is now empty
+              const remaining = feedContainer.querySelectorAll('.feed-post-card');
+              if (remaining.length === 0) {
+                feedContainer.innerHTML = `
+                  <div class="feed-empty-state">
+                    <div class="empty-icon">📣</div>
+                    <h3>No posts yet</h3>
+                    <p>Be the first to share an achievement, competition win, or project!</p>
+                  </div>
+                `;
+              }
+            }, 400);
+            showToast('Post deleted successfully!');
+          } catch (err) {
+            console.error('Failed to delete post:', err);
+            showToast('Failed to delete post: ' + err.message, 'error');
+          }
         }
       });
     });
