@@ -1139,6 +1139,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       input.style.borderColor = '';
     });
 
+    // Reset checkboxes
+    const checkboxes = document.querySelectorAll('input[name="admission_classes"]');
+    checkboxes.forEach(cb => cb.checked = false);
+    document.getElementById('admission-classes').value = '';
+
     admissionFormContainer.style.display = 'block';
     toggleAdmissionFormBtn.style.display = 'none';
     admissionFormContainer.scrollIntoView({ behavior: 'smooth' });
@@ -1158,6 +1163,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('admission-classes').value = adm.classesOpen || '';
+    
+    // Sync checkboxes based on classesOpen value
+    const selectedClasses = (adm.classesOpen || '').split(',').map(s => s.trim()).filter(Boolean);
+    const checkboxes = document.querySelectorAll('input[name="admission_classes"]');
+    checkboxes.forEach(cb => {
+      cb.checked = selectedClasses.includes(cb.value);
+    });
+
     document.getElementById('admission-start-date').value = adm.startDate || '';
     document.getElementById('admission-end-date').value = adm.lastDate || '';
     document.getElementById('admission-apply-link').value = adm.applyLink || '';
@@ -1184,6 +1197,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggleAdmissionFormBtn.style.display = 'block';
     dashboardAdmissionForm.reset();
     editAdmissionIdInput.value = "";
+
+    // Reset checkboxes
+    const checkboxes = document.querySelectorAll('input[name="admission_classes"]');
+    checkboxes.forEach(cb => cb.checked = false);
+    document.getElementById('admission-classes').value = '';
 
     // Reset error styling
     const errorSpans = dashboardAdmissionForm.querySelectorAll('.error-msg');
@@ -1266,12 +1284,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       const performSaveAdmission = async () => {
+        const checkedCbs = document.querySelectorAll('input[name="admission_classes"]:checked');
+        const specificClasses = Array.from(checkedCbs).map(cb => cb.value);
+        const classLevels = [...specificClasses];
+
         const clsLower = classesOpen.toLowerCase();
-        const classLevels = [];
-        if (clsLower.includes('nursery') || clsLower.includes('kg') || clsLower.includes('kindergarten')) classLevels.push('nursery');
-        if (clsLower.includes('primary') || clsLower.includes('grade i') || clsLower.includes('class i') || clsLower.includes('v') || clsLower.includes('1') || clsLower.includes('2') || clsLower.includes('3') || clsLower.includes('4') || clsLower.includes('5')) classLevels.push('primary');
-        if (clsLower.includes('secondary') || clsLower.includes('ix') || clsLower.includes('x') || clsLower.includes('6') || clsLower.includes('7') || clsLower.includes('8') || clsLower.includes('9') || clsLower.includes('10')) classLevels.push('secondary');
-        if (clsLower.includes('senior') || clsLower.includes('xi') || clsLower.includes('xii') || clsLower.includes('11') || clsLower.includes('12')) classLevels.push('senior-secondary');
+        if (clsLower.includes('nursery') || clsLower.includes('kg') || clsLower.includes('kindergarten') || clsLower.includes('lkg') || clsLower.includes('ukg')) classLevels.push('nursery');
+        if (clsLower.includes('primary') || clsLower.includes('grade 1') || clsLower.includes('grade 2') || clsLower.includes('grade 3') || clsLower.includes('grade 4') || clsLower.includes('grade 5') || clsLower.includes('class i') || clsLower.includes('v') || clsLower.includes('1') || clsLower.includes('2') || clsLower.includes('3') || clsLower.includes('4') || clsLower.includes('5')) classLevels.push('primary');
+        if (clsLower.includes('secondary') || clsLower.includes('grade 6') || clsLower.includes('grade 7') || clsLower.includes('grade 8') || clsLower.includes('grade 9') || clsLower.includes('grade 10') || clsLower.includes('ix') || clsLower.includes('x') || clsLower.includes('6') || clsLower.includes('7') || clsLower.includes('8') || clsLower.includes('9') || clsLower.includes('10')) classLevels.push('secondary');
+        if (clsLower.includes('senior') || clsLower.includes('grade 11') || clsLower.includes('grade 12') || clsLower.includes('xi') || clsLower.includes('xii') || clsLower.includes('11') || clsLower.includes('12')) classLevels.push('senior-secondary');
         if (classLevels.length === 0) classLevels.push('primary', 'secondary');
 
         if (supabase && profile.id && profile.id.length > 8) {
@@ -1710,6 +1731,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderContactRequests();
     showToast(`Request successfully ${newStatus === 'accepted' ? 'accepted' : 'ignored'}!`, newStatus === 'accepted' ? 'success' : 'info');
   }
+
+  // Bind change listeners to class selection checkboxes
+  document.querySelectorAll('input[name="admission_classes"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const checkedCbs = document.querySelectorAll('input[name="admission_classes"]:checked');
+      const selectedClasses = Array.from(checkedCbs).map(c => c.value);
+      document.getElementById('admission-classes').value = selectedClasses.join(', ');
+    });
+  });
 
   // --- Init Dashboard Rendering ---
   loadDashboardData();

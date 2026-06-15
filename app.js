@@ -775,6 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const board = s.board || 'CBSE';
         const city = s.city || '';
         const colorClass = s.color_class || 'color-1';
+        const profileUrl = `school-profile.html?id=${p.school_id}`;
         
         let logoHtml;
         if (s.logo_url) {
@@ -819,7 +820,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="profile-card-footer">
               <a href="${profileUrl}" class="btn-profile-view">View School Profile</a>
             </div>
-          </div>         </div>
           </div>
           
           <div class="feed-sidebar-card shortcuts-sidebar-card">
@@ -1746,29 +1746,65 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bind Dropdown Delete Post clicks
     feedContainer.querySelectorAll('.btn-delete-post').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        const card = e.currentTarget.closest('.feed-post-card');
-        if (card) {
-          card.style.transition = 'all 0.4s ease';
-          card.style.opacity = '0';
-          card.style.transform = 'scale(0.95)';
-          setTimeout(() => {
-            card.remove();
-            
-            // Check if feed is now empty
-            const remaining = feedContainer.querySelectorAll('.feed-post-card');
-            if (remaining.length === 0) {
-              feedContainer.innerHTML = `
-                <div class="feed-empty-state">
-                  <div class="empty-icon">📣</div>
-                  <h3>No posts yet</h3>
-                  <p>Be the first to share an achievement, competition win, or project!</p>
-                </div>
-              `;
-            }
-          }, 400);
+        
+        const postId = btn.getAttribute('data-post-id');
+        const currentUserId = currentUser ? currentUser.id : null;
+
+        console.log("Delete clicked");
+        console.log("Post ID:", postId);
+        console.log("User ID:", currentUserId);
+
+        if (!confirm('Are you sure you want to permanently delete this post?')) {
+          return;
+        }
+
+        console.log("Delete request sent");
+
+        try {
+          const { data: response, error: error } = await supabase
+            .from('posts')
+            .delete()
+            .eq('id', postId)
+            .select();
+
+          console.log("Delete response:", response);
+          console.log("Delete error:", error);
+
+          if (error) {
+            throw error;
+          }
+
+          if (!response || response.length === 0) {
+            throw new Error('RLS policy violation or post not found. Deletion failed.');
+          }
+
+          const card = btn.closest('.feed-post-card');
+          if (card) {
+            card.style.transition = 'all 0.4s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+              card.remove();
+              
+              // Check if feed is now empty
+              const remaining = feedContainer.querySelectorAll('.feed-post-card');
+              if (remaining.length === 0) {
+                feedContainer.innerHTML = `
+                  <div class="feed-empty-state">
+                    <div class="empty-icon">📣</div>
+                    <h3>No posts yet</h3>
+                    <p>Be the first to share an achievement, competition win, or project!</p>
+                  </div>
+                `;
+              }
+            }, 400);
+          }
           showToast('Post deleted successfully!');
+        } catch (err) {
+          console.error("Delete error:", err);
+          showToast(`Failed to delete post: ${err.message || err}`, 'error');
         }
       });
     });

@@ -183,15 +183,54 @@
             <input type="text" id="admission-search-input" placeholder="Search admissions by school name...">
           </div>
 
-          <!-- Class Level Filter -->
-          <div class="filter-select-wrapper">
-            <select id="admission-class-filter">
-              <option value="">All Classes</option>
-              <option value="Nursery">Nursery & KG</option>
-              <option value="Primary">Primary (1-5)</option>
-              <option value="Secondary">Secondary (6-10)</option>
-              <option value="Senior Secondary">Senior Secondary (11-12)</option>
-            </select>
+          <!-- Custom Class Multi-select Dropdown Filter -->
+          <div class="custom-dropdown-filter" id="class-filter-dropdown">
+            <button class="dropdown-trigger-btn" id="class-dropdown-trigger" type="button">
+              <span>All Classes</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="dropdown-panel" id="class-dropdown-panel">
+              <div class="dropdown-panel-header">
+                <button class="btn-clear-class-selection" id="btn-clear-class-selection" type="button">Clear Selection</button>
+              </div>
+              <div class="dropdown-panel-body">
+                <div class="dropdown-category">
+                  <h6>Pre-Primary</h6>
+                  <div class="dropdown-options">
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Nursery"><span>Nursery</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="LKG"><span>LKG</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="UKG"><span>UKG</span></label>
+                  </div>
+                </div>
+                <div class="dropdown-category">
+                  <h6>Primary (Grade 1 - 5)</h6>
+                  <div class="dropdown-options">
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 1"><span>Grade 1</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 2"><span>Grade 2</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 3"><span>Grade 3</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 4"><span>Grade 4</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 5"><span>Grade 5</span></label>
+                  </div>
+                </div>
+                <div class="dropdown-category">
+                  <h6>Middle & Secondary (Grade 6 - 10)</h6>
+                  <div class="dropdown-options">
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 6"><span>Grade 6</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 7"><span>Grade 7</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 8"><span>Grade 8</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 9"><span>Grade 9</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 10"><span>Grade 10</span></label>
+                  </div>
+                </div>
+                <div class="dropdown-category">
+                  <h6>Senior Secondary (Grade 11 - 12)</h6>
+                  <div class="dropdown-options">
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 11"><span>Grade 11</span></label>
+                    <label class="dropdown-option-item"><input type="checkbox" name="class_filter" value="Grade 12"><span>Grade 12</span></label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- City Filter -->

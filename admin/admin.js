@@ -91,9 +91,48 @@ document.addEventListener('DOMContentLoaded', async () => {
   const auth = window.CampusLink && window.CampusLink.auth;
   const supabase = window.CampusLink && window.CampusLink.supabase;
   let session = null;
+  let currentUserProfile = null;
 
-  // Temporarily bypassed auth for debugging
-  session = { user: { email: 'owaissaifi019@gmail.com' } };
+  // Retrieve current active session from Supabase
+  if (auth) {
+    try {
+      session = await auth.getSession();
+    } catch (e) {
+      console.error('[Admin Auth] Error getting session:', e);
+    }
+  }
+
+  // Fetch active user profile from profiles table to check role
+  if (supabase && session && session.user) {
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      
+      if (!profileError && profile) {
+        currentUserProfile = profile;
+        console.log('[Admin Auth] Session loaded for profile:', profile.email, 'Role:', profile.platform_role);
+      } else if (profileError) {
+        console.error('[Admin Auth] Error fetching profile:', profileError);
+      }
+    } catch (e) {
+      console.error('[Admin Auth] Error calling profiles table:', e);
+    }
+  }
+
+  // Fallback for development if no session or profile is found
+  if (!session || !currentUserProfile) {
+    console.log('[Admin Auth] Fallback: No session found. Bypassing auth check for development using mock owaissaifi019@gmail.com.');
+    session = { user: { email: 'owaissaifi019@gmail.com', id: 'super-admin-dev-id' } };
+    currentUserProfile = {
+      email: 'owaissaifi019@gmail.com',
+      platform_role: 'super_admin',
+      user_type: 'school_representative'
+    };
+  }
+
   if (authOverlay) {
     authOverlay.style.display = 'none';
   }
@@ -289,7 +328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind details buttons
     schoolsTbody.querySelectorAll('.btn-view-details').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const schoolId = e.target.getAttribute('data-id');
+        const schoolId = btn.getAttribute('data-id');
         openSchoolDetailsModal(schoolId);
       });
     });
@@ -297,7 +336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind approve buttons
     schoolsTbody.querySelectorAll('.btn-approve-school').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const schoolId = e.target.getAttribute('data-id');
+        const schoolId = btn.getAttribute('data-id');
         await updateSchoolStatus(schoolId, 'approved');
       });
     });
@@ -305,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind reject buttons
     schoolsTbody.querySelectorAll('.btn-reject-school').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const schoolId = e.target.getAttribute('data-id');
+        const schoolId = btn.getAttribute('data-id');
         await updateSchoolStatus(schoolId, 'rejected');
       });
     });
@@ -313,8 +352,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind badge change dropdowns
     schoolsTbody.querySelectorAll('.select-school-badge').forEach(select => {
       select.addEventListener('change', async (e) => {
-        const id = e.target.getAttribute('data-id');
-        const newBadge = e.target.value;
+        const id = select.getAttribute('data-id');
+        const newBadge = select.value;
         await updateSchoolBadge(id, newBadge);
       });
     });
@@ -567,7 +606,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind delete buttons
     eventsTbody.querySelectorAll('.btn-delete-event').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const eventId = e.target.getAttribute('data-id');
+        const eventId = btn.getAttribute('data-id');
         if (confirm('Are you sure you want to delete this event opportunity?')) {
           await deleteEvent(eventId);
         }
@@ -678,8 +717,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind action buttons
     admissionsTbody.querySelectorAll('.btn-toggle-admission').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
-        const currentStatus = e.target.getAttribute('data-status');
+        const id = btn.getAttribute('data-id');
+        const currentStatus = btn.getAttribute('data-status');
         const nextStatus = currentStatus === 'closed' ? 'open' : 'closed';
         await toggleAdmissionStatus(id, nextStatus);
       });
@@ -687,7 +726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     admissionsTbody.querySelectorAll('.btn-delete-admission').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
+        const id = btn.getAttribute('data-id');
         if (confirm('Are you sure you want to delete this admission posting?')) {
           await deleteAdmission(id);
         }
@@ -854,8 +893,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind role change dropdowns
     usersTbody.querySelectorAll('.select-role-change').forEach(select => {
       select.addEventListener('change', async (e) => {
-        const id = e.target.getAttribute('data-id');
-        const newRole = e.target.value;
+        const id = select.getAttribute('data-id');
+        const newRole = select.value;
         await updateUserRole(id, newRole);
       });
     });
@@ -863,7 +902,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind delete user profile buttons
     usersTbody.querySelectorAll('.btn-delete-user').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
+        const id = btn.getAttribute('data-id');
         if (confirm('Are you sure you want to delete this user profile? Note: This deletes the public profile, but the underlying Auth user remains.')) {
           await deleteUserProfile(id);
         }
@@ -873,8 +912,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind verify toggle buttons
     usersTbody.querySelectorAll('.btn-toggle-verify').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.currentTarget.getAttribute('data-id');
-        const isVerified = e.currentTarget.getAttribute('data-verified') === 'true';
+        const id = btn.getAttribute('data-id');
+        const isVerified = btn.getAttribute('data-verified') === 'true';
         await toggleUserVerification(id, isVerified);
       });
     });
@@ -1050,10 +1089,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind approve buttons
     suggestionsTbody.querySelectorAll('.btn-approve-suggestion').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
-        const name = e.target.getAttribute('data-name');
-        const city = e.target.getAttribute('data-city');
-        const board = e.target.getAttribute('data-board');
+        const id = btn.getAttribute('data-id');
+        const name = btn.getAttribute('data-name');
+        const city = btn.getAttribute('data-city');
+        const board = btn.getAttribute('data-board');
         if (confirm(`Approve suggestion and register "${name}" as a verified school?`)) {
           await approveSuggestedSchool(id, name, city, board);
         }
@@ -1063,7 +1102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind delete buttons
     suggestionsTbody.querySelectorAll('.btn-delete-suggestion').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
+        const id = btn.getAttribute('data-id');
         if (confirm('Are you sure you want to reject and delete this suggestion?')) {
           await deleteSuggestion(id);
         }
@@ -1228,7 +1267,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td style="padding: 12px 16px;"><span class="badge-status ${typeBadgeClass}" style="font-weight:700;">${typeLabel.toUpperCase()}</span></td>
         <td style="padding: 12px 16px; font-size: 0.85rem; color: var(--text-muted);">${createdDate}</td>
         <td style="padding: 12px 16px;">
-          <button class="btn btn-secondary btn-delete-post" data-id="${post.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Delete</button>
+          <button class="btn btn-secondary btn-delete-post" data-id="${post.id}" data-author-id="${post.user_id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Delete</button>
         </td>
       `;
       postsTbody.appendChild(tr);
@@ -1236,11 +1275,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Bind delete buttons
     postsTbody.querySelectorAll('.btn-delete-post').forEach(btn => {
+      console.log('[Delete Binding] Binding click handler for post delete button:', btn.getAttribute('data-id'));
       btn.addEventListener('click', async (e) => {
-        const postId = e.target.getAttribute('data-id');
-        if (confirm('Are you sure you want to delete this social feed post? This will permanently delete the post, along with all its likes and comments.')) {
-          await deletePost(postId);
-        }
+        e.preventDefault();
+        console.log('[Delete Click] Post delete button clicked:', btn);
+        const postId = btn.getAttribute('data-id');
+        const authorId = btn.getAttribute('data-author-id');
+        console.log('[Delete Click] Retrieved attributes - postId:', postId, 'authorId:', authorId);
+        await deletePostWorkflow(postId, authorId);
       });
     });
   }
@@ -1264,24 +1306,128 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderPosts(filtered);
   }
 
-  async function deletePost(postId) {
+  async function deletePostWorkflow(postId, postAuthorId) {
     if (!supabase) return;
 
+    const currentUserId = session && session.user ? session.user.id : null;
+
+    console.log("Delete clicked");
+    console.log("Post ID:", postId);
+    console.log("User ID:", currentUserId);
+
+    // 5. Confirmation Modal
+    if (!confirm('Are you sure you want to permanently delete this post?')) {
+      return;
+    }
+
+    console.log("Delete request sent");
+
+    // Check if we are in fallback mock mode
+    const isMockMode = session && session.user && session.user.id === 'super-admin-dev-id';
+
+    if (isMockMode) {
+      console.log(`[Delete Debug] Mock mode active. Simulating local deletion for post: ${postId}`);
+      
+      // Simulate post removal from local cache
+      allPosts = allPosts.filter(p => p.id !== postId);
+      filterPosts(); // Re-render posts list
+
+      // Refresh other systems locally (safely)
+      try {
+        await loadModerationReports();
+      } catch (err) {
+        console.warn('[Delete Debug] Failed to reload moderation reports locally:', err);
+      }
+
+      showToast('Post successfully deleted (Simulated in Dev Mode)!', 'success');
+      return;
+    }
+
+    // 4. Permission Verification
+    const isSuperAdmin = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
+    const isPostOwner = session && session.user && session.user.id === postAuthorId;
+
+    if (!isSuperAdmin && !isPostOwner) {
+      const errMsg = 'Permission Denied: Only Super Admins or the post author can delete this post.';
+      console.error(`[Delete Debug] ${errMsg}`);
+      console.group('Delete Diagnostic Info');
+      console.log('Post ID:', postId);
+      console.log('Post Author ID:', postAuthorId);
+      console.log('Logged In User ID:', session && session.user && session.user.id);
+      console.log('Logged In User Email:', session && session.user && session.user.email);
+      console.log('User Profile Role:', currentUserProfile && currentUserProfile.platform_role);
+      console.groupEnd();
+      showToast(errMsg, 'error');
+      return;
+    }
+
     try {
-      const { error } = await supabase
+      // 3. Remove post from database
+      const { data: response, error: error } = await supabase
         .from('posts')
         .delete()
-        .eq('id', postId);
+        .eq('id', postId)
+        .select();
 
-      if (error) throw error;
+      console.log("Delete response:", response);
+      console.log("Delete error:", error);
 
-      showToast('Post successfully deleted from social feed!', 'success');
-      await loadSystemStats();
-      await loadPostsData();
-      renderAnalytics();
+      if (error) {
+        throw error;
+      }
+
+      if (!response || response.length === 0) {
+        throw new Error('RLS policy violation or post not found. Deletion failed.');
+      }
+
+      // 7. Debugging: Delete response received
+      console.log(`[Delete Debug] Delete response received. Deleted data:`, response);
+
+      // 3. Remove post from moderation queue
+      const resolvedById = (session && session.user && session.user.id && session.user.id !== 'super-admin-dev-id') ? session.user.id : null;
+      const { error: updateError } = await supabase
+        .from('post_reports')
+        .update({
+          status: 'deleted',
+          resolved_at: new Date().toISOString(),
+          resolved_by: resolvedById
+        })
+        .eq('post_id', postId)
+        .eq('status', 'pending');
+
+      if (updateError) {
+        console.warn('[Delete Debug] Warning: Failed to update post reports (might not exist):', updateError.message);
+      }
+
+      // 3. Remove post from admin list immediately
+      allPosts = allPosts.filter(p => p.id !== postId);
+      filterPosts(); // Re-renders the list immediately
+
+      // Refresh other system states and lists
+      showToast('Post successfully deleted!', 'success');
+      
+      try {
+        await loadSystemStats();
+      } catch (err) {
+        console.warn('[Delete Debug] Failed to reload system stats:', err);
+      }
+      
+      try {
+        await loadModerationReports();
+      } catch (err) {
+        console.warn('[Delete Debug] Failed to reload moderation reports:', err);
+      }
+      
+      try {
+        renderAnalytics();
+      } catch (err) {
+        console.warn('[Delete Debug] Failed to render analytics:', err);
+      }
+
     } catch (e) {
-      console.error('Failed to delete post:', e);
-      showToast(`Failed to delete post: ${e.message}`, 'error');
+      // 2. Error Handling
+      console.error(`[Delete Debug] Failed to delete post:`, e);
+      showToast(`Failed to delete post: ${e.message || e}`, 'error');
     }
   }
 
@@ -1573,14 +1719,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind action buttons
     applicationsTbody.querySelectorAll('.btn-approve-app').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
+        const id = btn.getAttribute('data-id');
         await updateApplicationStatus(id, 'approved');
       });
     });
 
     applicationsTbody.querySelectorAll('.btn-reject-app').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
+        const id = btn.getAttribute('data-id');
         await updateApplicationStatus(id, 'rejected');
       });
     });
@@ -1929,7 +2075,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px; flex-wrap: wrap;">
           <button class="btn btn-secondary btn-view-reported-post" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Details</button>
           <button class="btn btn-secondary btn-ignore-report" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); border-color: #D1D5DB; color: #374151; background: transparent;">Ignore Report</button>
-          <button class="btn btn-primary btn-delete-reported-post" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); background-color: #EF4444; border-color: #EF4444; color: white;">Delete Post</button>
+          <button class="btn btn-primary btn-delete-reported-post" data-post-id="${postId}" data-author-id="${authorId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); background-color: #EF4444; border-color: #EF4444; color: white;">Delete Post</button>
         </div>
       `;
       listContainer.appendChild(card);
@@ -1938,14 +2084,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind moderation actions
     listContainer.querySelectorAll('.btn-view-reported-post').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const postId = e.currentTarget.getAttribute('data-post-id');
+        const postId = btn.getAttribute('data-post-id');
         openReportedPostDetailsModal(postId, groupedReports[postId]);
       });
     });
 
     listContainer.querySelectorAll('.btn-ignore-report').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const postId = e.currentTarget.getAttribute('data-post-id');
+        const postId = btn.getAttribute('data-post-id');
         if (confirm('Are you sure you want to ignore all reports for this post? This will keep the post active and resolve these reports.')) {
           await ignorePostReports(postId);
         }
@@ -1953,11 +2099,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     listContainer.querySelectorAll('.btn-delete-reported-post').forEach(btn => {
+      console.log('[Delete Binding] Binding click handler for reported post delete button:', btn.getAttribute('data-post-id'));
       btn.addEventListener('click', async (e) => {
-        const postId = e.currentTarget.getAttribute('data-post-id');
-        if (confirm('Are you sure you want to delete this reported post? This will permanently remove the post from the feed and resolve these reports as deleted.')) {
-          await deleteReportedPost(postId);
-        }
+        e.preventDefault();
+        console.log('[Delete Click] Reported post delete button clicked:', btn);
+        const postId = btn.getAttribute('data-post-id');
+        const authorId = btn.getAttribute('data-author-id');
+        console.log('[Delete Click] Retrieved attributes - postId:', postId, 'authorId:', authorId);
+        await deletePostWorkflow(postId, authorId);
       });
     });
   }
@@ -1982,41 +2131,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
       console.error('Failed to ignore post reports:', e);
       showToast(`Failed to ignore reports: ${e.message}`, 'error');
-    }
-  }
-
-  async function deleteReportedPost(postId) {
-    if (!supabase) return;
-    try {
-      // 1. Physically delete the post from posts table
-      const { error: deleteError } = await supabase
-        .from('posts')
-        .delete()
-        .eq('id', postId);
-
-      if (deleteError) throw deleteError;
-
-      // 2. Mark the reports as deleted/resolved in reports table
-      const { error: updateError } = await supabase
-        .from('post_reports')
-        .update({
-          status: 'deleted',
-          resolved_at: new Date().toISOString(),
-          resolved_by: session?.user?.id || null
-        })
-        .eq('post_id', postId)
-        .eq('status', 'pending');
-
-      if (updateError) throw updateError;
-
-      showToast('Post successfully deleted and reports resolved!', 'success');
-      await loadSystemStats();
-      await loadPostsData();
-      await loadModerationReports();
-      renderAnalytics();
-    } catch (e) {
-      console.error('Failed to delete reported post:', e);
-      showToast(`Failed to delete reported post: ${e.message}`, 'error');
     }
   }
 

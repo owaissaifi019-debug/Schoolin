@@ -14162,4 +14162,259 @@ html, body {
   }
 }
 
+/* Global Mobile Footer Redesign (<768px) */
+@media (max-width: 767px) {
+  footer#about {
+    padding: 24px 0 90px 0 !important; /* Top 24px, bottom 90px safe area clearance */
+  }
+
+  footer#about .footer-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 20px !important;
+    margin-bottom: 24px !important;
+  }
+
+  /* 2. CampusLink Branding & Tagline */
+  footer#about .footer-brand {
+    align-items: center !important;
+    text-align: center !important;
+    gap: 8px !important;
+  }
+
+  footer#about .footer-brand p {
+    display: none !important; /* hide long branding paragraph */
+  }
+
+  footer#about .footer-brand::after {
+    content: "Connect. Discover. Grow." !important;
+    display: block !important;
+    font-size: 0.85rem !important;
+    color: #64748B !important;
+    font-weight: 500 !important;
+    margin-top: 4px !important;
+  }
+
+  /* 3. Social Icons: Single Centered Row, Spacing and Order */
+  footer#about .footer-socials {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important; /* reduced spacing between icons */
+    margin-top: 8px !important;
+  }
+
+  /* Set order: LinkedIn, Instagram, X */
+  footer#about .footer-socials a[aria-label="LinkedIn"] {
+    order: 1 !important;
+  }
+  footer#about .footer-socials a[aria-label="Instagram"] {
+    order: 2 !important;
+  }
+  footer#about .footer-socials a[aria-label="Twitter"] {
+    order: 3 !important; /* Twitter represents X */
+  }
+
+  footer#about .footer-social-icon {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* 4. Hide Bulky Link Columns */
+  footer#about .footer-links {
+    display: none !important;
+  }
+
+  /* 5. Newsletter Section Layout */
+  footer#about .footer-newsletter {
+    width: 100% !important;
+    max-width: 320px !important;
+    margin: 0 auto !important;
+    text-align: center !important;
+  }
+
+  footer#about .footer-newsletter h4 {
+    font-size: 0 !important; /* hide original text */
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    margin-bottom: 10px !important;
+  }
+
+  footer#about .footer-newsletter h4::after {
+    content: "Newsletter" !important;
+    font-size: 0.9rem !important; /* reduced heading size */
+    font-weight: 700 !important;
+    color: var(--white) !important;
+    display: block !important;
+  }
+
+  footer#about .footer-newsletter p {
+    display: none !important; /* hide long newsletter description */
+  }
+
+  footer#about .newsletter-form {
+    display: flex !important;
+    flex-direction: row !important; /* single horizontal row */
+    gap: 8px !important;
+    max-width: 320px !important;
+    margin: 0 auto !important;
+    align-items: center !important;
+  }
+
+  footer#about .newsletter-form input {
+    flex: 1 !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    padding: 8px 12px !important;
+    font-size: 0.85rem !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  footer#about .newsletter-form button {
+    flex-shrink: 0 !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    padding: 0 16px !important;
+    font-size: 0.85rem !important;
+    border-radius: var(--radius-sm) !important;
+    width: auto !important; /* prevent width 100% */
+  }
+
+  /* 6. Footer Bottom links & Copyright */
+  footer#about .footer-bottom {
+    padding-top: 16px !important;
+    margin-top: 16px !important;
+    border-top: 1px solid rgba(255,255,255,0.05) !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  /* Replace original copyright */
+  footer#about .footer-bottom p {
+    font-size: 0 !important;
+    margin: 0 !important;
+  }
+
+  footer#about .footer-bottom p::after {
+    content: "© 2026 CampusLink" !important;
+    font-size: 0.75rem !important; /* small secondary text */
+    color: #64748B !important;
+    display: block !important;
+  }
+
+  /* Replace bottom links text and format in one line: Privacy • Terms • Contact */
+  footer#about .footer-bottom-links {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 0 !important;
+    flex-wrap: wrap !important;
+    margin: 0 !important;
+  }
+
+  footer#about .footer-bottom-links a {
+    font-size: 0 !important; /* hide original text */
+    color: #94A3B8 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    transition: var(--transition-fast) !important;
+  }
+
+  footer#about .footer-bottom-links a:hover {
+    color: var(--primary-light) !important;
+    padding-left: 0 !important; /* clear desktop padding shift */
+  }
+
+  footer#about .footer-bottom-links a:nth-child(1)::after {
+    content: "Privacy\00a0\00a0\2022\00a0\00a0" !important; /* Dot separator spacing */
+    font-size: 0.8rem !important;
+  }
+
+  footer#about .footer-bottom-links a:nth-child(2)::after {
+    content: "Terms\00a0\00a0\2022\00a0\00a0" !important; /* Dot separator spacing */
+    font-size: 0.8rem !important;
+  }
+
+  footer#about .footer-bottom-links a:nth-child(3)::after {
+    content: "Contact" !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+/* --- Premium Class Selector Grid --- */
+.classes-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  background-color: var(--light-bg);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  margin-top: 6px;
+}
+
+.classes-category-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.classes-category-group h5 {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.class-chip {
+  cursor: pointer;
+  display: inline-block;
+  margin: 0;
+}
+
+.class-chip input[type="checkbox"] {
+  display: none !important; /* Hide original input */
+}
+
+.class-chip span {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background-color: var(--white);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.class-chip input[type="checkbox"]:checked + span {
+  background: linear-gradient(135deg, var(--primary-light) 0%, rgba(0, 102, 200, 0.1) 100%) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+  box-shadow: 0 2px 8px rgba(0, 102, 200, 0.12);
+  transform: translateY(-1px);
+}
+
+.class-chip:hover span {
+  border-color: var(--primary-light);
+  color: var(--primary);
+  background-color: rgba(0, 102, 200, 0.02);
+}
+
+
 

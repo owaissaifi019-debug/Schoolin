@@ -1,35 +1,35 @@
-const url = 'https://cfeeqgokzkzblddefhxn.supabase.co/rest/v1/posts?select=*';
-const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmZWVxZ29remt6YmxkZGVmaHhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTM1NTIsImV4cCI6MjA5NjA4OTU1Mn0.vzeLfLLeOajdsUaE__jvs_VoxzbvmX0j7p3GVAa26lI';
+// e:/Owais/School Idea/SchoolIn/scratch/inspect_db.js
+const { createClient } = require('@supabase/supabase-js');
 
-async function run() {
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'apikey': key,
-        'Authorization': `Bearer ${key}`
-      }
-    });
-    console.log('Status:', res.status);
-    const json = await res.json();
-    console.log('First post:', json[0]);
-    
-    // Also fetch the Swagger OpenAPI documentation of the schema
-    const swaggerRes = await fetch('https://cfeeqgokzkzblddefhxn.supabase.co/rest/v1/', {
-      headers: {
-        'apikey': key
-      }
-    });
-    const swagger = await swaggerRes.json();
-    console.log('Swagger keys:', Object.keys(swagger));
-    if (swagger.definitions) {
-      console.log('Tables in schema:', Object.keys(swagger.definitions));
-      console.log('Posts properties:', swagger.definitions.posts.properties);
-    } else {
-      console.log('Swagger response:', swagger);
-    }
-  } catch (err) {
-    console.error(err);
+const SUPABASE_URL = 'https://cfeeqgokzkzblddefhxn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmZWVxZ29remt6YmxkZGVmaHhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTM1NTIsImV4cCI6MjA5NjA4OTU1Mn0.vzeLfLLeOajdsUaE__jvs_VoxzbvmX0j7p3GVAa26lI';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function main() {
+  console.log("=== Fetching Posts ===");
+  const { data: posts, error: postsErr } = await supabase
+    .from('posts')
+    .select('id, user_id, content, post_type, created_at');
+  
+  if (postsErr) {
+    console.error("Error fetching posts:", postsErr);
+  } else {
+    console.log(`Fetched ${posts.length} posts:`);
+    console.log(JSON.stringify(posts, null, 2));
+  }
+
+  console.log("\n=== Fetching Profiles ===");
+  const { data: profiles, error: profilesErr } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, platform_role');
+  
+  if (profilesErr) {
+    console.error("Error fetching profiles:", profilesErr);
+  } else {
+    console.log(`Fetched ${profiles.length} profiles:`);
+    console.log(JSON.stringify(profiles, null, 2));
   }
 }
 
-run();
+main().catch(console.error);
