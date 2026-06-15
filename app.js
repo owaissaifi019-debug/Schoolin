@@ -1748,46 +1748,24 @@ document.addEventListener('DOMContentLoaded', () => {
     feedContainer.querySelectorAll('.btn-delete-post').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        
-        const postId = btn.getAttribute('data-post-id');
-        const currentUserId = currentUser ? currentUser.id : null;
+        const postId = e.currentTarget.getAttribute('data-post-id');
+        const card = e.currentTarget.closest('.feed-post-card');
 
-        console.log("Delete clicked");
-        console.log("Post ID:", postId);
-        console.log("User ID:", currentUserId);
+        if (card && postId) {
+          try {
+            const { error } = await supabase
+              .from('posts')
+              .delete()
+              .eq('id', postId);
 
-        if (!confirm('Are you sure you want to permanently delete this post?')) {
-          return;
-        }
-
-        console.log("Delete request sent");
-
-        try {
-          const { data: response, error: error } = await supabase
-            .from('posts')
-            .delete()
-            .eq('id', postId)
-            .select();
-
-          console.log("Delete response:", response);
-          console.log("Delete error:", error);
-
-          if (error) {
-            throw error;
-          }
-
-          if (!response || response.length === 0) {
-            throw new Error('RLS policy violation or post not found. Deletion failed.');
-          }
-
-          const card = btn.closest('.feed-post-card');
-          if (card) {
+            if (error) throw error;
+            
             card.style.transition = 'all 0.4s ease';
             card.style.opacity = '0';
             card.style.transform = 'scale(0.95)';
             setTimeout(() => {
               card.remove();
-              
+
               // Check if feed is now empty
               const remaining = feedContainer.querySelectorAll('.feed-post-card');
               if (remaining.length === 0) {
@@ -1800,11 +1778,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
               }
             }, 400);
+            showToast('Post deleted successfully!');
+          } catch (err) {
+            console.error('Failed to delete post:', err);
+            showToast('Failed to delete post: ' + err.message, 'error');
           }
-          showToast('Post deleted successfully!');
-        } catch (err) {
-          console.error("Delete error:", err);
-          showToast(`Failed to delete post: ${err.message || err}`, 'error');
         }
       });
     });
