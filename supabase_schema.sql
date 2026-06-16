@@ -351,8 +351,8 @@ BEGIN
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', ''),
     new.email,
-    COALESCE(new.raw_user_meta_data->>'user_type', CASE WHEN new.email = 'owaissaifi019@gmail.com' THEN 'school_representative' ELSE 'student' END),
-    CASE WHEN new.email = 'owaissaifi019@gmail.com' THEN 'super_admin' ELSE 'user' END,
+    COALESCE(new.raw_user_meta_data->>'user_type', CASE WHEN new.email = 'owaissaifi003@gmail.com' THEN 'school_representative' ELSE 'student' END),
+    CASE WHEN new.email = 'owaissaifi003@gmail.com' THEN 'super_admin' ELSE 'user' END,
     new.raw_user_meta_data->>'avatar_url'
   )
   ON CONFLICT (id) DO UPDATE SET
@@ -417,22 +417,25 @@ ADD COLUMN IF NOT EXISTS status text NOT NULL CHECK (status IN ('pending', 'appr
 -- Seed existing schools to approved status
 UPDATE public.schools SET status = 'approved' WHERE status IS NULL OR status = 'pending';
 
--- Seed existing owaissaifi019@gmail.com user to super_admin and school_representative
+-- Seed existing owaissaifi003@gmail.com user to super_admin and school_representative
 UPDATE public.profiles
 SET platform_role = 'super_admin', user_type = 'school_representative'
-WHERE email = 'owaissaifi019@gmail.com';
+WHERE email = 'owaissaifi003@gmail.com';
 
 -- ============================================================
 -- ENFORCE WRITE/UPDATE PERMISSIONS FOR SUPER ADMIN PRIVILEGES
 -- ============================================================
 
--- Function to prevent non-owaissaifi019@gmail.com from changing platform roles
+-- Function to prevent non-super_admin from changing platform roles
 CREATE OR REPLACE FUNCTION public.enforce_role_change_permissions()
 RETURNS trigger AS $$
 BEGIN
   IF NEW.platform_role IS DISTINCT FROM OLD.platform_role THEN
-    IF auth.role() = 'authenticated' AND COALESCE(auth.jwt()->>'email', '') <> 'owaissaifi019@gmail.com' THEN
-      RAISE EXCEPTION 'Access Denied: Only owaissaifi019@gmail.com can change user platform roles.';
+    IF auth.role() = 'authenticated' AND NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Access Denied: Only super admins can change user platform roles.';
     END IF;
   END IF;
   RETURN NEW;
@@ -444,13 +447,16 @@ CREATE OR REPLACE TRIGGER tr_enforce_role_change
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.enforce_role_change_permissions();
 
--- Function to prevent non-owaissaifi019@gmail.com from changing school status (approve/reject)
+-- Function to prevent non-super_admin from changing school status (approve/reject)
 CREATE OR REPLACE FUNCTION public.enforce_school_status_permissions()
 RETURNS trigger AS $$
 BEGIN
   IF NEW.status IS DISTINCT FROM OLD.status THEN
-    IF auth.role() = 'authenticated' AND COALESCE(auth.jwt()->>'email', '') <> 'owaissaifi019@gmail.com' THEN
-      RAISE EXCEPTION 'Access Denied: Only owaissaifi019@gmail.com can approve or reject schools.';
+    IF auth.role() = 'authenticated' AND NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Access Denied: Only super admins can approve or reject schools.';
     END IF;
   END IF;
   RETURN NEW;
@@ -693,13 +699,16 @@ CREATE POLICY "Either party can delete a connection"
 ALTER TABLE public.profiles
 ADD COLUMN IF NOT EXISTS is_verified boolean NOT NULL DEFAULT false;
 
--- Function to prevent non-owaissaifi019@gmail.com from changing verification badges
+-- Function to prevent non-super_admin from changing verification badges
 CREATE OR REPLACE FUNCTION public.enforce_verification_badge_permissions()
 RETURNS trigger AS $$
 BEGIN
   IF NEW.is_verified IS DISTINCT FROM OLD.is_verified THEN
-    IF auth.role() = 'authenticated' AND COALESCE(auth.jwt()->>'email', '') <> 'owaissaifi019@gmail.com' THEN
-      RAISE EXCEPTION 'Access Denied: Only owaissaifi019@gmail.com can change verification badges.';
+    IF auth.role() = 'authenticated' AND NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Access Denied: Only super admins can change verification badges.';
     END IF;
   END IF;
   RETURN NEW;
@@ -712,13 +721,16 @@ CREATE TRIGGER tr_enforce_verification_badge
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.enforce_verification_badge_permissions();
 
--- Function to prevent non-owaissaifi019@gmail.com from changing school verification badges
+-- Function to prevent non-super_admin from changing school verification badges
 CREATE OR REPLACE FUNCTION public.enforce_school_verification_badge_permissions()
 RETURNS trigger AS $$
 BEGIN
   IF NEW.verification_badge IS DISTINCT FROM OLD.verification_badge THEN
-    IF auth.role() = 'authenticated' AND COALESCE(auth.jwt()->>'email', '') <> 'owaissaifi019@gmail.com' THEN
-      RAISE EXCEPTION 'Access Denied: Only owaissaifi019@gmail.com can change school verification badges.';
+    IF auth.role() = 'authenticated' AND NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Access Denied: Only super admins can change school verification badges.';
     END IF;
   END IF;
   RETURN NEW;

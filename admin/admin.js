@@ -124,10 +124,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Fallback for development if no session or profile is found
   if (!session || !currentUserProfile) {
-    console.log('[Admin Auth] Fallback: No session found. Bypassing auth check for development using mock owaissaifi019@gmail.com.');
-    session = { user: { email: 'owaissaifi019@gmail.com', id: 'super-admin-dev-id' } };
+    console.log('[Admin Auth] Fallback: No session found. Bypassing auth check for development using mock owaissaifi003@gmail.com.');
+    session = { user: { email: 'owaissaifi003@gmail.com', id: 'super-admin-dev-id' } };
     currentUserProfile = {
-      email: 'owaissaifi019@gmail.com',
+      email: 'owaissaifi003@gmail.com',
       platform_role: 'super_admin',
       user_type: 'school_representative'
     };
@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (school.status === 'rejected') statusBadgeClass = 'status-rejected';
       
       const statusLabel = (school.status || 'pending').toUpperCase();
-      const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+      const canChangeStatus = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
       const approveBtn = canChangeStatus 
         ? `<button class="btn btn-primary btn-approve-school" data-id="${school.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); display: ${school.status === 'approved' ? 'none' : 'inline-block'};">Approve</button>` 
         : '';
@@ -295,7 +295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ? `<button class="btn btn-secondary btn-reject-school" data-id="${school.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2); display: ${school.status === 'rejected' ? 'none' : 'inline-block'};">Reject</button>` 
         : '';
 
-      const canChangeBadge = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+      const canChangeBadge = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
       const selectDisabledAttr = canChangeBadge ? '' : 'disabled';
       const selectCursor = canChangeBadge ? 'pointer' : 'not-allowed';
       const selectBackground = canChangeBadge ? 'white' : '#F1F5F9';
@@ -488,9 +488,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function updateSchoolStatus(schoolId, newStatus) {
     if (!supabase) return;
-    const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+    const canChangeStatus = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
     if (!canChangeStatus) {
-      showToast('Access Denied: Only owaissaifi019@gmail.com can approve or reject schools.', 'error');
+      showToast('Access Denied: Only super admins can approve or reject schools.', 'error');
       return;
     }
 
@@ -515,9 +515,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function updateSchoolBadge(schoolId, newBadge) {
     if (!supabase) return;
-    const canChange = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+    const canChange = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
     if (!canChange) {
-      showToast('Access Denied: Only owaissaifi019@gmail.com can change school verification badges.', 'error');
+      showToast('Access Denied: Only super admins can change school verification badges.', 'error');
       return;
     }
 
@@ -859,7 +859,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       ` : '';
 
-      const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+      const canChangeStatus = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
       const selectDisabledAttr = canChangeStatus ? '' : 'disabled';
       const selectCursor = canChangeStatus ? 'pointer' : 'not-allowed';
       const selectBackground = canChangeStatus ? 'white' : '#F1F5F9';
@@ -933,9 +933,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function updateUserRole(userId, newRole) {
     if (!supabase) return;
-    const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+    const canChangeStatus = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
     if (!canChangeStatus) {
-      showToast('Access Denied: Only owaissaifi019@gmail.com can change user platform roles.', 'error');
+      showToast('Access Denied: Only super admins can change user platform roles.', 'error');
       return;
     }
 
@@ -977,9 +977,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function toggleUserVerification(userId, currentVerifiedState) {
     if (!supabase) return;
-    const canChangeStatus = session && session.user && session.user.email === 'owaissaifi019@gmail.com';
+    const canChangeStatus = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
     if (!canChangeStatus) {
-      showToast('Access Denied: Only owaissaifi019@gmail.com can verify or unverify users.', 'error');
+      showToast('Access Denied: Only super admins can verify or unverify users.', 'error');
       return;
     }
 

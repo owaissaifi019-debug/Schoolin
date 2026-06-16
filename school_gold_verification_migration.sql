@@ -7,13 +7,16 @@
 ALTER TABLE public.schools
 ADD COLUMN IF NOT EXISTS verification_badge text NOT NULL CHECK (verification_badge IN ('none', 'blue', 'gold')) DEFAULT 'blue';
 
--- Function to prevent non-owaissaifi019@gmail.com from changing school verification badges
+-- Function to prevent non-super_admin from changing school verification badges
 CREATE OR REPLACE FUNCTION public.enforce_school_verification_badge_permissions()
 RETURNS trigger AS $$
 BEGIN
   IF NEW.verification_badge IS DISTINCT FROM OLD.verification_badge THEN
-    IF auth.role() = 'authenticated' AND COALESCE(auth.jwt()->>'email', '') <> 'owaissaifi019@gmail.com' THEN
-      RAISE EXCEPTION 'Access Denied: Only owaissaifi019@gmail.com can change school verification badges.';
+    IF auth.role() = 'authenticated' AND NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Access Denied: Only super admins can change school verification badges.';
     END IF;
   END IF;
   RETURN NEW;

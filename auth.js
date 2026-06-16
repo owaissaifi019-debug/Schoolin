@@ -243,7 +243,7 @@
     if (!session || !session.user) return null;
 
     // Fail-safe check for primary super admin
-    if (session.user.email === 'owaissaifi019@gmail.com') {
+    if (session.user.email === 'owaissaifi003@gmail.com') {
       return 'super_admin';
     }
 
@@ -309,7 +309,7 @@
 
         const user = session.user;
         const profile = await getProfile(user.id);
-        const platformRole = (user.email === 'owaissaifi019@gmail.com') ? 'super_admin' : (profile?.platform_role || 'user');
+        const platformRole = (user.email === 'owaissaifi003@gmail.com') ? 'super_admin' : (profile?.platform_role || 'user');
         const userType = profile?.user_type || user.user_metadata?.user_type || 'student';
         const displayName = profile?.full_name || user.user_metadata?.full_name || user.email || 'User';
         const initial = displayName ? displayName.charAt(0).toUpperCase() : 'U';

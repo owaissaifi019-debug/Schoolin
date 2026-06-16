@@ -312,7 +312,8 @@
       }
 
       // Setup super admin verification control
-      if (currentUser && currentUser.email === 'owaissaifi019@gmail.com') {
+      const platformRole = await auth.getUserRole();
+      if (currentUser && platformRole === 'super_admin') {
         setupVerifyButton(profileId, profile.is_verified);
       }
 

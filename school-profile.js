@@ -362,7 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
           if (currentUser) {
             isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
-            const isSuperAdmin = currentUser.email === 'owaissaifi019@gmail.com';
+            const userRole = await auth.getUserRole();
+            const isSuperAdmin = userRole === 'super_admin';
             
             if (isSchoolAdmin || isSuperAdmin) {
               const editBtn = document.getElementById('btn-edit-school');
