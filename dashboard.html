@@ -271,15 +271,54 @@
               <input type="hidden" id="edit-admission-id" value="">
               
               <div class="dash-form-row">
-                <div class="dash-form-group">
+                <div class="dash-form-group full-width">
                   <label for="admission-school-name">School Name *</label>
                   <input type="text" id="admission-school-name" placeholder="e.g. St. Joseph's Academy" readonly>
                   <span class="error-msg" id="err-admission-school-name" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
                 </div>
-                
-                <div class="dash-form-group">
-                  <label for="admission-classes">Classes Open *</label>
-                  <input type="text" id="admission-classes" placeholder="e.g., Nursery to Grade V, Grade XI">
+              </div>
+
+              <div class="dash-form-row">
+                <div class="dash-form-group full-width">
+                  <label>Classes Open *</label>
+                  <div class="classes-selector-grid">
+                    <div class="classes-category-group">
+                      <h5>Pre-Primary</h5>
+                      <div class="chips-container">
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Nursery"><span>Nursery</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="LKG"><span>LKG</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="UKG"><span>UKG</span></label>
+                      </div>
+                    </div>
+                    <div class="classes-category-group">
+                      <h5>Primary (Grade 1 - 5)</h5>
+                      <div class="chips-container">
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 1"><span>Grade 1</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 2"><span>Grade 2</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 3"><span>Grade 3</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 4"><span>Grade 4</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 5"><span>Grade 5</span></label>
+                      </div>
+                    </div>
+                    <div class="classes-category-group">
+                      <h5>Middle & Secondary (Grade 6 - 10)</h5>
+                      <div class="chips-container">
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 6"><span>Grade 6</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 7"><span>Grade 7</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 8"><span>Grade 8</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 9"><span>Grade 9</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 10"><span>Grade 10</span></label>
+                      </div>
+                    </div>
+                    <div class="classes-category-group">
+                      <h5>Senior Secondary (Grade 11 - 12)</h5>
+                      <div class="chips-container">
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 11"><span>Grade 11</span></label>
+                        <label class="class-chip"><input type="checkbox" name="admission_classes" value="Grade 12"><span>Grade 12</span></label>
+                      </div>
+                    </div>
+                  </div>
+                  <input type="hidden" id="admission-classes" value="">
                   <span class="error-msg" id="err-admission-classes" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
                 </div>
               </div>

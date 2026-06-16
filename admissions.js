@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "New Delhi",
       board: "CBSE",
       classesOpen: "Nursery & Grade XI",
-      classLevels: ["nursery", "senior-secondary"],
+      classLevels: ["nursery", "senior-secondary", "Nursery", "Grade 11"],
       lastDate: "June 18, 2026",
       schoolId: 1,
       status: "closing"
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "Mumbai",
       board: "ICSE",
       classesOpen: "Kindergarten to Grade 10",
-      classLevels: ["nursery", "primary", "secondary"],
+      classLevels: ["nursery", "primary", "secondary", "Nursery", "LKG", "UKG", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10"],
       lastDate: "July 05, 2026",
       schoolId: 2,
       status: "open"
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "Shimla",
       board: "ICSE",
       classesOpen: "Grades 3 to 9",
-      classLevels: ["primary", "secondary"],
+      classLevels: ["primary", "secondary", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9"],
       lastDate: "July 10, 2026",
       schoolId: 3,
       status: "open"
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "Dehradun",
       board: "CBSE",
       classesOpen: "Grades 1 to 12",
-      classLevels: ["primary", "secondary", "senior-secondary"],
+      classLevels: ["primary", "secondary", "senior-secondary", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"],
       lastDate: "July 24, 2026",
       schoolId: 4,
       status: "open"
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "Gurgaon",
       board: "IB",
       classesOpen: "Nursery to Grade XII",
-      classLevels: ["nursery", "primary", "secondary", "senior-secondary"],
+      classLevels: ["nursery", "primary", "secondary", "senior-secondary", "Nursery", "LKG", "UKG", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"],
       lastDate: "June 30, 2026",
       schoolId: 5,
       status: "closing"
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "Mumbai",
       board: "IB",
       classesOpen: "Grade XI (IBDP)",
-      classLevels: ["senior-secondary"],
+      classLevels: ["senior-secondary", "Grade 11"],
       lastDate: "August 05, 2026",
       schoolId: 6,
       status: "open"
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "Dehradun",
       board: "ICSE",
       classesOpen: "Grades 7 & 8 (Entrance)",
-      classLevels: ["secondary"],
+      classLevels: ["secondary", "Grade 7", "Grade 8"],
       lastDate: "July 15, 2026",
       schoolId: 7,
       status: "open"
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "Kolkata",
       board: "ICSE",
       classesOpen: "Nursery to Grade 5",
-      classLevels: ["nursery", "primary"],
+      classLevels: ["nursery", "primary", "Nursery", "LKG", "UKG", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5"],
       lastDate: "June 25, 2026",
       schoolId: 8,
       status: "closing"
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "Bangalore",
       board: "CBSE",
       classesOpen: "Grades 1 to 9",
-      classLevels: ["primary", "secondary"],
+      classLevels: ["primary", "secondary", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9"],
       lastDate: "July 12, 2026",
       schoolId: 9,
       status: "open"
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
       city: "New Delhi",
       board: "IB",
       classesOpen: "Nursery & KG",
-      classLevels: ["nursery"],
+      classLevels: ["nursery", "Nursery", "LKG", "UKG"],
       lastDate: "July 20, 2026",
       schoolId: 10,
       status: "open"
@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let searchQuery = '';
   let selectedCity = '';
   let selectedBoard = '';
-  let selectedClassLevel = '';
+  let selectedClassLevels = []; // Array to hold selected specific classes
 
   function getSchoolLogoInfo(schoolName) {
     const firstLetter = schoolName ? schoolName.replace(/^(The|St\.|St)\s+/i, '').charAt(0).toUpperCase() : 'S';
@@ -224,8 +224,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const matchesBoard = !selectedBoard || item.board === selectedBoard;
       
       let matchesClass = true;
-      if (selectedClassLevel) {
-        matchesClass = item.classLevels.includes(selectedClassLevel);
+      if (selectedClassLevels.length > 0) {
+        matchesClass = item.classLevels.some(cl => selectedClassLevels.includes(cl));
       }
 
       return matchesSearch && matchesCity && matchesBoard && matchesClass;
@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update count label and clear button visibility on mobile
     const isMobile = window.innerWidth < 768;
-    const isFilterActive = searchQuery !== '' || selectedCity !== '' || selectedBoard !== '' || selectedClassLevel !== '';
+    const isFilterActive = searchQuery !== '' || selectedCity !== '' || selectedBoard !== '' || selectedClassLevels.length > 0;
 
     if (clearBtn) {
       if (isMobile) {
@@ -351,12 +351,16 @@ document.addEventListener('DOMContentLoaded', () => {
     searchQuery = '';
     selectedCity = '';
     selectedBoard = '';
-    selectedClassLevel = '';
+    selectedClassLevels = [];
     
     if (searchInput) searchInput.value = '';
     if (cityFilter) cityFilter.value = '';
     if (boardFilter) boardFilter.value = '';
-    if (classFilter) classFilter.value = '';
+    
+    // Clear class checkbox filters
+    const classCheckboxes = document.querySelectorAll('input[name="class_filter"]');
+    classCheckboxes.forEach(cb => cb.checked = false);
+    updateClassDropdownText();
     
     renderAdmissions();
   }
@@ -383,9 +387,63 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (classFilter) {
-    classFilter.addEventListener('change', (e) => {
-      selectedClassLevel = e.target.value;
+  // Custom Class Dropdown Filter Handling
+  const classDropdownTrigger = document.getElementById('class-dropdown-trigger');
+  const classDropdownPanel = document.getElementById('class-dropdown-panel');
+  const clearClassBtn = document.getElementById('btn-clear-class-selection');
+  const classCheckboxes = document.querySelectorAll('input[name="class_filter"]');
+
+  function updateClassDropdownText() {
+    if (!classDropdownTrigger) return;
+    const triggerText = classDropdownTrigger.querySelector('span');
+    if (!triggerText) return;
+
+    const checkedCount = selectedClassLevels.length;
+    if (checkedCount === 0) {
+      triggerText.textContent = 'All Classes';
+    } else if (checkedCount <= 2) {
+      triggerText.textContent = selectedClassLevels.join(', ');
+    } else {
+      triggerText.textContent = `${checkedCount} Classes Selected`;
+    }
+  }
+
+  if (classDropdownTrigger && classDropdownPanel) {
+    classDropdownTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      classDropdownTrigger.classList.toggle('active');
+      classDropdownPanel.classList.toggle('show');
+    });
+
+    classDropdownPanel.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    document.addEventListener('click', () => {
+      classDropdownTrigger.classList.remove('active');
+      classDropdownPanel.classList.remove('show');
+    });
+  }
+
+  classCheckboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) {
+        if (!selectedClassLevels.includes(cb.value)) {
+          selectedClassLevels.push(cb.value);
+        }
+      } else {
+        selectedClassLevels = selectedClassLevels.filter(val => val !== cb.value);
+      }
+      updateClassDropdownText();
+      renderAdmissions();
+    });
+  });
+
+  if (clearClassBtn) {
+    clearClassBtn.addEventListener('click', () => {
+      classCheckboxes.forEach(cb => cb.checked = false);
+      selectedClassLevels = [];
+      updateClassDropdownText();
       renderAdmissions();
     });
   }

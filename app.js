@@ -775,6 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const board = s.board || 'CBSE';
         const city = s.city || '';
         const colorClass = s.color_class || 'color-1';
+        const profileUrl = `school-profile.html?id=${p.school_id}`;
         
         let logoHtml;
         if (s.logo_url) {
@@ -819,7 +820,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="profile-card-footer">
               <a href="${profileUrl}" class="btn-profile-view">View School Profile</a>
             </div>
-          </div>         </div>
           </div>
           
           <div class="feed-sidebar-card shortcuts-sidebar-card">
