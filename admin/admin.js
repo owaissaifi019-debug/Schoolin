@@ -902,8 +902,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind delete user profile buttons
     usersTbody.querySelectorAll('.btn-delete-user').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = btn.getAttribute('data-id');
-        if (confirm('Are you sure you want to delete this user profile? Note: This deletes the public profile, but the underlying Auth user remains.')) {
+        const id = e.target.getAttribute('data-id');
+        if (confirm('Are you sure you want to permanently delete this user? This will remove their authentication record and cascade delete their profile and associated data.')) {
           await deleteUserProfile(id);
         }
       });
@@ -960,19 +960,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!supabase) return;
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId }
+      });
 
       if (error) throw error;
 
-      showToast('User profile successfully deleted!', 'success');
+      showToast('User permanently deleted!', 'success');
       await loadSystemStats();
       await loadUsersData();
     } catch (e) {
-      console.error('Failed to delete user profile:', e);
-      showToast(`Failed to delete profile: ${e.message}`, 'error');
+      console.error('Failed to delete user:', e);
+      showToast(`Failed to delete user: ${e.message}`, 'error');
     }
   }
 
