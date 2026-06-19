@@ -354,27 +354,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Description text
     const descP1 = document.getElementById('event-desc-p1');
     const descP2 = document.getElementById('event-desc-p2');
-    
     if (descP1) descP1.textContent = currentEvent.desc1;
     if (descP2) descP2.textContent = currentEvent.desc2;
-
+    
     // Schedule Timeline
     const timeline = document.getElementById('event-schedule-timeline');
     if (timeline) {
-      timeline.innerHTML = '';
-      currentEvent.schedule.forEach(sch => {
-        const item = document.createElement('div');
-        item.className = 'achievement-item';
-        item.innerHTML = `
-          <div class="achievement-dot">⚡</div>
-          <h4 class="achievement-title">${sch.round}</h4>
-          <div class="achievement-meta">${sch.date}</div>
-          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">
-            ${sch.desc}
-          </p>
-        `;
-        timeline.appendChild(item);
-      });
+      const scheduleSection = timeline.closest('.event-detail-section');
+      if (currentEvent && currentEvent.schedule && currentEvent.schedule.length > 0) {
+        if (scheduleSection) scheduleSection.style.display = 'block';
+        timeline.innerHTML = '';
+        currentEvent.schedule.forEach(sch => {
+          const item = document.createElement('div');
+          item.className = 'achievement-item';
+          item.innerHTML = `
+            <div class="achievement-dot">⚡</div>
+            <h4 class="achievement-title">${sch.round}</h4>
+            <div class="achievement-meta">${sch.date}</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">
+              ${sch.desc}
+            </p>
+          `;
+          timeline.appendChild(item);
+        });
+      } else {
+        if (scheduleSection) scheduleSection.style.display = 'none';
+      }
     }
 
     // Sidebar timelines
@@ -393,10 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebarRegs) sidebarRegs.textContent = `${currentEvent.registrations.split(' ')[0]} Students`;
   }
 
-  // Populate dynamic elements
-  loadEventDetail();
-
-  /* --- Onboarding Modal Logic --- */
+  /* --- Student Registration Wizard Logic --- */
   const modalOverlay = document.getElementById('registration-modal');
   const modalClose = document.getElementById('modal-close');
   const formSteps = document.querySelectorAll('.form-step');
@@ -405,11 +407,97 @@ document.addEventListener('DOMContentLoaded', () => {
   const regForm = document.getElementById('school-registration-form');
   const successScreen = document.getElementById('success-screen');
   const modalContextTitle = document.getElementById('modal-context-title');
-
+  const eventTitleSub = document.getElementById('modal-event-title-sub');
+  
+  const progressLine = document.getElementById('wizard-progress-line');
+  const stepNodes = document.querySelectorAll('.progress-step-node');
+  
+  const regTypeRadios = document.querySelectorAll('input[name="registration_type"]');
+  const teamFieldsContainer = document.getElementById('team-fields-container');
+  
   let currentStep = 0;
+  let currentUser = null;
+  let userProfile = null;
 
-  function openRegistrationModal(context = "Create Free School Account") {
+  async function fetchUserProfileAndSchool() {
+    const supabase = window.CampusLink && window.CampusLink.supabase;
+    const auth = window.CampusLink && window.CampusLink.auth;
+    if (!supabase || !auth) return;
+    
+    try {
+      const session = await auth.getSession();
+      if (session && session.user) {
+        currentUser = session.user;
+        const profile = await auth.getProfile(currentUser.id);
+        if (profile) {
+          userProfile = profile;
+          
+          // Prefill Step 1
+          document.getElementById('reg-student-name').value = profile.full_name || '';
+          document.getElementById('reg-student-email').value = profile.email || currentUser.email || '';
+          document.getElementById('reg-student-grade').value = profile.class || '';
+          
+          // Fetch linked school if any
+          if (profile.school_id) {
+            const { data: school } = await supabase
+              .from('schools')
+              .select('*')
+              .eq('id', profile.school_id)
+              .maybeSingle();
+            
+            if (school) {
+              document.getElementById('reg-school-name').value = school.name || '';
+              document.getElementById('reg-school-board').value = school.board || '';
+              document.getElementById('reg-school-city').value = school.city || '';
+              
+              const note = document.getElementById('school-autofill-note');
+              if (note) note.style.display = 'block';
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching profile for registration pre-fill:', err);
+    }
+  }
+
+  function openRegistrationModal(context = "Register for Event") {
     if (!modalOverlay) return;
+    
+    // Prefill event category / subcategories
+    const categorySelect = document.getElementById('reg-comp-category');
+    if (categorySelect && currentEvent) {
+      const category = currentEvent.category || 'other';
+      const subcategories = {
+        'science': ["Robotics", "Mathematics", "Coding & Hackathon", "Science Exhibition"],
+        'sports': ["Basketball", "Athletics", "Football", "Cricket", "Table Tennis"],
+        'debate': ["Model United Nations (MUN)", "Geopolitical Debate", "Youth Parliament", "Public Speaking"],
+        'workshop': ["AI & Machine Learning", "Python Scripting", "Creative Writing", "Theatre & Acting"],
+        'cultural': ["Art & Painting", "Drama & Street Play", "Music & Band Showdown", "Dance Solo"]
+      };
+      
+      categorySelect.innerHTML = '';
+      const list = subcategories[category.toLowerCase()] || [];
+      if (list.length > 0) {
+        list.forEach(sub => {
+          const opt = document.createElement('option');
+          opt.value = sub;
+          opt.textContent = sub;
+          categorySelect.appendChild(opt);
+        });
+      } else {
+        const opt = document.createElement('option');
+        const displayVal = category.charAt(0).toUpperCase() + category.slice(1);
+        opt.value = displayVal;
+        opt.textContent = displayVal;
+        categorySelect.appendChild(opt);
+      }
+    }
+    
+    if (eventTitleSub && currentEvent) {
+      eventTitleSub.textContent = `Registering for: ${currentEvent.title}`;
+    }
+    
     modalContextTitle.textContent = context;
     modalOverlay.classList.add('active');
     body.style.overflow = 'hidden';
@@ -419,6 +507,17 @@ document.addEventListener('DOMContentLoaded', () => {
     regForm.style.display = 'block';
     successScreen.classList.remove('active');
     regForm.reset();
+    
+    // Hide team fields on reset
+    if (teamFieldsContainer) teamFieldsContainer.style.display = 'none';
+    
+    // Remove all input-invalid classes
+    if (regForm) {
+      regForm.querySelectorAll('.input-invalid').forEach(inp => inp.classList.remove('input-invalid'));
+    }
+    
+    // Prefill user details
+    fetchUserProfileAndSchool();
   }
 
   function closeRegistrationModal() {
@@ -435,8 +534,188 @@ document.addEventListener('DOMContentLoaded', () => {
         step.classList.remove('active');
       }
     });
+    
     currentStep = stepIndex;
+    updateProgressIndicator();
   }
+
+  function updateProgressIndicator() {
+    // Update progress line width
+    const percentage = (currentStep / (formSteps.length - 1)) * 100;
+    if (progressLine) {
+      progressLine.style.width = `${percentage}%`;
+    }
+    
+    // Update step circles
+    stepNodes.forEach((node, idx) => {
+      const nodeStep = parseInt(node.getAttribute('data-step'), 10);
+      if (nodeStep === currentStep) {
+        node.className = 'progress-step-node active';
+      } else if (nodeStep < currentStep) {
+        node.className = 'progress-step-node completed';
+      } else {
+        node.className = 'progress-step-node';
+      }
+    });
+  }
+
+  // Toggle Team Fields based on selection
+  regTypeRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      if (e.target.value === 'team') {
+        teamFieldsContainer.style.display = 'block';
+      } else {
+        teamFieldsContainer.style.display = 'none';
+      }
+    });
+  });
+
+  function validateStep(stepIndex) {
+    const stepEl = formSteps[stepIndex];
+    if (!stepEl) return true;
+    
+    const inputs = stepEl.querySelectorAll('input[required], select[required], textarea[required]');
+    let isValid = true;
+    
+    inputs.forEach(input => {
+      // Skip if input is not visible/applicable
+      if (input.closest('#team-fields-container') && teamFieldsContainer.style.display === 'none') {
+        return;
+      }
+      
+      let fieldValid = true;
+      
+      if (!input.value.trim()) {
+        fieldValid = false;
+      } else if (input.type === 'email') {
+        // basic email regex
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(input.value.trim())) {
+          fieldValid = false;
+        }
+      } else if (input.id === 'reg-student-phone' || input.id === 'reg-parent-phone') {
+        // phone validation (10 digits)
+        const phoneRegex = /^[0-9]{10}$/;
+        const val = input.value.replace(/[^0-9]/g, '');
+        if (!phoneRegex.test(val)) {
+          fieldValid = false;
+        }
+      } else if (input.type === 'checkbox' && !input.checked) {
+        fieldValid = false;
+      }
+      
+      if (!fieldValid) {
+        isValid = false;
+        input.classList.add('input-invalid');
+      } else {
+        input.classList.remove('input-invalid');
+      }
+    });
+    
+    // Additional conditional team check
+    if (stepIndex === 2 && document.querySelector('input[name="registration_type"]:checked').value === 'team') {
+      const teamName = document.getElementById('reg-team-name');
+      const teamMembers = document.getElementById('reg-team-members');
+      
+      if (!teamName.value.trim()) {
+        teamName.classList.add('input-invalid');
+        isValid = false;
+      } else {
+        teamName.classList.remove('input-invalid');
+      }
+      
+      if (!teamMembers.value.trim()) {
+        teamMembers.classList.add('input-invalid');
+        isValid = false;
+      } else {
+        teamMembers.classList.remove('input-invalid');
+      }
+    }
+    
+    return isValid;
+  }
+
+  function populateSummary() {
+    // Student
+    document.getElementById('sum-student-name').textContent = document.getElementById('reg-student-name').value;
+    document.getElementById('sum-student-grade').textContent = document.getElementById('reg-student-grade').value;
+    document.getElementById('sum-student-email').textContent = document.getElementById('reg-student-email').value;
+    document.getElementById('sum-student-phone').textContent = document.getElementById('reg-student-phone').value;
+    
+    // School
+    document.getElementById('sum-school-name').textContent = document.getElementById('reg-school-name').value;
+    document.getElementById('sum-school-board').textContent = document.getElementById('reg-school-board').value;
+    document.getElementById('sum-school-city').textContent = document.getElementById('reg-school-city').value;
+    
+    // Team (if selected)
+    const isTeam = document.querySelector('input[name="registration_type"]:checked').value === 'team';
+    const sumTeamSection = document.getElementById('sum-team-section');
+    if (isTeam) {
+      sumTeamSection.style.display = 'block';
+      document.getElementById('sum-team-name').textContent = document.getElementById('reg-team-name').value;
+      const sizeVal = parseInt(document.getElementById('reg-team-size').value, 10) + 1;
+      document.getElementById('sum-team-size').textContent = `${sizeVal} Members`;
+      document.getElementById('sum-team-members').textContent = document.getElementById('reg-team-members').value;
+    } else {
+      sumTeamSection.style.display = 'none';
+    }
+    
+    // Competition
+    document.getElementById('sum-event-title').textContent = currentEvent ? currentEvent.title : 'Event';
+    document.getElementById('sum-event-category').textContent = document.getElementById('reg-comp-category').value;
+    document.getElementById('sum-project-details').textContent = document.getElementById('reg-project-details').value;
+    
+    // Parent
+    document.getElementById('sum-parent-name').textContent = document.getElementById('reg-parent-name').value;
+    document.getElementById('sum-parent-phone').textContent = document.getElementById('reg-parent-phone').value;
+  }
+
+  // Bind next/prev button actions
+  nextStepBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (validateStep(currentStep)) {
+        if (currentStep < formSteps.length - 1) {
+          if (currentStep === 4) {
+            // About to show Step 6 (Summary)
+            populateSummary();
+          }
+          showStep(currentStep + 1);
+        }
+      }
+    });
+  });
+
+  prevStepBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (currentStep > 0) {
+        showStep(currentStep - 1);
+      }
+    });
+  });
+
+  // Make step circles clickable to jump to steps already validated
+  stepNodes.forEach((node, nodeIdx) => {
+    node.addEventListener('click', () => {
+      // Only allow jumping back, or jumping forward if valid
+      if (nodeIdx < currentStep) {
+        showStep(nodeIdx);
+      } else if (nodeIdx > currentStep) {
+        // Validate intermediate steps
+        let canJump = true;
+        for (let i = currentStep; i < nodeIdx; i++) {
+          if (!validateStep(i)) {
+            canJump = false;
+            showStep(i);
+            break;
+          }
+        }
+        if (canJump) {
+          if (nodeIdx === 5) populateSummary();
+          showStep(nodeIdx);
+        }
+      }
+    });
+  });
 
   // Trigger modal from primary/secondary buttons in header
   const headerTriggers = document.querySelectorAll('header .btn-modal-trigger, .mobile-only .btn-modal-trigger');
@@ -454,7 +733,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       
-      openRegistrationModal('Join CampusLink School Network');
+      openRegistrationModal(`Register for: ${currentEvent ? currentEvent.title : 'Event'}`);
     });
   });
 
@@ -465,16 +744,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.currentTarget.closest('header') || e.currentTarget.closest('.mobile-only')) return;
       e.preventDefault();
       const actionText = e.currentTarget.textContent.trim().toLowerCase();
-      let context = 'Join CampusLink School Network';
       
       if (actionText.includes('login') || actionText.includes('sign in')) {
         window.location.href = 'login.html';
         return;
-      } else if (actionText.includes('register') || actionText.includes('enroll')) {
-        context = `Register for: ${currentEvent.title}`;
       }
       
-      openRegistrationModal(context);
+      openRegistrationModal(`Register for: ${currentEvent ? currentEvent.title : 'Event'}`);
     });
   });
 
@@ -485,55 +761,161 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  nextStepBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const currentFields = formSteps[currentStep].querySelectorAll('input, select');
-      let isValid = true;
-      currentFields.forEach(field => {
-        if (field.hasAttribute('required') && !field.value.trim()) {
-          isValid = false;
-          field.style.borderColor = 'red';
-          setTimeout(() => field.style.borderColor = '', 2000);
-        }
-      });
-
-      if (isValid && currentStep < formSteps.length - 1) {
-        showStep(currentStep + 1);
-      }
-    });
-  });
-
-  prevStepBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (currentStep > 0) {
-        showStep(currentStep - 1);
-      }
-    });
-  });
-
+  // Handle Wizard Submit and DB save
   if (regForm) {
-    regForm.addEventListener('submit', (e) => {
+    regForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const schoolName = document.getElementById('school-name').value;
-      const adminName = document.getElementById('admin-name').value;
-
-      const successTitle = successScreen.querySelector('h3');
-      const successDesc = successScreen.querySelector('p');
-
-      if (modalContextTitle.textContent.includes('Register for:')) {
-        successTitle.textContent = "Registration Received!";
-        successDesc.textContent = `Thank you, ${adminName}. Your registration request for the event has been forwarded to the host school.`;
-      } else {
-        successTitle.textContent = "School Registered successfully!";
-        successDesc.textContent = `Welcome ${schoolName}! We've sent a verification email to the representative to activate your administrator dashboard.`;
+      
+      if (!validateStep(currentStep)) return;
+      
+      const supabase = window.CampusLink && window.CampusLink.supabase;
+      const isTeam = document.querySelector('input[name="registration_type"]:checked').value === 'team';
+      const teamSizeVal = isTeam ? parseInt(document.getElementById('reg-team-size').value, 10) + 1 : 1;
+      
+      // Construct registration dataset
+      const registrationEntry = {
+        student_name: document.getElementById('reg-student-name').value,
+        student_email: document.getElementById('reg-student-email').value,
+        student_phone: document.getElementById('reg-student-phone').value,
+        student_grade: document.getElementById('reg-student-grade').value,
+        student_school_name: document.getElementById('reg-school-name').value,
+        student_school_board: document.getElementById('reg-school-board').value,
+        student_school_city: document.getElementById('reg-school-city').value,
+        is_team: isTeam,
+        team_name: isTeam ? document.getElementById('reg-team-name').value : null,
+        team_size: teamSizeVal,
+        team_members: isTeam ? document.getElementById('reg-team-members').value : null,
+        competition_category: document.getElementById('reg-comp-category').value,
+        project_details: document.getElementById('reg-project-details').value,
+        parent_name: document.getElementById('reg-parent-name').value,
+        parent_phone: document.getElementById('reg-parent-phone').value,
+        parent_consent: document.getElementById('reg-parent-consent').checked,
+        status: 'pending'
+      };
+      
+      let dbSaved = false;
+      
+      if (supabase) {
+        try {
+          let targetEventId = currentEvent ? currentEvent.id : null;
+          let targetSchoolId = currentEvent ? currentEvent.schoolId : null;
+          
+          // Validate UUID
+          if (!targetEventId || targetEventId.toString().length <= 8) {
+            // Mock event - fetch first real event for UUID
+            const { data: dbEvents } = await supabase.from('events').select('id, school_id').limit(1);
+            if (dbEvents && dbEvents.length > 0) {
+              targetEventId = dbEvents[0].id;
+              targetSchoolId = dbEvents[0].school_id;
+            }
+          }
+          
+          if (targetEventId && targetSchoolId) {
+            const { error: dbError } = await supabase
+              .from('event_registrations')
+              .insert({
+                ...registrationEntry,
+                event_id: targetEventId,
+                school_id: targetSchoolId,
+                student_id: currentUser ? currentUser.id : null
+              });
+              
+            if (dbError) throw dbError;
+            dbSaved = true;
+          }
+        } catch (dbErr) {
+          console.warn('Supabase DB Insert failed. Falling back to local state:', dbErr.message);
+        }
       }
-
+      
+      // Fallback: save to LocalStorage (so local admin dashboard sees it instantly even without DB sync)
+      const localReg = {
+        id: Date.now(),
+        studentName: registrationEntry.student_name,
+        classGrade: registrationEntry.student_grade,
+        eventTitle: currentEvent ? currentEvent.title : 'Robotics Fest',
+        dateApplied: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+        status: 'pending',
+        // metadata for admin dashboard detail view
+        school_name: registrationEntry.student_school_name,
+        is_team: registrationEntry.is_team,
+        team_name: registrationEntry.team_name,
+        team_size: registrationEntry.team_size,
+        team_members: registrationEntry.team_members,
+        project_details: registrationEntry.project_details,
+        parent_name: registrationEntry.parent_name,
+        parent_phone: registrationEntry.parent_phone
+      };
+      
+      const localRegsList = JSON.parse(localStorage.getItem('campuslink_registrations') || '[]');
+      localRegsList.push(localReg);
+      localStorage.setItem('campuslink_registrations', JSON.stringify(localRegsList));
+      
       regForm.style.display = 'none';
       successScreen.classList.add('active');
       
       setTimeout(() => {
         closeRegistrationModal();
       }, 3500);
+    });
+  }
+
+  /* --- Native Sharing / Clipboard Fallback --- */
+  const shareBtn = document.getElementById('btn-share-event');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const shareData = {
+        title: currentEvent ? currentEvent.title : document.title,
+        text: currentEvent ? `Check out this event: ${currentEvent.title} by ${currentEvent.school}` : document.title,
+        url: window.location.href
+      };
+
+      // Check for Capacitor Share API
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share) {
+        try {
+          await window.Capacitor.Plugins.Share.share({
+            title: shareData.title,
+            text: shareData.text,
+            url: shareData.url,
+            dialogTitle: 'Share Event'
+          });
+          return;
+        } catch (err) {
+          console.warn('Capacitor share failed, trying Web Share API:', err);
+        }
+      }
+
+      // Check for Web Share API
+      if (navigator.share) {
+        try {
+          await navigator.share(shareData);
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            return; // user cancelled
+          }
+          console.warn('Web Share failed, trying clipboard copy:', err);
+        }
+      }
+
+      // Clipboard fallback
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Event link copied to clipboard!');
+      } catch (err) {
+        const textarea = document.createElement('textarea');
+        textarea.value = window.location.href;
+        textarea.style.position = 'fixed';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          alert('Event link copied to clipboard!');
+        } catch (copyErr) {
+          console.error('Could not copy text: ', copyErr);
+        }
+        document.body.removeChild(textarea);
+      }
     });
   }
 
@@ -559,4 +941,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Load event details on startup
+  loadEventDetail();
 });

@@ -1,0 +1,985 @@
+/* =====================================================
+   Admin Dashboard — Mobile Responsive CSS
+   Phase 6: SchoolIn Admin Mobile Optimization
+   ===================================================== */
+
+/* ── Hamburger Button (hidden on desktop) ── */
+.admin-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--white);
+  color: var(--dark-bg);
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-fast);
+}
+.admin-hamburger:active {
+  background: var(--light-bg);
+  transform: scale(0.95);
+}
+
+/* ── Admin Sidebar Close Button ── */
+.admin-sidebar-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94A3B8;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: var(--transition-fast);
+}
+.admin-sidebar-close:active {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white);
+  transform: scale(0.92);
+}
+
+/* ── Sidebar Overlay Backdrop (mobile) ── */
+.admin-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 998;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.admin-sidebar-overlay.admin-sidebar-overlay-visible {
+  display: block;
+  opacity: 1;
+}
+
+/* ── Dashboard search/filter inputs — unified look ── */
+.dashboard-workspace input[type="text"],
+.dashboard-workspace select {
+  font-family: inherit;
+  color: var(--text-main);
+  background: var(--white);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+}
+.dashboard-workspace input[type="text"]:focus,
+.dashboard-workspace select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 102, 200, 0.1);
+}
+
+/* ── Table mobile data-label attribute support ── */
+/* ── Table mobile data-label and layout support ── */
+@media (max-width: 768px) {
+  .dash-table tbody tr {
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--white) !important;
+    border: 1px solid rgba(15, 23, 42, 0.06) !important;
+    border-radius: var(--radius-md) !important;
+    margin-bottom: 16px !important;
+    box-shadow: var(--shadow-sm) !important;
+    overflow: hidden !important;
+    padding: 6px 0 !important;
+  }
+
+  .dash-table thead {
+    display: none !important;
+  }
+
+  .dash-table tbody td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 12px 16px !important;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.04) !important;
+    font-size: 0.85rem !important;
+    min-height: 48px !important;
+    gap: 12px !important;
+    background: transparent !important;
+    text-align: right !important;
+  }
+
+  .dash-table tbody td:last-child {
+    border-bottom: none !important;
+  }
+
+  .dash-table tbody tr:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Universal pseudo-label formatting */
+  .dash-table tbody td::before {
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: var(--text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    flex-shrink: 0 !important;
+    text-align: left !important;
+    margin-right: 12px !important;
+  }
+
+  /* 1. School Registry Table Labels */
+  #schools-tbody td:not([colspan]):nth-child(1)::before { content: "School Name"; }
+  #schools-tbody td:not([colspan]):nth-child(2)::before { content: "City"; }
+  #schools-tbody td:not([colspan]):nth-child(3)::before { content: "Board"; }
+  #schools-tbody td:not([colspan]):nth-child(4)::before { content: "Status"; }
+  #schools-tbody td:not([colspan]):nth-child(5)::before { content: "Badge"; }
+  #schools-tbody td:not([colspan]):nth-child(6)::before { content: "Created Date"; }
+  #schools-tbody td:not([colspan]):nth-child(7)::before { content: "Actions"; }
+
+  /* 2. School Suggestions Table Labels */
+  #suggestions-tbody td:not([colspan]):nth-child(1)::before { content: "School Name"; }
+  #suggestions-tbody td:not([colspan]):nth-child(2)::before { content: "City"; }
+  #suggestions-tbody td:not([colspan]):nth-child(3)::before { content: "Board"; }
+  #suggestions-tbody td:not([colspan]):nth-child(4)::before { content: "Suggested By"; }
+  #suggestions-tbody td:not([colspan]):nth-child(5)::before { content: "Suggested Date"; }
+  #suggestions-tbody td:not([colspan]):nth-child(6)::before { content: "Actions"; }
+
+  /* 3. Event Registry Table Labels */
+  #events-tbody td:not([colspan]):nth-child(1)::before { content: "Event Title"; }
+  #events-tbody td:not([colspan]):nth-child(2)::before { content: "Host School"; }
+  #events-tbody td:not([colspan]):nth-child(3)::before { content: "Category"; }
+  #events-tbody td:not([colspan]):nth-child(4)::before { content: "Event Date"; }
+  #events-tbody td:not([colspan]):nth-child(5)::before { content: "Registrations"; }
+  #events-tbody td:not([colspan]):nth-child(6)::before { content: "Actions"; }
+
+  /* 4. Global Event Registrations Table Labels */
+  #registrations-tbody td:not([colspan]):nth-child(1)::before { content: "Student Name"; }
+  #registrations-tbody td:not([colspan]):nth-child(2)::before { content: "School Name"; }
+  #registrations-tbody td:not([colspan]):nth-child(3)::before { content: "Event Title"; }
+  #registrations-tbody td:not([colspan]):nth-child(4)::before { content: "Date Applied"; }
+  #registrations-tbody td:not([colspan]):nth-child(5)::before { content: "Type"; }
+  #registrations-tbody td:not([colspan]):nth-child(6)::before { content: "Status"; }
+  #registrations-tbody td:not([colspan]):nth-child(7)::before { content: "Actions"; }
+
+  /* 5. Admission Registrations Table Labels */
+  #admissions-tbody td:not([colspan]):nth-child(1)::before { content: "School Name"; }
+  #admissions-tbody td:not([colspan]):nth-child(2)::before { content: "Classes Open"; }
+  #admissions-tbody td:not([colspan]):nth-child(3)::before { content: "Academic Year"; }
+  #admissions-tbody td:not([colspan]):nth-child(4)::before { content: "Last Date"; }
+  #admissions-tbody td:not([colspan]):nth-child(5)::before { content: "Status"; }
+  #admissions-tbody td:not([colspan]):nth-child(6)::before { content: "Actions"; }
+
+  /* 6. Global Admission Applications Table Labels */
+  #applications-tbody td:not([colspan]):nth-child(1)::before { content: "School Name"; }
+  #applications-tbody td:not([colspan]):nth-child(2)::before { content: "Student Name"; }
+  #applications-tbody td:not([colspan]):nth-child(3)::before { content: "Parent Name"; }
+  #applications-tbody td:not([colspan]):nth-child(4)::before { content: "Grade"; }
+  #applications-tbody td:not([colspan]):nth-child(5)::before { content: "Email"; }
+  #applications-tbody td:not([colspan]):nth-child(6)::before { content: "Phone"; }
+  #applications-tbody td:not([colspan]):nth-child(7)::before { content: "Date Applied"; }
+  #applications-tbody td:not([colspan]):nth-child(8)::before { content: "Status"; }
+  #applications-tbody td:not([colspan]):nth-child(9)::before { content: "Actions"; }
+
+  /* 7. Global Contact Requests Table Labels */
+  #contact-requests-tbody td:not([colspan]):nth-child(1)::before { content: "School Name"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(2)::before { content: "Sender Name"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(3)::before { content: "Sender Email"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(4)::before { content: "Inquiry Type"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(5)::before { content: "Message"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(6)::before { content: "Date Sent"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(7)::before { content: "Status"; }
+
+  /* 8. User Accounts Table Labels */
+  #users-tbody td:not([colspan]):nth-child(1)::before { content: "Name"; }
+  #users-tbody td:not([colspan]):nth-child(2)::before { content: "Email Address"; }
+  #users-tbody td:not([colspan]):nth-child(3)::before { content: "User Type"; }
+  #users-tbody td:not([colspan]):nth-child(4)::before { content: "Platform Role"; }
+  #users-tbody td:not([colspan]):nth-child(5)::before { content: "Created Date"; }
+  #users-tbody td:not([colspan]):nth-child(6)::before { content: "Change Role"; }
+  #users-tbody td:not([colspan]):nth-child(7)::before { content: "Actions"; }
+
+  /* 9. Feed Posts Table Labels */
+  #posts-tbody td:not([colspan]):nth-child(1)::before { content: "Author"; }
+  #posts-tbody td:not([colspan]):nth-child(2)::before { content: "Content"; }
+  #posts-tbody td:not([colspan]):nth-child(3)::before { content: "Post Type"; }
+  #posts-tbody td:not([colspan]):nth-child(4)::before { content: "Created Date"; }
+  #posts-tbody td:not([colspan]):nth-child(5)::before { content: "Actions"; }
+
+  /* Responsive layout for action buttons inside table card rows */
+  .dash-table tbody td > div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-end !important;
+    max-width: 100% !important;
+  }
+
+  .dash-table tbody td .btn {
+    font-size: 0.72rem !important;
+    padding: 6px 10px !important;
+    white-space: nowrap !important;
+    border-radius: var(--radius-sm) !important;
+    height: auto !important;
+    line-height: 1.2 !important;
+  }
+
+  .dash-table tbody td select {
+    font-size: 0.78rem !important;
+    padding: 4px 8px !important;
+    height: auto !important;
+  }
+
+  /* Make status badges look clean and consistent in card mode */
+  .dash-table .badge-status {
+    font-size: 0.7rem !important;
+    padding: 3px 8px !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TABLET BREAKPOINT — 992px
+   ═══════════════════════════════════════════ */
+@media (max-width: 992px) {
+  /* Show hamburger; hide sidebar close by default */
+  .admin-hamburger {
+    display: inline-flex;
+  }
+
+  /* Sidebar becomes a fixed full-height drawer */
+  .dashboard-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    z-index: 999 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    flex-direction: column !important;
+    border-right: none !important;
+    overflow-y: auto !important;
+  }
+
+  /* When open via JS class */
+  .dashboard-sidebar.admin-sidebar-open {
+    transform: translateX(0) !important;
+    box-shadow: 8px 0 32px rgba(15, 23, 42, 0.2) !important;
+  }
+
+  /* Show close button inside sidebar */
+  .admin-sidebar-close {
+    display: inline-flex;
+  }
+
+  /* Logo section: space-between for close button */
+  .dashboard-logo-section {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 20px 20px !important;
+  }
+
+  /* Nav is vertical again (full sidebar drawer) */
+  .dashboard-nav {
+    flex-direction: column !important;
+    padding: 16px 12px !important;
+    gap: 4px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: none !important;
+    flex-grow: 1 !important;
+  }
+  .dashboard-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Nav links — full vertical style */
+  .dashboard-nav-link {
+    white-space: nowrap !important;
+    padding: 11px 14px !important;
+    font-size: 0.88rem !important;
+  }
+
+  /* Active link border goes back to left side */
+  .dashboard-nav-link.active {
+    border-left: 4px solid var(--accent) !important;
+    border-bottom: none !important;
+    padding-left: 10px !important;
+    padding-bottom: 11px !important;
+  }
+
+  /* Show logout footer in drawer */
+  .dashboard-sidebar-footer {
+    display: block !important;
+    padding: 16px 20px !important;
+  }
+
+  /* Main content fills the full width */
+  .dashboard-layout {
+    flex-direction: row !important;
+  }
+
+  .dashboard-main-content {
+    width: 100% !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    margin-left: 0 !important;
+  }
+
+  /* Top bar — compact, hamburger visible */
+  .dashboard-top-bar {
+    padding: 10px 16px !important;
+    gap: 12px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+  }
+
+  .dashboard-workspace {
+    padding: 16px !important;
+    max-width: 100% !important;
+  }
+
+  /* Stats grid: 2-column on tablet with last item full-width */
+  .dash-stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+    margin-bottom: 24px !important;
+  }
+  .dash-stats-grid > .dash-stat-card:last-child {
+    grid-column: span 2 !important;
+  }
+
+  /* Stat cards premium modern design */
+  .dash-stats-grid .dash-stat-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    min-height: 125px !important;
+    padding: 16px !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid rgba(15, 23, 42, 0.06) !important;
+    background-color: var(--white) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    transition: var(--transition-smooth) !important;
+  }
+  
+  .dash-stats-grid .dash-stat-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06) !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-icon {
+    order: -1 !important;
+    margin: 0 !important;
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 1.15rem !important;
+    border-radius: var(--radius-sm) !important;
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-info {
+    order: 1 !important;
+    width: 100% !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-info h4 {
+    font-size: 0.72rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--text-muted) !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-info .stat-value {
+    font-size: 1.6rem !important;
+    font-weight: 800 !important;
+    color: var(--dark-bg) !important;
+    margin-top: 4px !important;
+    line-height: 1.1 !important;
+  }
+
+  /* Analytics grid: 2-col on tablet */
+  .dash-stats-grid[style*="repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  /* Overview 2-col cards → single col on small */
+  div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Table card header filter row → stack */
+  .dash-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .dash-card-header > div[style*="flex; gap: 12px"] {
+    max-width: 100% !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Typography limits */
+  #top-bar-title {
+    font-size: 1.1rem !important;
+  }
+
+  #current-date-display {
+    font-size: 0.72rem !important;
+  }
+
+  .dash-table-card > div[style*="padding: 24px"] h3,
+  .dash-table-card h3 {
+    font-size: 1rem !important;
+  }
+
+  /* Modal — full-width on tablet/mobile */
+  .modal-content,
+  .modal-card {
+    max-width: 95vw !important;
+    padding: 24px 20px !important;
+    margin: 16px auto !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  /* Modal detail grids → single col */
+  .modal-content div[style*="grid-template-columns: 1fr 1fr"],
+  .modal-card div[style*="grid-template-columns: 1fr 1fr"],
+  .modal-card div[style*="grid-template-columns: 1fr 1fr; gap: 16px;"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  #modal-school-name {
+    font-size: 1.2rem !important;
+  }
+
+  /* Toast container — full width on mobile */
+  .toast-container {
+    top: auto !important;
+    bottom: 80px !important;
+    right: 12px !important;
+    left: 12px !important;
+  }
+
+  .toast-alert {
+    padding: 12px 16px !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE BREAKPOINT — 768px
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Stats grid: 2-column (same as tablet) */
+  .dash-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Analytics cards: 2-col */
+  .dash-stats-grid[style*="repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Workspace padding even more compact */
+  .dashboard-workspace {
+    padding: 12px !important;
+  }
+
+  /* Table wrapper — allow horizontal scroll as last resort */
+  .dash-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Body text caps */
+  body {
+    font-size: 15px;
+  }
+
+  h3 {
+    font-size: 1.1rem !important;
+  }
+
+  /* Dashboard table — slightly smaller text */
+  .dash-table th,
+  .dash-table td {
+    padding: 10px 14px !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap;
+  }
+
+  /* Table card — no padding on itself, let inner handle */
+  .dash-table-card[style*="padding: 24px"] {
+    padding: 14px !important;
+  }
+
+  /* Search inputs and selects — full width on mobile */
+  .dash-card-header input[type="text"],
+  .dash-card-header select {
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Filter row always stacks vertically */
+  .dash-card-header > div[style] {
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 8px !important;
+  }
+
+  /* Stat values */
+  .dash-stat-info .stat-value {
+    font-size: 1.5rem !important;
+  }
+
+  .dash-stat-info h4 {
+    font-size: 0.72rem !important;
+  }
+
+  /* Dashboard top bar — compact height */
+  .dashboard-top-bar {
+    padding: 8px 12px !important;
+    min-height: 56px !important;
+  }
+
+  /* User info — hide text label on tiny screens but keep avatar */
+  .dashboard-user-info > div:not(.dashboard-avatar) {
+    display: none !important;
+  }
+
+  /* Form rows → single col */
+  .dash-form-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Overview analytics cards — all single col */
+  .dash-stats-grid > .dash-table-card {
+    padding: 16px !important;
+  }
+
+  .dash-stats-grid > .dash-table-card h4 {
+    font-size: 0.82rem !important;
+    margin-bottom: 10px !important;
+  }
+
+  /* System health about-meta-list */
+  .about-meta-list {
+    gap: 10px !important;
+  }
+
+  .about-meta-item {
+    font-size: 0.82rem !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  /* Quick actions manage button */
+  #go-to-schools-btn {
+    padding: 10px !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Platform analytics header */
+  div[style*="margin-top: 32px"] > h3 {
+    font-size: 1rem !important;
+    margin-bottom: 12px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   SMALL MOBILE — 480px
+   ═══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  /* Stats grid → 2 columns on very small mobile */
+  .dash-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Stat card vertical layout on small mobile */
+  .dash-stats-grid .dash-stat-card {
+    padding: 12px 10px !important;
+    min-height: 108px !important;
+    border-radius: var(--radius-sm) !important;
+    gap: 8px !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-info .stat-value {
+    font-size: 1.3rem !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-icon {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Analytics grid → single col on tiny */
+  .dash-stats-grid[style*="repeat(4"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Top bar — ultra compact */
+  .dashboard-top-bar {
+    padding: 8px 10px !important;
+    gap: 8px !important;
+  }
+
+  #top-bar-title {
+    font-size: 1rem !important;
+  }
+
+  /* Sidebar — slightly narrower on very small screens */
+  .dashboard-sidebar {
+    width: 240px !important;
+  }
+
+  /* Workspace */
+  .dashboard-workspace {
+    padding: 10px !important;
+  }
+
+  /* Table cards */
+  .dash-table-card {
+    border-radius: var(--radius-sm) !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Action buttons */
+  .btn-action,
+  .btn-approve,
+  .btn-reject,
+  .btn-delete-action,
+  .btn-edit-action {
+    font-size: 0.72rem !important;
+    padding: 5px 8px !important;
+  }
+
+  /* Modal close button */
+  .modal-close-btn {
+    font-size: 1.5rem !important;
+    right: 14px !important;
+    top: 10px !important;
+  }
+
+  /* Toast — bottom positioned */
+  .toast-container {
+    bottom: 70px !important;
+    left: 8px !important;
+    right: 8px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   GLOBAL ADMIN POLISH
+   ═══════════════════════════════════════════ */
+
+/* Smooth transitions on nav links */
+.dashboard-nav-link {
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease !important;
+}
+
+/* Auth loading overlay — always full cover */
+.auth-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.auth-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: adminSpin 0.8s linear infinite;
+}
+
+@keyframes adminSpin {
+  to { transform: rotate(360deg); }
+}
+
+.auth-loading-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Hidden state for auth overlay when done */
+.auth-loading-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+/* ── Moderation Tab & Card Layout Overrides ── */
+@media (max-width: 768px) {
+  .feed-filter-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+    scrollbar-width: none !important;
+  }
+  .feed-filter-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+  .feed-filter-tab {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Content moderation card detail column stacks */
+  .moderation-card div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* ── School Admin Dashboard (dashboard.html) Mobile Overrides ── */
+
+/* Sticky Mobile Fixed Header */
+.mobile-fixed-header {
+  display: none !important;
+}
+
+@media (max-width: 992px) {
+  .mobile-fixed-header {
+    display: flex !important;
+    position: sticky !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 56px !important;
+    background-color: #0F172A !important; /* Slate 900 */
+    color: #FFFFFF !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 16px !important;
+    z-index: 1000 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .mobile-back-btn {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 6px 10px !important;
+    border-radius: var(--radius-sm) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    transition: var(--transition-fast) !important;
+  }
+  .mobile-back-btn:active {
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .mobile-header-title {
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    color: #FFFFFF !important;
+    letter-spacing: -0.01em !important;
+    text-align: center !important;
+  }
+
+  .mobile-hamburger-btn {
+    background: none !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px !important;
+    border-radius: var(--radius-sm) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    transition: var(--transition-fast) !important;
+  }
+  .mobile-hamburger-btn:active {
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  /* School Information Card Mobile UI */
+  .dashboard-top-bar > div:first-child {
+    display: none !important; /* Hide dashboard overview header text */
+  }
+
+  .dashboard-top-bar {
+    display: block !important;
+    border-bottom: none !important;
+    margin-bottom: 16px !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .dashboard-user-info {
+    display: grid !important;
+    grid-template-columns: auto 1fr !important;
+    gap: 16px !important;
+    background: var(--white) !important;
+    border: 1px solid rgba(15, 23, 42, 0.06) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 18px !important;
+    box-shadow: var(--shadow-sm) !important;
+    margin: 4px 0 20px 0 !important;
+    width: 100% !important;
+    align-items: center !important;
+  }
+
+  /* School avatar logo */
+  .dashboard-user-info .dashboard-avatar {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 54px !important;
+    height: 54px !important;
+    font-size: 1.5rem !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
+    color: var(--white) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 10px rgba(0, 102, 200, 0.15) !important;
+  }
+
+  /* School Name and Board details */
+  .dashboard-user-info > div:not(.dashboard-avatar) {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+
+  .dashboard-user-info #school-username {
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    color: var(--dark-bg) !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
+  }
+
+  .dashboard-user-info #school-userboard {
+    font-size: 0.8rem !important;
+    color: var(--text-muted) !important;
+    margin: 0 !important;
+    font-weight: 500 !important;
+  }
+
+  /* Stretched button actions */
+  .dashboard-user-info #view-profile-btn,
+  .dashboard-user-info #edit-school-btn {
+    grid-row: 2 !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    height: 42px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    border-radius: var(--radius-sm) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .dashboard-user-info #view-profile-btn {
+    grid-column: 1 !important;
+    margin-top: 12px !important;
+    border: 1px solid var(--border-color) !important;
+    background-color: var(--white) !important;
+    color: var(--text-main) !important;
+  }
+  
+  .dashboard-user-info #edit-school-btn {
+    grid-column: 2 !important;
+    display: inline-flex !important;
+    margin-top: 12px !important;
+    background-color: var(--primary) !important;
+    color: var(--white) !important;
+    border: none !important;
+  }
+
+  .dashboard-user-info #view-profile-btn:active {
+    background-color: var(--light-bg) !important;
+  }
+
+  .dashboard-user-info #edit-school-btn:active {
+    background-color: var(--primary-hover) !important;
+  }
+}
+
+/* ── Mobile tables card-labels for School Admin Dashboard ── */
+@media (max-width: 768px) {
+  /* 1. Overview Recent Registrations Table Labels */
+  #overview-tab #registrations-tbody td:not([colspan]):nth-child(1)::before { content: "Student Name"; }
+  #overview-tab #registrations-tbody td:not([colspan]):nth-child(2)::before { content: "Class / Grade"; }
+  #overview-tab #registrations-tbody td:not([colspan]):nth-child(3)::before { content: "Event Applied"; }
+  #overview-tab #registrations-tbody td:not([colspan]):nth-child(4)::before { content: "Date Applied"; }
+  #overview-tab #registrations-tbody td:not([colspan]):nth-child(5)::before { content: "Status"; }
+  #overview-tab #registrations-tbody td:not([colspan]):nth-child(6)::before { content: "Actions"; }
+
+  /* 2. Registrations Tab Table Labels */
+  #tab-registrations-tbody td:not([colspan]):nth-child(1)::before { content: "Student Name"; }
+  #tab-registrations-tbody td:not([colspan]):nth-child(2)::before { content: "Class / Grade"; }
+  #tab-registrations-tbody td:not([colspan]):nth-child(3)::before { content: "Event Title"; }
+  #tab-registrations-tbody td:not([colspan]):nth-child(4)::before { content: "Date Applied"; }
+  #tab-registrations-tbody td:not([colspan]):nth-child(5)::before { content: "Type"; }
+  #tab-registrations-tbody td:not([colspan]):nth-child(6)::before { content: "Status"; }
+  #tab-registrations-tbody td:not([colspan]):nth-child(7)::before { content: "Actions"; }
+
+  /* 3. Admission Applications Table Labels */
+  #applications-tbody td:not([colspan]):nth-child(1)::before { content: "Student Name"; }
+  #applications-tbody td:not([colspan]):nth-child(2)::before { content: "Parent Name"; }
+  #applications-tbody td:not([colspan]):nth-child(3)::before { content: "Grade"; }
+  #applications-tbody td:not([colspan]):nth-child(4)::before { content: "Email"; }
+  #applications-tbody td:not([colspan]):nth-child(5)::before { content: "Phone"; }
+  #applications-tbody td:not([colspan]):nth-child(6)::before { content: "Date Applied"; }
+  #applications-tbody td:not([colspan]):nth-child(7)::before { content: "Status"; }
+  #applications-tbody td:not([colspan]):nth-child(8)::before { content: "Actions"; }
+
+  /* 4. Contact Requests Table Labels */
+  #contact-requests-tbody td:not([colspan]):nth-child(1)::before { content: "Sender Name"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(2)::before { content: "Email"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(3)::before { content: "Inquiry Type"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(4)::before { content: "Message"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(5)::before { content: "Date Received"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(6)::before { content: "Status"; }
+  #contact-requests-tbody td:not([colspan]):nth-child(7)::before { content: "Actions"; }
+}

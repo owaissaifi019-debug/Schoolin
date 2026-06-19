@@ -1,0 +1,519 @@
+/* admissions.css - Mobile optimization stylesheet for Admissions page */
+
+/* Desktop Default: show desktop layouts and hide mobile redesigned layouts */
+.mobile-only {
+  display: none !important;
+}
+
+.dt-only {
+  display: block !important;
+}
+
+/* Custom Class Dropdown Filter Styles for Desktop */
+.custom-dropdown-filter {
+  position: relative;
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.dropdown-trigger-btn {
+  width: 100%;
+  height: 42px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background-color: var(--white);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.dropdown-trigger-btn:hover, .dropdown-trigger-btn.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--border-focus);
+}
+
+.dropdown-chevron {
+  transition: transform 0.2s ease;
+  color: var(--text-muted);
+}
+
+.dropdown-trigger-btn.active .dropdown-chevron {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
+.dropdown-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 320px;
+  background-color: var(--white);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  padding: 16px;
+  animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dropdown-panel.show {
+  display: block;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-panel-header {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 12px;
+}
+
+.btn-clear-class-selection {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.btn-clear-class-selection:hover {
+  color: var(--accent-hover);
+}
+
+.dropdown-panel-body {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dropdown-category {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dropdown-category h6 {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.dropdown-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dropdown-option-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-main);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease;
+  margin: 0;
+}
+
+.dropdown-option-item:hover {
+  background-color: var(--light-bg);
+  color: var(--primary);
+}
+
+.dropdown-option-item input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  border: 1.5px solid var(--border-color);
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.dropdown-option-item span {
+  user-select: none;
+}
+
+
+/* Mobile-only layout optimization (<768px) */
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block !important;
+  }
+  .dt-only {
+    display: none !important;
+  }
+
+  /* 1. Header Cleanup & Spacing */
+  #nav-messaging-link span {
+    display: none !important;
+  }
+
+  /* Hide Message icon and Notification icon on mobile header */
+  .header-nav .nav-list > .nav-msg-item,
+  .header-nav .nav-list > #nav-notif-item,
+  .header-nav .nav-list > .nav-notif-item,
+  #nav-messaging-link,
+  #notif-bell-btn {
+    display: none !important;
+  }
+
+  body {
+    padding-bottom: 90px !important; /* bottom safe area to prevent overlap with global mobile nav */
+  }
+
+  /* Spacing reductions across page (30-40% reduction) */
+  .section {
+    padding: 20px 0 !important;
+  }
+
+  /* 2. Hero Section Sizing */
+  .schools-hero {
+    padding: 24px 0 16px 0 !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
+  }
+
+  .schools-hero h1 {
+    font-size: 1.4rem !important;
+    letter-spacing: -0.01em !important;
+    margin-bottom: 6px !important;
+  }
+
+  .schools-hero p {
+    font-size: 0.8rem !important;
+    max-width: 85% !important;
+    margin: 0 auto !important;
+    line-height: 1.4 !important;
+  }
+
+  .schools-hero .badge {
+    font-size: 0.65rem !important;
+    padding: 3px 8px !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* 3. Search Section styling */
+  .schools-filter-section {
+    padding: 8px 0 !important;
+  }
+
+  .filter-bar {
+    gap: 8px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .filter-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .filter-input-wrapper {
+    max-width: 100% !important;
+    height: 38px !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
+  }
+
+  .filter-input-wrapper input {
+    height: 100% !important;
+    padding: 6px 10px 6px 32px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .filter-input-wrapper svg {
+    left: 10px !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  /* 4. Filters Grid (All Classes, Cities, Boards) */
+  /* Re-style dropdown wrapper containers to sit as 2-columns flow on mobile */
+  .filter-controls {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .filter-select-wrapper {
+    display: block !important;
+    flex: 1 1 calc(50% - 4px) !important;
+    min-width: 120px !important;
+    height: 34px !important;
+  }
+
+  .filter-select-wrapper select {
+    height: 100% !important;
+    width: 100% !important;
+    padding: 6px 28px 6px 10px !important;
+    font-size: 0.8rem !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--border-color) !important;
+    background-color: var(--white) !important;
+    cursor: pointer !important;
+    appearance: none !important;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='14' height='14' fill='%2364748B'%3E%3Cpath d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 8px center !important;
+  }
+
+  /* Clear Button & Results Count label container */
+  .filter-bar > div[style*="display: flex;"] {
+    display: flex !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-top: 4px !important;
+  }
+
+  .btn-clear-filters {
+    height: 30px !important;
+    padding: 0 12px !important;
+    font-size: 0.78rem !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600 !important;
+    display: none; /* dynamically toggled in JS */
+  }
+
+  .schools-count-label {
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    display: none; /* dynamically toggled in JS */
+  }
+
+  /* 5. 1-Column Grid Layout for Mobile */
+  .schools-grid-section {
+    padding: 10px 0 !important;
+  }
+
+  .schools-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    padding: 0 12px !important;
+  }
+
+  /* 6. Redesigned Admission Card Styles (LinkedIn-Style matching School Cards) */
+  .admission-card-item {
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-sm) !important;
+    background: var(--white) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 0 !important;
+  }
+
+  .admission-card-banner-bg {
+    height: 40px !important;
+    position: relative !important;
+    width: 100% !important;
+  }
+
+  .admission-card-banner-bg.bg-gradient-1 { background: linear-gradient(135deg, #FF6B6B, #FF8E53) !important; }
+  .admission-card-banner-bg.bg-gradient-2 { background: linear-gradient(135deg, #4E65FF, #92EFFD) !important; }
+  .admission-card-banner-bg.bg-gradient-3 { background: linear-gradient(135deg, #11998E, #38EF7D) !important; }
+  .admission-card-banner-bg.bg-gradient-4 { background: linear-gradient(135deg, #7F00FF, #E100FF) !important; }
+  .admission-card-banner-bg.bg-gradient-5 { background: linear-gradient(135deg, #F9D423, #FF4E50) !important; }
+
+  .admission-mobile-body {
+    padding: 12px !important;
+    flex-grow: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .school-mobile-identity {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .school-mobile-logo-box {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: var(--radius-sm) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: var(--white) !important;
+    font-weight: 800 !important;
+    font-size: 1.3rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  .school-mobile-logo-box.bg-gradient-1 { background: linear-gradient(135deg, #FF6B6B, #FF8E53) !important; }
+  .school-mobile-logo-box.bg-gradient-2 { background: linear-gradient(135deg, #4E65FF, #92EFFD) !important; }
+  .school-mobile-logo-box.bg-gradient-3 { background: linear-gradient(135deg, #11998E, #38EF7D) !important; }
+  .school-mobile-logo-box.bg-gradient-4 { background: linear-gradient(135deg, #7F00FF, #E100FF) !important; }
+  .school-mobile-logo-box.bg-gradient-5 { background: linear-gradient(135deg, #F9D423, #FF4E50) !important; }
+
+  .school-mobile-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    flex-grow: 1 !important;
+    overflow: hidden !important;
+  }
+
+  .school-mobile-name {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--dark-bg) !important;
+    margin: 0 !important;
+    line-height: 1.3 !important;
+    display: flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .school-mobile-name a {
+    color: inherit !important;
+    text-decoration: none !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .school-mobile-meta {
+    font-size: 12px !important;
+    color: var(--text-muted) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+    line-height: 1.2 !important;
+  }
+
+  .school-mobile-bullet {
+    color: var(--text-muted) !important;
+    opacity: 0.5 !important;
+    user-select: none !important;
+  }
+
+  .school-mobile-board,
+  .school-mobile-loc {
+    white-space: nowrap !important;
+  }
+
+  /* Subtle status tags matching premium look */
+  .admission-status-tag {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 1px 6px !important;
+    border-radius: 4px !important;
+    text-transform: uppercase !important;
+  }
+
+  .admission-status-tag.open {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    color: #10B981 !important;
+    border: 1px solid rgba(16, 185, 129, 0.2) !important;
+  }
+
+  .admission-status-tag.closing {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: #EF4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
+  }
+
+  /* Compact details display list */
+  .admission-mobile-details-list {
+    margin-bottom: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  .admission-mobile-detail-item {
+    font-size: 13px !important;
+    color: var(--text-muted) !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+  }
+
+  .admission-mobile-detail-item strong {
+    color: var(--text-main) !important;
+  }
+
+  /* Card actions layout - side-by-side equal sizing */
+  .school-card-actions {
+    display: flex !important;
+    width: 100% !important;
+    gap: 8px !important;
+    align-items: center !important;
+    margin-top: auto !important;
+    padding-top: 12px !important;
+    border-top: 1px solid var(--border-color) !important;
+  }
+
+  .school-card-actions a {
+    flex: 1 !important;
+    height: 34px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    border-radius: var(--radius-sm) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    text-decoration: none !important;
+  }
+
+  /* Mobile Custom Dropdown overrides */
+  .custom-dropdown-filter {
+    flex: 1 1 calc(50% - 4px) !important;
+    min-width: 120px !important;
+  }
+
+  .dropdown-trigger-btn {
+    height: 34px !important;
+    padding: 6px 10px !important;
+    font-size: 0.8rem !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  .dropdown-panel {
+    width: 290px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    position: absolute !important;
+  }
+}

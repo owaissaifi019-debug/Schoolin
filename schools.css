@@ -153,24 +153,48 @@
   .schools-count-label {
     font-size: 0.72rem !important;
   }
-
   /* 4. Filter category tabs - Horizontally scrollable row */
   #school-filter-tabs {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch !important;
+    scroll-behavior: smooth !important;
     gap: 8px !important;
-    padding: 6px 12px !important;
+    padding: 8px 16px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
     margin-bottom: 0 !important;
     width: 100% !important;
     box-sizing: border-box !important;
     scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important; /* IE/Edge */
   }
 
   #school-filter-tabs::-webkit-scrollbar {
     display: none !important; /* Chrome, Safari, Opera */
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+
+  #school-filter-tabs::-webkit-scrollbar-thumb {
+    background: transparent !important;
+    display: none !important;
+  }
+
+  #school-filter-tabs::-webkit-scrollbar-track {
+    background: transparent !important;
+    display: none !important;
+  }
+
+  .showcase-tabs#school-filter-tabs::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   #school-filter-tabs .tab-btn {
@@ -204,9 +228,7 @@
 
   /* Suggest School Banner Compactness */
   .suggest-school-banner {
-    padding: 12px 16px !important;
-    gap: 12px !important;
-    margin-bottom: 16px !important;
+    display: none !important;
   }
 
   .suggest-school-banner span[style*="font-size: 1.8rem"] {

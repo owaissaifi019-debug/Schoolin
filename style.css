@@ -62,7 +62,7 @@ body {
 
 @media (max-width: 768px) {
   body {
-    padding-top: 70px; /* offset for mobile fixed header */
+    padding-top: 60px !important; /* offset for mobile fixed header */
   }
 }
 
@@ -1746,6 +1746,324 @@ footer {
   margin-bottom: 8px;
 }
 
+/* --- Event Registration Wizard Styling --- */
+.registration-wizard-modal {
+  max-width: 680px !important;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px !important;
+  overflow: hidden;
+}
+
+.registration-wizard-modal form {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 6px;
+  margin-top: 15px;
+}
+
+/* Custom scrollbar for form step container */
+.registration-wizard-modal form::-webkit-scrollbar {
+  width: 6px;
+}
+.registration-wizard-modal form::-webkit-scrollbar-track {
+  background: var(--bg-light);
+  border-radius: 4px;
+}
+.registration-wizard-modal form::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.wizard-header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+}
+
+.wizard-header h3 {
+  font-size: 1.4rem;
+  color: var(--dark-bg);
+  margin-bottom: 4px;
+}
+
+.event-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+/* Progress bar system */
+.wizard-progress-bar {
+  position: relative;
+  margin: 15px 0 25px 0;
+  padding: 0 10px;
+}
+
+.progress-line {
+  position: absolute;
+  top: 15px;
+  left: 30px;
+  right: 30px;
+  height: 3px;
+  background-color: var(--border-color);
+  z-index: 1;
+  transition: width 0.3s ease;
+}
+
+.progress-steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  z-index: 2;
+}
+
+.progress-step-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.progress-step-node span {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--white);
+  border: 2px solid var(--border-color);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.progress-step-node label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+}
+
+.progress-step-node.active span {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--white);
+  box-shadow: 0 0 0 3px var(--border-focus);
+}
+
+.progress-step-node.active label {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.progress-step-node.completed span {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--white);
+}
+
+.progress-step-node.completed label {
+  color: var(--accent);
+}
+
+/* Cards & forms */
+.form-card {
+  background: var(--bg-light);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Large Inputs */
+.form-group input, .form-group select, .form-group textarea {
+  font-size: 1rem !important;
+  padding: 12px 16px !important;
+  border-radius: var(--radius-md) !important;
+  background-color: var(--white);
+}
+
+/* Input validation styles */
+.input-invalid {
+  border-color: #EF4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.input-error {
+  color: #EF4444;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 4px;
+  display: none;
+}
+
+.input-invalid + .input-error {
+  display: block;
+}
+
+/* Radio Cards */
+.radio-card-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.radio-card {
+  position: relative;
+  cursor: pointer;
+  display: block;
+}
+
+.radio-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.radio-card-content {
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background-color: var(--white);
+  transition: all 0.2s ease;
+}
+
+.radio-card-content .icon {
+  font-size: 1.8rem;
+}
+
+.radio-card-content strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--dark-bg);
+  margin-bottom: 2px;
+}
+
+.radio-card-content p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.radio-card input[type="radio"]:checked + .radio-card-content {
+  border-color: var(--primary);
+  background-color: rgba(59, 130, 246, 0.04);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+/* Consent check */
+.consent-checkbox-label {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.9rem !important;
+  color: var(--dark-bg) !important;
+  line-height: 1.4;
+  margin-top: 15px;
+}
+
+.consent-checkbox-label input[type="checkbox"] {
+  width: auto !important;
+  margin-top: 3px;
+  cursor: pointer;
+}
+
+/* Summary view */
+.summary-card {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.summary-intro {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.summary-section {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+
+.summary-section h5 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 20px;
+  font-size: 0.9rem;
+}
+
+.summary-grid div {
+  color: var(--dark-bg);
+}
+
+.summary-grid strong {
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.summary-grid .full-width {
+  grid-column: 1 / -1;
+}
+
+.info-note {
+  background-color: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  color: var(--primary);
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Responsive adjustment */
+@media (max-width: 600px) {
+  .registration-wizard-modal {
+    width: 95% !important;
+    height: 95% !important;
+    max-height: 95vh !important;
+  }
+  .form-row, .radio-card-group, .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .progress-step-node label {
+    display: none;
+  }
+  .progress-line {
+    left: 20px;
+    right: 20px;
+  }
+}
+
 /* --- Animations --- */
 @keyframes float {
   0% { transform: translateY(0px); }
@@ -2229,6 +2547,12 @@ footer {
 .profile-actions {
   display: flex;
   gap: 12px;
+}
+
+.profile-secondary-actions-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 /* Tabs split layout */
@@ -6042,12 +6366,17 @@ footer {
 }
 
 .modal-tabs {
+  position: relative;
   display: flex;
-  border-bottom: 2px solid var(--border-color);
+  background-color: var(--light-bg);
+  border-radius: var(--radius-md);
+  padding: 6px;
   margin-bottom: 24px;
-  gap: 10px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none; /* Hide scrollbar for Firefox */
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border-color);
 }
 
 .modal-tabs::-webkit-scrollbar {
@@ -6055,25 +6384,67 @@ footer {
 }
 
 .tab-btn {
-  padding: 12px 18px;
+  position: relative;
+  z-index: 2;
+  padding: 10px 20px;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
-  font-size: 0.92rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
-  transition: var(--transition-fast);
+  border-radius: var(--radius-sm);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              font-weight 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
-}
-
-.tab-btn:hover {
-  color: var(--primary);
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tab-btn.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  color: var(--white) !important;
+  font-weight: 700;
+  transform: scale(1.04);
+}
+
+.tab-indicator {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  background: var(--primary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 6px rgba(0, 102, 200, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Hover effects on desktop (1024px+) */
+@media (min-width: 1024px) {
+  .tab-btn:hover {
+    color: var(--text-main);
+    transform: translateY(-1px);
+  }
+  .tab-btn.active:hover {
+    color: var(--white) !important;
+    transform: scale(1.04) translateY(-1px);
+  }
+}
+
+/* Touch feedback on mobile */
+@media (max-width: 1023px) {
+  .tab-btn:active {
+    opacity: 0.7;
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
+  }
+  .tab-btn.active:active {
+    transform: scale(1.02);
+    opacity: 0.9;
+  }
 }
 
 .tab-pane {
@@ -6227,7 +6598,8 @@ footer {
 
 .form-actions-modal {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 14px;
   margin-top: 30px;
   border-top: 1.5px solid var(--border-color);
@@ -10477,20 +10849,30 @@ html, body {
     grid-column: 1 / -1 !important;
   }
 
+  .feed-sidebar-left,
+  .feed-sidebar-right {
+    display: none !important;
+  }
+
   /* Event category tags / tab buttons horizontal scroll */
   .showcase-tabs {
     display: flex !important;
     flex-wrap: nowrap !important;
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch !important;
     width: 100% !important;
     gap: 8px !important;
     padding-bottom: 8px !important;
     margin-bottom: 0 !important;
     scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
   .showcase-tabs::-webkit-scrollbar {
     display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
   }
   .showcase-tabs .tab-btn {
     flex: 0 0 auto !important;
@@ -10588,55 +10970,121 @@ html, body {
   /* ── 4. School Profile Page ── */
   .profile-banner {
     display: block !important;
-    height: 120px !important;
+    height: 100px !important;
   }
   .profile-header-wrapper {
-    margin-top: 10px !important;
+    margin-top: 5px !important;
     padding: 0 12px !important;
   }
   .profile-header-box {
-    padding: 20px 16px 16px 16px !important;
-    margin-top: -40px !important;
+    padding: 16px 14px 12px 14px !important;
+    margin-top: -30px !important;
     border-radius: var(--radius-md) !important;
     flex-direction: column !important;
     align-items: center !important;
     text-align: center !important;
-    gap: 16px !important;
+    gap: 12px !important;
   }
   .profile-meta-group {
     flex-direction: column !important;
     align-items: center !important;
-    gap: 12px !important;
+    gap: 8px !important;
   }
   .profile-logo-circle {
-    width: 80px !important;
-    height: 80px !important;
-    margin-top: -56px !important;
-    font-size: 2rem !important;
+    width: 70px !important;
+    height: 70px !important;
+    margin-top: -48px !important;
+    font-size: 1.6rem !important;
     border-width: 3px !important;
     border-radius: var(--radius-md) !important;
   }
   .profile-identity h1 {
-    font-size: 1.3rem !important;
+    font-size: 1.25rem !important;
     justify-content: center !important;
     text-align: center !important;
     flex-direction: row !important;
+    margin-bottom: 2px !important;
   }
   .profile-identity-meta {
     justify-content: center !important;
-    font-size: 0.82rem !important;
+    font-size: 0.78rem !important;
     gap: 6px !important;
+  }
+  #profile-followers-count {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-weight: 600 !important;
+    color: var(--primary) !important;
+    background: rgba(0, 102, 200, 0.06) !important;
+    padding: 3px 8px !important;
+    border-radius: var(--radius-sm) !important;
+  }
+  #profile-followers-count::before {
+    content: "";
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230066C8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M23 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    vertical-align: middle;
   }
   .profile-actions {
     width: 100% !important;
+    display: flex !important;
     flex-direction: column !important;
     gap: 8px !important;
+    margin-top: 12px !important;
   }
-  .profile-actions button, .profile-actions a {
+  .profile-actions #btn-join-school {
+    width: 100% !important;
+    height: 40px !important;
+    border-radius: 20px !important;
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+  .profile-actions #btn-edit-school {
+    width: 100% !important;
+    height: 40px !important;
+    border-radius: 20px !important;
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+  .profile-secondary-actions-row {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
     width: 100% !important;
     justify-content: center !important;
-    padding: 10px 16px !important;
-    font-size: 0.88rem !important;
+  }
+  .profile-secondary-actions-row button {
+    flex: 1 !important;
+    min-width: 0 !important;
+    height: 36px !important;
+    border-radius: 18px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    padding: 0 8px !important;
+    gap: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+  }
+  .profile-secondary-actions-row button svg {
+    width: 13px !important;
+    height: 13px !important;
+    flex-shrink: 0 !important;
   }
 
   /* Profile Tab Buttons Horizontal Scroll */
@@ -10814,11 +11262,18 @@ html, body {
     padding: 6px 0 !important;
     font-size: 0.8rem !important;
   }
+  .feed-container {
+    padding-top: 8px !important;
+    padding-bottom: 20px !important;
+  }
   .event-detail-sidebar-card button {
     width: 100% !important;
     margin-top: 16px !important;
     padding: 12px !important;
     font-size: 0.9rem !important;
+  }
+  #btn-register-sidebar {
+    display: none !important;
   }
   .event-detail-main-card {
     padding: 16px !important;
@@ -11708,7 +12163,7 @@ html, body {
   outline: none !important;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   /* ── 1. Sticky Mobile Header – 60px, balanced spacing ── */
   header {
     height: 60px !important;
@@ -11761,11 +12216,18 @@ html, body {
   .header-nav .nav-list > .mobile-search-item,
   .header-nav .nav-list > .nav-msg-item,
   .header-nav .nav-list > .nav-notif-item,
-  .header-nav .nav-list > .nav-me-item,
-  .header-nav .nav-list > .nav-signin-item {
+  .header-nav .nav-list > .nav-me-item {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+  }
+
+  /* Hide Sign In and Create Account buttons in header on mobile */
+  .nav-signin-item,
+  .nav-join-item,
+  .btn-signin,
+  .btn-join {
+    display: none !important;
   }
 
   /* Header action buttons – 44×44 minimum touch targets ── */
@@ -13114,7 +13576,7 @@ html, body {
 @media (max-width: 768px) {
   /* 1. Page Spacing & Bottom Nav Offset */
   .net-main {
-    padding: 8px 0 100px !important;
+    padding: 8px 0 20px !important;
   }
   
   .container {
@@ -13170,9 +13632,71 @@ html, body {
   }
   
   .suggested-school-card {
-    width: 100% !important;
-    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    padding: 10px !important;
+    gap: 10px !important;
+    height: 60px !important; /* consistent height */
     box-sizing: border-box !important;
+    width: 100% !important;
+    background: var(--white) !important;
+    border: 1px solid rgba(15, 23, 42, 0.06) !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  .suggested-school-card .school-logo-box {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 6px !important;
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .suggested-school-card .school-details {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    flex-grow: 1 !important;
+    min-width: 0 !important; /* allow content to shrink/truncate */
+    overflow: hidden !important;
+    text-align: left !important;
+  }
+
+  .suggested-school-card .school-name {
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    color: var(--dark-bg) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  .suggested-school-card .school-location {
+    font-size: 0.68rem !important;
+    color: var(--text-muted) !important;
+  }
+
+  .suggested-school-card button.btn-follow,
+  .suggested-school-card button.btn-following {
+    width: 80px !important; /* explicit width to prevent overflow */
+    height: 28px !important;
+    padding: 0 !important;
+    border-radius: 14px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
   }
   
   .suggestions-header-row {
@@ -13408,7 +13932,7 @@ html, body {
   }
   .mobile-search-bar-container {
     flex: 1 !important;
-    display: flex !important;
+    display: none !important;
     align-items: center !important;
     gap: 6px !important;
     background: var(--white) !important;
@@ -13421,6 +13945,12 @@ html, body {
     position: relative !important;
     box-sizing: border-box !important;
     min-width: 0 !important;
+  }
+  .mobile-search-bar-container.active {
+    display: flex !important;
+  }
+  .mobile-controls-row .mobile-search-bar-container {
+    display: flex !important;
   }
   .mobile-search-bar-container input {
     border: none !important;
@@ -14155,17 +14685,16 @@ html, body {
 }
 
 /* Network Page Mobile Header simplifications */
-@media (max-width: 767px) {
-  .page-networking .header-nav .nav-list > .nav-msg-item,
-  .page-networking .header-nav .nav-list > .nav-notif-item {
+@media (max-width: 768px) {
+  .page-networking .header-nav .nav-list > .nav-msg-item {
     display: none !important;
   }
 }
 
 /* Global Mobile Footer Redesign (<768px) */
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   footer#about {
-    padding: 24px 0 90px 0 !important; /* Top 24px, bottom 90px safe area clearance */
+    padding: 24px 0 24px 0 !important; /* Top 24px, bottom 24px */
   }
 
   footer#about .footer-grid {
@@ -14414,6 +14943,303 @@ html, body {
   border-color: var(--primary-light);
   color: var(--primary);
   background-color: rgba(0, 102, 200, 0.02);
+}
+
+/* --- Desktop Layout Preservation / Defaults for close & mutual elements --- */
+.net-card-close-btn {
+  display: none;
+}
+.net-card-mutual-connections {
+  display: none;
+}
+
+/* --- Mobile Redesign for People You May Know cards --- */
+@media (max-width: 768px) {
+  /* Maintain 2-column layout on mobile */
+  .net-card-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .net-card {
+    position: relative !important;
+    height: 230px !important; /* height between 200-240px */
+    border-radius: 12px !important;
+    background: var(--white) !important;
+    border: 1px solid var(--border-color) !important;
+    padding: 16px 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    overflow: visible !important;
+  }
+
+  .net-card-banner {
+    display: none !important; /* hide banner to match reference */
+  }
+
+  /* Close button at top right */
+  .net-card-close-btn {
+    display: inline-flex !important;
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    background: #f1f5f9 !important;
+    color: var(--text-muted) !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    z-index: 10 !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+  }
+
+  .net-card-body {
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    flex-grow: 1 !important;
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .net-card-avatar-link {
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Larger profile images (65px) */
+  .net-card-avatar-img,
+  .net-card-avatar-placeholder {
+    width: 65px !important;
+    height: 65px !important;
+    border-radius: 50% !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+
+  /* Name prominent */
+  .net-card-name {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    color: var(--dark-bg) !important;
+    margin-bottom: 2px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  /* Role secondary */
+  .net-card-headline {
+    font-size: 0.72rem !important;
+    color: var(--text-muted) !important;
+    line-height: 1.25 !important;
+    margin-bottom: 4px !important;
+    height: 32px !important; /* fixed height to align vertically and allow wrapping */
+    overflow: hidden !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    width: 100% !important;
+  }
+
+  /* Mutual connections smaller */
+  .net-card-mutual-connections {
+    display: block !important;
+    font-size: 0.68rem !important;
+    color: var(--text-muted) !important;
+    margin-bottom: 6px !important;
+    opacity: 0.85 !important;
+  }
+
+  .net-card-footer {
+    width: 100% !important;
+    padding: 0 !important;
+    margin-top: auto !important;
+  }
+
+  .suggestion-actions-row {
+    width: 100% !important;
+    display: flex !important;
+    gap: 0 !important;
+  }
+
+  /* Larger Connect button */
+  .net-card-footer .btn-connect,
+  .net-card-footer .btn-connected,
+  .net-card-footer .btn-requested,
+  .net-card-footer .btn-view-profile {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    padding: 0 16px !important;
+    height: 36px !important; /* larger touch target */
+    max-height: 36px !important;
+    border-radius: 20px !important;
+    border: 1px solid var(--primary) !important;
+    background-color: var(--white) !important;
+    color: var(--primary) !important;
+    width: 100% !important;
+    flex: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .net-card-footer .btn-connect:active {
+    background-color: var(--primary-light) !important;
+  }
+
+  .net-card-footer .btn-connected {
+    background-color: var(--primary) !important;
+    color: var(--white) !important;
+  }
+
+  .net-card-footer .btn-requested {
+    background-color: #f1f5f9 !important;
+    color: var(--text-muted) !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Hide follow button on mobile suggested cards to look like LinkedIn Connect card */
+  .net-card-footer .btn-follow,
+  .net-card-footer .btn-following {
+    display: none !important;
+  }
+}
+
+/* --- Student Profile Redesign V2 Custom Styles --- */
+.profile-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  max-width: fit-content;
+}
+
+.profile-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.profile-stat-item:not(:last-child) {
+  border-right: 1px solid var(--border-color);
+  padding-right: 16px;
+}
+
+.profile-stat-item .stat-value {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--dark-bg);
+}
+
+.profile-stat-item .stat-label {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+/* Avatar Hierarchy */
+.profile-avatar-container {
+  width: 140px !important;
+  height: 140px !important;
+  margin-top: -70px !important;
+}
+
+.profile-avatar-large {
+  width: 140px !important;
+  height: 140px !important;
+  border: 5px solid var(--white) !important;
+}
+
+/* Username Hierarchy */
+.profile-name {
+  font-size: 2.2rem !important;
+  font-weight: 800 !important;
+  color: var(--dark-bg) !important;
+}
+
+/* Desktop Styles Override (1024px+) */
+@media (min-width: 1024px) {
+  .profile-avatar-container {
+    width: 170px !important;
+    height: 170px !important;
+    margin-top: -95px !important;
+  }
+  .profile-avatar-large {
+    width: 170px !important;
+    height: 170px !important;
+    border: 6px solid var(--white) !important;
+  }
+  .avatar-initial {
+    font-size: 4.8rem !important;
+  }
+  .profile-name {
+    font-size: 2.6rem !important;
+  }
+}
+
+/* Mobile Actions Layout (inline instead of stacked) */
+@media (max-width: 767px) {
+  .profile-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-top: 18px !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .profile-actions button,
+  .profile-actions .btn,
+  .profile-actions .btn-connect,
+  .profile-actions .btn-requested,
+  .profile-actions .btn-connected,
+  .profile-actions .btn-follow,
+  .profile-actions .btn-following,
+  .profile-actions #reject-profile-btn {
+    flex: 1 1 calc(50% - 8px) !important; /* side by side, 2 items per row if wrapping */
+    width: auto !important;
+    min-width: 110px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 10px 14px !important;
+    font-size: 0.85rem !important;
+    border-radius: var(--radius-sm) !important;
+    white-space: nowrap !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Share profile and other full row actions can adapt if they are single */
+  .profile-actions button:only-child {
+    flex: 1 1 100% !important;
+  }
 }
 
 
