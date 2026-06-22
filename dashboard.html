@@ -20,6 +20,60 @@
   <!-- Sidebar Overlay (mobile backdrop) -->
   <div class="admin-sidebar-overlay" id="admin-sidebar-overlay"></div>
 
+  <!-- Mobile Sidebar Overlay (Backdrop) -->
+  <div class="mobile-sidebar-overlay-bg" id="mobile-sidebar-overlay-bg"></div>
+
+  <!-- Mobile Sidebar Drawer Drawer -->
+  <aside class="mobile-sidebar-drawer" id="mobile-sidebar-drawer">
+    <div class="mobile-sidebar-header">
+      <div class="mobile-sidebar-brand">
+        <span class="brand-title">CampusLink</span>
+        <span class="brand-subtitle">School Portal</span>
+      </div>
+      <button class="mobile-sidebar-close-btn" id="mobile-sidebar-close-btn" aria-label="Close menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    
+    <div class="mobile-sidebar-user">
+      <div class="mobile-sidebar-avatar" id="mobile-sidebar-avatar-letter">S</div>
+      <div class="mobile-sidebar-user-details">
+        <div class="mobile-sidebar-username" id="mobile-sidebar-school-name">School Admin</div>
+        <div class="mobile-sidebar-userrole">SCHOOL PARTNER</div>
+      </div>
+    </div>
+
+    <nav class="mobile-sidebar-nav">
+      <a class="dashboard-nav-link active" data-tab="overview">
+        <span class="icon">📊</span> Dashboard Overview
+      </a>
+      <a class="dashboard-nav-link" data-tab="contact-requests">
+        <span class="icon">👥</span> Students
+      </a>
+      <a class="dashboard-nav-link" data-tab="admissions">
+        <span class="icon">🎓</span> Admissions
+      </a>
+      <a class="dashboard-nav-link" data-tab="events">
+        <span class="icon">📅</span> Events
+      </a>
+      <a class="dashboard-nav-link" data-tab="registrations">
+        <span class="icon">📝</span> Registrations
+      </a>
+      <a class="dashboard-nav-link" data-tab="applications">
+        <span class="icon">📁</span> Applications
+      </a>
+      <a class="dashboard-nav-link" data-tab="profile">
+        <span class="icon">⚙️</span> School Profile
+      </a>
+    </nav>
+
+    <div class="mobile-sidebar-footer">
+      <a href="#" class="dashboard-nav-link logout" id="mobile-logout-btn" style="color: #EF4444;">
+        <span class="icon">🚪</span> Logout
+      </a>
+    </div>
+  </aside>
+
   <div class="dashboard-layout">
     
     <!-- --- Sidebar Navigation --- -->
@@ -104,102 +158,195 @@
     <!-- --- Main Content Workspace --- -->
     <main class="dashboard-main-content">
       
-      <!-- Mobile Fixed Header -->
-      <header class="mobile-fixed-header">
-        <div class="mobile-header-left">
-          <a href="index.html" class="mobile-back-icon-btn" aria-label="Go back">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          </a>
-          <span class="mobile-header-title" id="mobile-header-title">Dashboard</span>
-        </div>
-        <button class="mobile-hamburger-btn" id="mobile-hamburger-btn" aria-label="Open menu">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-      </header>
-
-      <!-- Top header bar -->
-      <header class="dashboard-top-bar">
-        <div>
-          <h2 style="font-size: 1.4rem; margin-bottom: 0;" id="top-bar-title">Dashboard Overview</h2>
-          <p style="font-size: 0.8rem; color: var(--text-muted);" id="current-date-display">Thursday, June 4, 2026</p>
-        </div>
+      <!-- Mobile Dashboard Content Wrapper -->
+      <div class="mobile-dashboard-content">
         
-        <div class="dashboard-user-info">
-          <a id="view-profile-btn" href="school-profile.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Public Profile</a>
-          <div class="dashboard-avatar" id="school-avatar-letter">S</div>
-          <div>
-            <div style="font-weight: 700; font-size: 0.9rem;" id="school-username">St. Joseph's Academy</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted);" id="school-userboard">ICSE / ISC Board</div>
+        <!-- Dedicated Mobile Header -->
+        <header class="mobile-app-header">
+          <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Open menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="mobile-header-brand">
+            <div class="mobile-school-logo" id="mobile-school-logo-char">L</div>
+            <span class="mobile-school-name" id="mobile-school-name-text">Loading...</span>
           </div>
-          <a id="edit-school-btn" class="btn btn-primary" style="display: none; padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm); cursor: pointer;">Edit School</a>
-        </div>
-      </header>
-      
-      <!-- Workspace Container -->
-      <div class="dashboard-workspace">
+          <div class="mobile-header-actions" style="display: flex; gap: 8px; align-items: center;">
+            <a href="index.html" class="mobile-home-btn" id="mobile-home-btn" aria-label="Home">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            </a>
+            <button class="mobile-notification-btn" id="mobile-notification-btn" aria-label="Notifications">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              <span class="notification-badge" id="mobile-notification-badge" style="display: none;"></span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Mobile Fixed Header -->
+        <header class="mobile-fixed-header">
+          <div class="mobile-header-left">
+            <a href="index.html" class="mobile-back-icon-btn" aria-label="Go back">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            </a>
+            <span class="mobile-header-title" id="mobile-header-title">Dashboard</span>
+          </div>
+          <button class="mobile-hamburger-btn" id="mobile-hamburger-btn" aria-label="Open menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+        </header>
+
+        <!-- Top header bar -->
+        <header class="dashboard-top-bar">
+          <div>
+            <h2 style="font-size: 1.4rem; margin-bottom: 0;" id="top-bar-title">Dashboard Overview</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted);" id="current-date-display">Thursday, June 4, 2026</p>
+          </div>
+          
+          <div class="dashboard-user-info">
+            <a id="view-profile-btn" href="school-profile.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Public Profile</a>
+            <div class="dashboard-avatar" id="school-avatar-letter">L</div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.9rem;" id="school-username">Loading...</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);" id="school-userboard">Board Affiliation</div>
+            </div>
+            <a id="edit-school-btn" class="btn btn-primary" style="display: none; padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm); cursor: pointer;">Edit School</a>
+          </div>
+        </header>
+        
+        <!-- Workspace Container -->
+        <div class="dashboard-workspace">
         
         <!-- ================= OVERVIEW TAB ================= -->
         <section id="overview-tab" class="dashboard-tab-panel active">
-          <!-- Hero Card -->
-          <div class="overview-hero-card" id="overview-hero-card" style="background: linear-gradient(135deg, #1E293B, #0F172A); color: white; padding: 28px; border-radius: 18px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
-            <div>
-              <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94A3B8; font-weight: 700; margin-bottom: 6px;">Logged in as</div>
-              <h1 id="hero-school-name" style="font-size: 1.6rem; font-weight: 800; margin: 0; color: white;">School Administrator</h1>
-              <div id="hero-school-role" style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px; font-weight: 500;">Role: School Administrator</div>
+          
+          <!-- Desktop Overview Widgets -->
+          <div class="desktop-overview-widgets">
+            <!-- Hero Card -->
+            <div class="overview-hero-card" id="overview-hero-card" style="background: linear-gradient(135deg, #1E293B, #0F172A); color: white; padding: 28px; border-radius: 18px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
+              <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94A3B8; font-weight: 700; margin-bottom: 6px;">Logged in as</div>
+                <h1 id="hero-school-name" style="font-size: 1.6rem; font-weight: 800; margin: 0; color: white;">School Administrator</h1>
+                <div id="hero-school-role" style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px; font-weight: 500;">Role: School Administrator</div>
+              </div>
+              <span class="hero-role-badge" id="hero-school-badge" style="background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 8px 16px; border-radius: 9999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">School Partner</span>
             </div>
-            <span class="hero-role-badge" id="hero-school-badge" style="background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 8px 16px; border-radius: 9999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">School Partner</span>
+
+            <!-- Statistics Cards Grid -->
+            <div class="dash-stats-grid">
+              <div class="dash-stat-card">
+                <div class="dash-stat-info">
+                  <h4>Total Events</h4>
+                  <div class="stat-value" id="stat-total-events">0</div>
+                </div>
+                <div class="dash-stat-icon blue">📅</div>
+              </div>
+              
+              <div class="dash-stat-card">
+                <div class="dash-stat-info">
+                  <h4>Registrations</h4>
+                  <div class="stat-value" id="stat-registrations">0</div>
+                </div>
+                <div class="dash-stat-icon teal">👥</div>
+              </div>
+              
+              <div class="dash-stat-card">
+                <div class="dash-stat-info">
+                  <h4>Admission Posts</h4>
+                  <div class="stat-value" id="stat-admission-posts">0</div>
+                </div>
+                <div class="dash-stat-icon orange">🎓</div>
+              </div>
+            </div>
+            
+            <!-- Recent Registrations Table -->
+            <div class="dash-table-card">
+              <div class="dash-card-header">
+                <h3>Recent Student Registrations</h3>
+                <span style="font-size: 0.8rem; color: var(--text-muted);" id="pending-reg-count">0 pending requests</span>
+              </div>
+              
+              <div class="dash-table-wrapper">
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Student Name</th>
+                      <th>Class / Grade</th>
+                      <th>Event Applied</th>
+                      <th>Date Applied</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="registrations-tbody">
+                    <!-- Dynamic rows added by dashboard.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
-          <!-- Statistics Cards Grid -->
-          <div class="dash-stats-grid">
-            <div class="dash-stat-card">
-              <div class="dash-stat-info">
-                <h4>Total Events</h4>
-                <div class="stat-value" id="stat-total-events">0</div>
+          <!-- Mobile Overview Widgets -->
+          <div class="mobile-overview-widgets">
+            <!-- Mobile Two-Column Grid -->
+            <div class="mobile-dashboard-grid">
+              <!-- Students Card -->
+              <div class="mobile-dash-card" data-tab="contact-requests">
+                <div class="card-icon-wrapper blue">
+                  <span class="card-emoji">👥</span>
+                </div>
+                <div class="card-details">
+                  <span class="card-count" id="mobile-stat-students">0</span>
+                  <span class="card-title">Students</span>
+                </div>
+                <div class="card-arrow">➔</div>
               </div>
-              <div class="dash-stat-icon blue">📅</div>
-            </div>
-            
-            <div class="dash-stat-card">
-              <div class="dash-stat-info">
-                <h4>Registrations</h4>
-                <div class="stat-value" id="stat-registrations">0</div>
+              
+              <!-- Admissions Card -->
+              <div class="mobile-dash-card" data-tab="admissions">
+                <div class="card-icon-wrapper teal">
+                  <span class="card-emoji">🎓</span>
+                </div>
+                <div class="card-details">
+                  <span class="card-count" id="mobile-stat-admissions">0</span>
+                  <span class="card-title">Admissions</span>
+                </div>
+                <div class="card-arrow">➔</div>
               </div>
-              <div class="dash-stat-icon teal">👥</div>
-            </div>
-            
-            <div class="dash-stat-card">
-              <div class="dash-stat-info">
-                <h4>Admission Posts</h4>
-                <div class="stat-value" id="stat-admission-posts">0</div>
+              
+              <!-- Events Card -->
+              <div class="mobile-dash-card" data-tab="events">
+                <div class="card-icon-wrapper orange">
+                  <span class="card-emoji">📅</span>
+                </div>
+                <div class="card-details">
+                  <span class="card-count" id="mobile-stat-events">0</span>
+                  <span class="card-title">Events</span>
+                </div>
+                <div class="card-arrow">➔</div>
               </div>
-              <div class="dash-stat-icon orange">🎓</div>
-            </div>
-          </div>
-          
-          <!-- Recent Registrations Table -->
-          <div class="dash-table-card">
-            <div class="dash-card-header">
-              <h3>Recent Student Registrations</h3>
-              <span style="font-size: 0.8rem; color: var(--text-muted);" id="pending-reg-count">0 pending requests</span>
-            </div>
-            
-            <div class="dash-table-wrapper">
-              <table class="dash-table">
-                <thead>
-                  <tr>
-                    <th>Student Name</th>
-                    <th>Class / Grade</th>
-                    <th>Event Applied</th>
-                    <th>Date Applied</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="registrations-tbody">
-                  <!-- Dynamic rows added by dashboard.js -->
-                </tbody>
-              </table>
+
+              <!-- Registrations Card -->
+              <div class="mobile-dash-card" data-tab="registrations">
+                <div class="card-icon-wrapper indigo">
+                  <span class="card-emoji">📝</span>
+                </div>
+                <div class="card-details">
+                  <span class="card-count" id="mobile-stat-registrations">0</span>
+                  <span class="card-title">Registrations</span>
+                </div>
+                <div class="card-arrow">➔</div>
+              </div>
+
+              <!-- Applications Card -->
+              <div class="mobile-dash-card" data-tab="applications">
+                <div class="card-icon-wrapper green">
+                  <span class="card-emoji">📁</span>
+                </div>
+                <div class="card-details">
+                  <span class="card-count" id="mobile-stat-applications">0</span>
+                  <span class="card-title">Applications</span>
+                </div>
+                <div class="card-arrow">➔</div>
+              </div>
             </div>
           </div>
         </section>
@@ -349,7 +496,7 @@
               <div class="dash-form-row">
                 <div class="dash-form-group full-width">
                   <label for="admission-school-name">School Name *</label>
-                  <input type="text" id="admission-school-name" placeholder="e.g. St. Joseph's Academy" readonly>
+                  <input type="text" id="admission-school-name" placeholder="e.g. School Name" readonly>
                   <span class="error-msg" id="err-admission-school-name" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
                 </div>
               </div>
@@ -516,7 +663,7 @@
               <div class="dash-form-row">
                 <div class="dash-form-group">
                   <label for="profile-school-name">School Name *</label>
-                  <input type="text" id="profile-school-name" required placeholder="St. Joseph's Academy">
+                  <input type="text" id="profile-school-name" required placeholder="e.g. School Name">
                 </div>
                 
                 <div class="dash-form-group">
@@ -563,6 +710,7 @@
         </section>
         
       </div>
+      </div>
       
     </main>
   </div>
@@ -608,6 +756,7 @@
         document.body.classList.add('platform-android');
       }
 
+      // Legacy sidebar toggling (for desktop responsive resize fallback)
       const hamburger = document.getElementById('mobile-hamburger-btn');
       const sidebar = document.getElementById('dashboard-sidebar');
       const overlay = document.getElementById('admin-sidebar-overlay');
@@ -630,27 +779,73 @@
       if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
       if (overlay) overlay.addEventListener('click', closeSidebar);
 
-      // Close sidebar when a nav link is clicked on mobile
-      document.querySelectorAll('.dashboard-nav-link').forEach(link => {
+      // New Mobile Sidebar Toggling
+      const mobileToggle = document.getElementById('mobile-menu-toggle');
+      const mobileDrawer = document.getElementById('mobile-sidebar-drawer');
+      const mobileOverlayBg = document.getElementById('mobile-sidebar-overlay-bg');
+      const mobileClose = document.getElementById('mobile-sidebar-close-btn');
+
+      function openMobileDrawer() {
+        if (mobileDrawer) mobileDrawer.classList.add('open');
+        if (mobileOverlayBg) mobileOverlayBg.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeMobileDrawer() {
+        if (mobileDrawer) mobileDrawer.classList.remove('open');
+        if (mobileOverlayBg) mobileOverlayBg.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+
+      if (mobileToggle) mobileToggle.addEventListener('click', openMobileDrawer);
+      if (mobileClose) mobileClose.addEventListener('click', closeMobileDrawer);
+      if (mobileOverlayBg) mobileOverlayBg.addEventListener('click', closeMobileDrawer);
+
+      // Close mobile drawer when a nav link is clicked inside it
+      document.querySelectorAll('.mobile-sidebar-drawer .dashboard-nav-link').forEach(link => {
         link.addEventListener('click', () => {
-          if (window.innerWidth < 992) closeSidebar();
+          closeMobileDrawer();
         });
       });
 
-      // Synchronize mobile header title when nav links are clicked
-      document.querySelectorAll('.dashboard-nav-link[data-tab]').forEach(link => {
+      // Synchronize mobile header and sidebar user profile letter & names
+      function syncProfileElements() {
+        const storedProfile = localStorage.getItem('campuslink_profile');
+        if (storedProfile) {
+          try {
+            const prof = JSON.parse(storedProfile);
+             const letter = prof.logoLetter || (prof.name ? prof.name.charAt(0) : 'L');
+             const name = prof.name || "Loading school...";
+            
+            const mobLogo = document.getElementById('mobile-school-logo-char');
+            if (mobLogo) mobLogo.textContent = letter;
+            
+            const mobName = document.getElementById('mobile-school-name-text');
+            if (mobName) mobName.textContent = name;
+
+            const sidebarLogo = document.getElementById('mobile-sidebar-avatar-letter');
+            if (sidebarLogo) sidebarLogo.textContent = letter;
+
+            const sidebarName = document.getElementById('mobile-sidebar-school-name');
+            if (sidebarName) sidebarName.textContent = name;
+          } catch(e) {
+            console.error('Error parsing stored profile', e);
+          }
+        }
+      }
+      
+      // Run sync on load and listen to storage updates or custom events
+      syncProfileElements();
+      window.addEventListener('storage', syncProfileElements);
+      
+      // Custom event for immediate sync when dashboard.js updates the profile
+      window.addEventListener('profileUpdated', syncProfileElements);
+
+      // Sync active states on mobile sidebar nav links
+      document.querySelectorAll('.mobile-sidebar-nav .dashboard-nav-link[data-tab]').forEach(link => {
         link.addEventListener('click', () => {
-          const tabTarget = link.getAttribute('data-tab');
-          let tabName = 'Dashboard Overview';
-          if (tabTarget === 'events') tabName = 'Manage Events';
-          if (tabTarget === 'registrations') tabName = 'Event Registrations';
-          if (tabTarget === 'admissions') tabName = 'Admissions Announcements';
-          if (tabTarget === 'applications') tabName = 'Admissions Applications Received';
-          if (tabTarget === 'contact-requests') tabName = 'Contact Requests Received';
-          if (tabTarget === 'profile') tabName = 'School Profile Settings';
-          
-          const mobTitle = document.getElementById('mobile-header-title');
-          if (mobTitle) mobTitle.textContent = tabName;
+          document.querySelectorAll('.mobile-sidebar-nav .dashboard-nav-link').forEach(l => l.classList.remove('active'));
+          link.classList.add('active');
         });
       });
 

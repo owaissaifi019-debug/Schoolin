@@ -46,6 +46,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // ── Logout Button (Mobile) ──────────────────────────────
+  const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+  if (mobileLogoutBtn && auth) {
+    mobileLogoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await auth.signOut();
+    });
+  }
+
   // ── Supabase Dashboard Data Sync ────────────────────────
   async function loadDashboardData() {
     if (auth && supabase && session) {
@@ -116,6 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               logoLetter: school.logo_letter || school.name.charAt(0).toUpperCase(),
               about: school.about || ''
             };
+            saveState('campuslink_profile', profile);
             
             // Fetch events
             const { data: dbEvents, error: eErr } = await supabase.from('events').select('*').eq('school_id', school.id);
@@ -132,6 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 school: school.name,
                 bannerImg: e.banner_url
               }));
+              saveState('campuslink_events', events);
             }
             
             // Fetch admissions
@@ -149,6 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 board: school.board,
                 city: school.city
               }));
+              saveState('campuslink_admissions', admissions);
             }
 
             // Fetch admission applications
@@ -247,134 +259,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Seed Data Configuration ---
   const DEFAULT_PROFILE = {
-    name: "St. Joseph's Academy",
-    city: "Dehradun",
-    state: "Uttarakhand",
-    board: "ICSE",
-    logoLetter: "S",
-    about: "Founded in 1934, St. Joseph's Academy is a premier co-educational school in Dehradun run by the Patrician Brothers. Spanning a lush campus, the school has consistently nurtured academic toppers, national-level debaters, and track athletes under its motto 'Laborare est Orare' (Work is Worship)."
+    name: "Loading school...",
+    city: "",
+    state: "",
+    board: "",
+    logoLetter: "L",
+    about: ""
   };
 
-  const DEFAULT_EVENTS = [
-    {
-      id: 101,
-      title: "All-India Inter-School Debate Championship 2026",
-      category: "debate",
-      date: "June 28 - 29, 2026",
-      deadline: "June 20, 2026",
-      venue: "Brother O'Brien Memorial Auditorium",
-      description: "The premier debating tournament of North India bringing together teams from 30+ schools to battle in Parliamentary and Turncoat debate formats. Standard registration rules apply.",
-      school: "St. Joseph's Academy"
-    },
-    {
-      id: 102,
-      title: "Josephite Annual Athletics & Sports Meet",
-      category: "sports",
-      date: "July 15 - 18, 2026",
-      deadline: "July 05, 2026",
-      venue: "School Main Playgrounds",
-      description: "Inter-school track events, basketball matches, and football leagues. Elite trophies for the best-performing athletic school team.",
-      school: "St. Joseph's Academy"
-    },
-    {
-      id: 103,
-      title: "Aura Creative Writing & Art Exhibition",
-      category: "cultural",
-      date: "August 10, 2026",
-      deadline: "August 01, 2026",
-      venue: "Junior Wing Activity Hall",
-      description: "Unleash creativity! Categories include poetry writing, micro-fiction, oil painting, clay modeling, and abstract sketching.",
-      school: "St. Joseph's Academy"
-    }
-  ];
-
-  const DEFAULT_ADMISSIONS = [
-    {
-      id: 201,
-      classesOpen: "Nursery to Grade IX, Grade XI",
-      startDate: "June 15, 2026",
-      lastDate: "July 15, 2026",
-      academicYear: "2026-27",
-      brochure: "https://stjosephsacademy.in/admissions-2026.pdf",
-      applyLink: "https://stjosephsacademy.in/apply",
-      details: "Online applications are now active. Selected candidates will be invited for preliminary interaction rounds. Please submit age certificates and report card transcripts.",
-      schoolName: "St. Joseph's Academy",
-      board: "ICSE",
-      city: "Dehradun"
-    }
-  ];
-
-  const DEFAULT_REGISTRATIONS = [
-    {
-      id: 301,
-      studentName: "Aarav Sharma",
-      classGrade: "Grade X",
-      eventTitle: "All-India Inter-School Debate Championship 2026",
-      dateApplied: "June 03, 2026",
-      status: "pending"
-    },
-    {
-      id: 302,
-      studentName: "Diya Iyer",
-      classGrade: "Grade VIII",
-      eventTitle: "Aura Creative Writing & Art Exhibition",
-      dateApplied: "June 02, 2026",
-      status: "approved"
-    },
-    {
-      id: 303,
-      studentName: "Kabir Sen",
-      classGrade: "Grade XII",
-      eventTitle: "Josephite Annual Athletics & Sports Meet",
-      dateApplied: "May 30, 2026",
-      status: "pending"
-    },
-    {
-      id: 304,
-      studentName: "Sneha Patel",
-      classGrade: "Grade IX",
-      eventTitle: "All-India Inter-School Debate Championship 2026",
-      dateApplied: "May 28, 2026",
-      status: "rejected"
-    }
-  ];
-
-  const DEFAULT_CONTACT_REQUESTS = [
-    {
-      id: "mock-conv-1",
-      status: "pending",
-      inquiry_type: "general_inquiry",
-      created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-      initiator: {
-        full_name: "Rahul Verma",
-        email: "rahul.verma@gmail.com"
-      },
-      messages: [
-        {
-          message: "[Inquiry: general_inquiry] Hello, I would like to know about the school bus routes for Rajpur Road.",
-          created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-          sender_id: "mock-user-1"
-        }
-      ]
-    },
-    {
-      id: "mock-conv-2",
-      status: "accepted",
-      inquiry_type: "admissions",
-      created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-      initiator: {
-        full_name: "Pooja Sen",
-        email: "pooja.sen@yahoo.com"
-      },
-      messages: [
-        {
-          message: "[Inquiry: admissions] Dear Admission Team, does the school offer IB curriculum options for Grade XI?",
-          created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-          sender_id: "mock-user-2"
-        }
-      ]
-    }
-  ];
+  const DEFAULT_EVENTS = [];
+  const DEFAULT_ADMISSIONS = [];
+  const DEFAULT_REGISTRATIONS = [];
+  const DEFAULT_CONTACT_REQUESTS = [];
 
   // --- Initial Storage Sync ---
   function getStoredData(key, fallback) {
@@ -467,6 +363,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (heroBadge) {
       heroBadge.textContent = profile.board ? `${profile.board} Board` : 'School Partner';
     }
+    
+    // Trigger custom event to sync with mobile header & sidebar
+    window.dispatchEvent(new CustomEvent('profileUpdated'));
   }
 
   // --- Tab Switching Logic ---
@@ -504,6 +403,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalEvents = events.filter(e => e.school === profile.name).length;
     const totalRegistrations = registrations.length;
     const totalAdmissions = admissions.filter(a => a.schoolName === profile.name).length;
+    const totalStudents = contactRequests.length;
+    const totalApplications = admissionApplications.length;
 
     const statEventsEl = document.getElementById('stat-total-events');
     const statRegsEl = document.getElementById('stat-registrations');
@@ -518,6 +419,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pendingTextEl = document.getElementById('pending-reg-count');
     if (pendingTextEl) {
       pendingTextEl.textContent = `${pendingCount} pending request${pendingCount === 1 ? '' : 's'}`;
+    }
+
+    // Sync mobile card counts
+    const mobEventsEl = document.getElementById('mobile-stat-events');
+    const mobRegsEl = document.getElementById('mobile-stat-registrations');
+    const mobAdmissionsEl = document.getElementById('mobile-stat-admissions');
+    const mobStudentsEl = document.getElementById('mobile-stat-students');
+    const mobAppsEl = document.getElementById('mobile-stat-applications');
+
+    if (mobEventsEl) mobEventsEl.textContent = totalEvents;
+    if (mobRegsEl) mobRegsEl.textContent = totalRegistrations;
+    if (mobAdmissionsEl) mobAdmissionsEl.textContent = totalAdmissions;
+    if (mobStudentsEl) mobStudentsEl.textContent = totalStudents;
+    if (mobAppsEl) mobAppsEl.textContent = totalApplications;
+
+    // Sync mobile notification bell badge
+    const mobNotifBadge = document.getElementById('mobile-notification-badge');
+    if (mobNotifBadge) {
+      if (pendingCount > 0) {
+        mobNotifBadge.textContent = pendingCount;
+        mobNotifBadge.style.display = 'block';
+      } else {
+        mobNotifBadge.style.display = 'none';
+      }
     }
   }
 
@@ -1999,6 +1924,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       const checkedCbs = document.querySelectorAll('input[name="admission_classes"]:checked');
       const selectedClasses = Array.from(checkedCbs).map(c => c.value);
       document.getElementById('admission-classes').value = selectedClasses.join(', ');
+    });
+  });
+
+  // --- Mobile Dashboard Cards Event Listeners ---
+  const mobileCards = document.querySelectorAll('.mobile-dash-card[data-tab]');
+  mobileCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const tabTarget = card.getAttribute('data-tab');
+      // Find the corresponding navigation link and click it to switch tabs
+      const desktopNavLink = document.querySelector(`.dashboard-layout .dashboard-nav-link[data-tab="${tabTarget}"]`);
+      if (desktopNavLink) {
+        desktopNavLink.click();
+      }
+      
+      // Also update the active class on mobile sidebar drawer links
+      const mobileNavLinks = document.querySelectorAll('.mobile-sidebar-nav .dashboard-nav-link');
+      mobileNavLinks.forEach(l => {
+        l.classList.remove('active');
+        if (l.getAttribute('data-tab') === tabTarget) {
+          l.classList.add('active');
+        }
+      });
     });
   });
 

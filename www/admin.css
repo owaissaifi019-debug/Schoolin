@@ -1408,3 +1408,468 @@ body.platform-android .mobile-fixed-header {
   }
 }
 
+/* ==========================================================================
+   Dedicated School Admin Mobile Dashboard Redesign Styles (max-width: 992px)
+   ========================================================================== */
+
+/* Outer base wrapper overrides to prevent scrolls & conflicts */
+@media (max-width: 992px) {
+  body.school-admin-body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    background-color: #F8FAFC !important;
+  }
+
+  /* 1. Explicitly remove/hide desktop structures on mobile viewport */
+  body.school-admin-body .dashboard-top-bar {
+    display: none !important;
+  }
+  
+  body.school-admin-body .desktop-overview-widgets {
+    display: none !important;
+  }
+  
+  body.school-admin-body .dashboard-sidebar {
+    display: none !important;
+  }
+
+  body.school-admin-body .mobile-fixed-header {
+    display: none !important;
+  }
+
+  /* 2. Style the clean mobile content wrapper */
+  body.school-admin-body .mobile-dashboard-content {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background-color: #F8FAFC !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Clean up workspace constraints and spacing */
+  body.school-admin-body .dashboard-workspace {
+    padding: 16px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    flex-grow: 1 !important;
+  }
+
+  /* 3. Dedicated Sticky Mobile Header */
+  body.school-admin-body .mobile-app-header {
+    display: flex !important;
+    position: sticky !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
+    background-color: #0F172A !important; /* Premium dark Slate 900 */
+    color: #FFFFFF !important;
+    height: calc(60px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-left: calc(16px + env(safe-area-inset-left, 0px)) !important;
+    padding-right: calc(16px + env(safe-area-inset-right, 0px)) !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-sizing: border-box !important;
+  }
+
+  .mobile-menu-toggle {
+    background: transparent !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50% !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    transition: background-color 0.2s ease, transform 0.1s ease !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+  }
+  
+  .mobile-menu-toggle:active {
+    background-color: rgba(255, 255, 255, 0.18) !important;
+    transform: scale(0.95) !important;
+  }
+
+  .mobile-header-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-grow: 1 !important;
+    margin-left: 12px !important;
+  }
+
+  .mobile-school-logo {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+    background: linear-gradient(135deg, #3B82F6, #1D4ED8) !important;
+    color: #FFFFFF !important;
+    font-weight: 800 !important;
+    font-size: 1.15rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+  }
+
+  .mobile-school-name {
+    font-size: 0.98rem !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 170px !important;
+  }
+
+  .mobile-home-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50% !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    transition: background-color 0.2s ease, transform 0.1s ease !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    text-decoration: none !important;
+  }
+
+  .mobile-home-btn:active {
+    background-color: rgba(255, 255, 255, 0.18) !important;
+    transform: scale(0.95) !important;
+  }
+
+  .mobile-notification-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50% !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    transition: background-color 0.2s ease, transform 0.1s ease !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+  }
+
+  .mobile-notification-btn:active {
+    background-color: rgba(255, 255, 255, 0.18) !important;
+    transform: scale(0.95) !important;
+  }
+
+  /* 4. Dedicated Overlay Sidebar Drawer and Backdrop */
+  body.school-admin-body .mobile-sidebar-overlay-bg {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    z-index: 1900 !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.3s ease !important;
+  }
+
+  body.school-admin-body .mobile-sidebar-overlay-bg.open {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  body.school-admin-body .mobile-sidebar-drawer {
+    display: flex !important;
+    flex-direction: column !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    max-width: 85% !important;
+    background-color: #0F172A !important; /* Dark Slate 900 */
+    z-index: 2000 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.25) !important;
+    box-sizing: border-box !important;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.school-admin-body .mobile-sidebar-drawer.open {
+    transform: translateX(0) !important;
+  }
+
+  .mobile-sidebar-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 20px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .mobile-sidebar-brand .brand-title {
+    font-size: 1.25rem !important;
+    font-weight: 800 !important;
+    color: #FFFFFF !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .mobile-sidebar-brand .brand-subtitle {
+    font-size: 0.72rem !important;
+    color: #94A3B8 !important;
+    font-weight: 500 !important;
+  }
+
+  .mobile-sidebar-close-btn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s !important;
+  }
+
+  .mobile-sidebar-close-btn:active {
+    background-color: rgba(255, 255, 255, 0.16) !important;
+  }
+
+  .mobile-sidebar-user {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 18px 20px !important;
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .mobile-sidebar-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 10px !important;
+    background: linear-gradient(135deg, #3B82F6, #8B5CF6) !important;
+    color: #FFFFFF !important;
+    font-size: 1.2rem !important;
+    font-weight: 800 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25) !important;
+  }
+
+  .mobile-sidebar-user-details {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+    overflow: hidden !important;
+  }
+
+  .mobile-sidebar-username {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 175px !important;
+  }
+
+  .mobile-sidebar-userrole {
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    color: #10B981 !important;
+    letter-spacing: 0.05em !important;
+  }
+
+  .mobile-sidebar-nav {
+    flex-grow: 1 !important;
+    overflow-y: auto !important;
+    padding: 16px 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  .mobile-sidebar-nav .dashboard-nav-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 11px 14px !important;
+    color: #94A3B8 !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .mobile-sidebar-nav .dashboard-nav-link .icon {
+    font-size: 1.05rem !important;
+  }
+
+  .mobile-sidebar-nav .dashboard-nav-link.active {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    color: #3B82F6 !important;
+    box-shadow: inset 4px 0 0 #3B82F6 !important;
+  }
+
+  .mobile-sidebar-nav .dashboard-nav-link:active {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    transform: scale(0.98) !important;
+  }
+
+  .mobile-sidebar-footer {
+    padding: 12px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .mobile-sidebar-footer .dashboard-nav-link.logout {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    padding: 11px !important;
+    background-color: rgba(239, 68, 68, 0.12) !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    transition: background-color 0.2s, transform 0.1s !important;
+  }
+
+  .mobile-sidebar-footer .dashboard-nav-link.logout:active {
+    background-color: rgba(239, 68, 68, 0.2) !important;
+    transform: scale(0.96) !important;
+  }
+
+  /* 5. Mobile Overview Grid and Action Cards styling */
+  body.school-admin-body .mobile-overview-widgets {
+    display: block !important;
+  }
+
+  .mobile-dashboard-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 8px 0 !important;
+  }
+
+  .mobile-dash-card {
+    background-color: #FFFFFF !important;
+    border: 1px solid rgba(15, 23, 42, 0.06) !important;
+    border-radius: 16px !important;
+    padding: 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02) !important;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease !important;
+    min-height: 110px !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+  }
+
+  .mobile-dash-card:active {
+    transform: scale(0.96) !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05) !important;
+  }
+
+  .card-icon-wrapper {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 12px !important;
+  }
+
+  .card-icon-wrapper.blue {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+  }
+  .card-icon-wrapper.teal {
+    background-color: rgba(20, 184, 166, 0.1) !important;
+  }
+  .card-icon-wrapper.orange {
+    background-color: rgba(249, 115, 22, 0.1) !important;
+  }
+  .card-icon-wrapper.indigo {
+    background-color: rgba(99, 102, 241, 0.1) !important;
+  }
+  .card-icon-wrapper.green {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+  }
+
+  .card-emoji {
+    font-size: 1.15rem !important;
+  }
+
+  .card-details {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+  }
+
+  .card-count {
+    font-size: 1.7rem !important;
+    font-weight: 800 !important;
+    color: #0F172A !important;
+    line-height: 1.1 !important;
+  }
+
+  .card-title {
+    font-size: 0.76rem !important;
+    font-weight: 700 !important;
+    color: #64748B !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+  }
+
+  .card-arrow {
+    position: absolute !important;
+    bottom: 16px !important;
+    right: 16px !important;
+    font-size: 0.85rem !important;
+    color: #94A3B8 !important;
+    transition: transform 0.2s ease !important;
+  }
+  
+  .mobile-dash-card:active .card-arrow {
+    transform: translateX(3px) !important;
+    color: #3B82F6 !important;
+  }
+}
+
