@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>School Admin Dashboard | CampusLink</title>
   <meta name="description" content="Manage your school's events, admissions updates, registrations, and profile details on the CampusLink school network.">
-  <!-- CSS Stylesheet -->
+  <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="style.css?v=1.1">
+  <link rel="stylesheet" href="admin.css?v=1.0">
 </head>
-<body style="overflow: hidden;">
+<body style="overflow: hidden;" class="school-admin-body">
 
   <!-- Auth Loading Overlay -->
   <div class="auth-loading-overlay" id="auth-loading-overlay">
@@ -16,14 +17,27 @@
     <span class="auth-loading-text">Verifying authentication...</span>
   </div>
 
+  <!-- Sidebar Overlay (mobile backdrop) -->
+  <div class="admin-sidebar-overlay" id="admin-sidebar-overlay"></div>
+
   <div class="dashboard-layout">
     
     <!-- --- Sidebar Navigation --- -->
-    <aside class="dashboard-sidebar">
+    <aside class="dashboard-sidebar" id="dashboard-sidebar">
       <div class="dashboard-logo-section">
-        <a href="index.html" class="logo" style="margin-bottom: 0;">
-          <span>CampusLink</span><span class="logo-dot"></span>
-        </a>
+        <div class="logo-brand-wrapper">
+          <a href="index.html" class="logo" style="margin-bottom: 0;">
+            <span>CampusLink</span><span class="logo-dot"></span>
+          </a>
+          <span class="logo-subtitle">Student Network Platform</span>
+        </div>
+        <!-- Close button inside sidebar on mobile -->
+        <button class="admin-sidebar-close" id="admin-sidebar-close" aria-label="Close menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sidebar-role-container" style="padding: 0 16px; margin-top: 12px; margin-bottom: 12px;">
+        <span class="badge-status status-approved" id="sidebar-role-badge" style="font-weight: 800; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; background-color: rgba(16, 185, 129, 0.1); color: #10B981; padding: 6px 12px; border-radius: 4px; display: inline-block;">SCHOOL ADMIN</span>
       </div>
       
       <nav class="dashboard-nav">
@@ -32,6 +46,18 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
           </span>
           Dashboard
+        </a>
+        <a class="dashboard-nav-link" data-tab="profile">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </span>
+          School Profile
+        </a>
+        <a class="dashboard-nav-link" data-tab="admissions">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </span>
+          Admissions
         </a>
         <a class="dashboard-nav-link" data-tab="events">
           <span class="icon">
@@ -45,11 +71,11 @@
           </span>
           Registrations
         </a>
-        <a class="dashboard-nav-link" data-tab="admissions">
+        <a class="dashboard-nav-link" data-tab="contact-requests">
           <span class="icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           </span>
-          Admissions
+          Students
         </a>
         <a class="dashboard-nav-link" data-tab="applications">
           <span class="icon">
@@ -57,30 +83,18 @@
           </span>
           Applications
         </a>
-        <a class="dashboard-nav-link" data-tab="contact-requests">
+        <a class="dashboard-nav-link" data-tab="settings" style="cursor: pointer;" onclick="alert('Settings feature coming soon!')">
           <span class="icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           </span>
-          Contact Requests
-        </a>
-        <a class="dashboard-nav-link" data-tab="profile">
-          <span class="icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-          </span>
-          Profile
-        </a>
-        <a href="messaging.html" class="dashboard-nav-link">
-          <span class="icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-          </span>
-          Messages
+          Settings
         </a>
       </nav>
       
       <div class="dashboard-sidebar-footer">
         <a href="#" class="dashboard-nav-link logout" id="sidebar-logout-btn" style="color: #EF4444;">
           <span class="icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></polyline><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           </span>
           Logout
         </a>
@@ -90,6 +104,19 @@
     <!-- --- Main Content Workspace --- -->
     <main class="dashboard-main-content">
       
+      <!-- Mobile Fixed Header -->
+      <header class="mobile-fixed-header">
+        <div class="mobile-header-left">
+          <a href="index.html" class="mobile-back-icon-btn" aria-label="Go back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          </a>
+          <span class="mobile-header-title" id="mobile-header-title">Dashboard</span>
+        </div>
+        <button class="mobile-hamburger-btn" id="mobile-hamburger-btn" aria-label="Open menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </header>
+
       <!-- Top header bar -->
       <header class="dashboard-top-bar">
         <div>
@@ -104,6 +131,7 @@
             <div style="font-weight: 700; font-size: 0.9rem;" id="school-username">St. Joseph's Academy</div>
             <div style="font-size: 0.75rem; color: var(--text-muted);" id="school-userboard">ICSE / ISC Board</div>
           </div>
+          <a id="edit-school-btn" class="btn btn-primary" style="display: none; padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm); cursor: pointer;">Edit School</a>
         </div>
       </header>
       
@@ -112,6 +140,16 @@
         
         <!-- ================= OVERVIEW TAB ================= -->
         <section id="overview-tab" class="dashboard-tab-panel active">
+          <!-- Hero Card -->
+          <div class="overview-hero-card" id="overview-hero-card" style="background: linear-gradient(135deg, #1E293B, #0F172A); color: white; padding: 28px; border-radius: 18px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
+            <div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94A3B8; font-weight: 700; margin-bottom: 6px;">Logged in as</div>
+              <h1 id="hero-school-name" style="font-size: 1.6rem; font-weight: 800; margin: 0; color: white;">School Administrator</h1>
+              <div id="hero-school-role" style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px; font-weight: 500;">Role: School Administrator</div>
+            </div>
+            <span class="hero-role-badge" id="hero-school-badge" style="background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 8px 16px; border-radius: 9999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">School Partner</span>
+          </div>
+
           <!-- Statistics Cards Grid -->
           <div class="dash-stats-grid">
             <div class="dash-stat-card">
@@ -561,5 +599,71 @@
 
   <!-- Dashboard JavaScript Code -->
   <script src="dashboard.js"></script>
+
+  <!-- Mobile Sidebar & Header Interactions -->
+  <script>
+    (function() {
+      // Detect Android Capacitor platform
+      if (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'android') {
+        document.body.classList.add('platform-android');
+      }
+
+      const hamburger = document.getElementById('mobile-hamburger-btn');
+      const sidebar = document.getElementById('dashboard-sidebar');
+      const overlay = document.getElementById('admin-sidebar-overlay');
+      const closeBtn = document.getElementById('admin-sidebar-close');
+
+      function openSidebar() {
+        if (sidebar) sidebar.classList.add('admin-sidebar-open');
+        if (overlay) overlay.classList.add('admin-sidebar-overlay-visible');
+        document.body.style.overflow = 'hidden';
+        document.body.classList.add('admin-sidebar-open');
+      }
+      function closeSidebar() {
+        if (sidebar) sidebar.classList.remove('admin-sidebar-open');
+        if (overlay) overlay.classList.remove('admin-sidebar-overlay-visible');
+        document.body.style.overflow = '';
+        document.body.classList.remove('admin-sidebar-open');
+      }
+
+      if (hamburger) hamburger.addEventListener('click', openSidebar);
+      if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+      if (overlay) overlay.addEventListener('click', closeSidebar);
+
+      // Close sidebar when a nav link is clicked on mobile
+      document.querySelectorAll('.dashboard-nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth < 992) closeSidebar();
+        });
+      });
+
+      // Synchronize mobile header title when nav links are clicked
+      document.querySelectorAll('.dashboard-nav-link[data-tab]').forEach(link => {
+        link.addEventListener('click', () => {
+          const tabTarget = link.getAttribute('data-tab');
+          let tabName = 'Dashboard Overview';
+          if (tabTarget === 'events') tabName = 'Manage Events';
+          if (tabTarget === 'registrations') tabName = 'Event Registrations';
+          if (tabTarget === 'admissions') tabName = 'Admissions Announcements';
+          if (tabTarget === 'applications') tabName = 'Admissions Applications Received';
+          if (tabTarget === 'contact-requests') tabName = 'Contact Requests Received';
+          if (tabTarget === 'profile') tabName = 'School Profile Settings';
+          
+          const mobTitle = document.getElementById('mobile-header-title');
+          if (mobTitle) mobTitle.textContent = tabName;
+        });
+      });
+
+      // Edit school button click switches tab to profile
+      const editSchoolBtn = document.getElementById('edit-school-btn');
+      if (editSchoolBtn) {
+        editSchoolBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const profileTab = document.querySelector('.dashboard-nav-link[data-tab="profile"]');
+          if (profileTab) profileTab.click();
+        });
+      }
+    })();
+  </script>
 </body>
 </html>

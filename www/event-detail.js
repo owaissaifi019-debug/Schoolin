@@ -354,7 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Description text
     const descP1 = document.getElementById('event-desc-p1');
     const descP2 = document.getElementById('event-desc-p2');
-    
     if (descP1) descP1.textContent = currentEvent.desc1;
     if (descP2) descP2.textContent = currentEvent.desc2;
     
@@ -399,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebarRegs) sidebarRegs.textContent = `${currentEvent.registrations.split(' ')[0]} Students`;
   }
 
-  // Populate  /* --- Student Registration Wizard Logic --- */
+  /* --- Student Registration Wizard Logic --- */
   const modalOverlay = document.getElementById('registration-modal');
   const modalClose = document.getElementById('modal-close');
   const formSteps = document.querySelectorAll('.form-step');

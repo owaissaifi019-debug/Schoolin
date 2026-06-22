@@ -10,6 +10,19 @@
   "author": "CampusLink",
   "license": "ISC",
   "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/app": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
     "@supabase/supabase-js": "^2.107.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/owaissaifi019-debug/Schoolin.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/owaissaifi019-debug/Schoolin/issues"
+  },
+  "homepage": "https://github.com/owaissaifi019-debug/Schoolin#readme"
 }

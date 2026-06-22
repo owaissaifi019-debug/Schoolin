@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="../style.css?v=1.1">
   <link rel="stylesheet" href="../admin.css?v=1.0">
 </head>
-<body style="overflow: hidden;">
+<body style="overflow: hidden;" class="super-admin-body">
 
   <!-- Auth Loading Overlay -->
   <div class="auth-loading-overlay" id="auth-loading-overlay">
@@ -25,13 +25,19 @@
     <!-- --- Sidebar Navigation --- -->
     <aside class="dashboard-sidebar" id="admin-sidebar">
       <div class="dashboard-logo-section">
-        <a href="../index.html" class="logo" style="margin-bottom: 0;">
-          <span>CampusLink</span><span class="logo-dot"></span>
-        </a>
+        <div class="logo-brand-wrapper">
+          <a href="../index.html" class="logo" style="margin-bottom: 0;">
+            <span>CampusLink</span><span class="logo-dot"></span>
+          </a>
+          <span class="logo-subtitle">Student Network Platform</span>
+        </div>
         <!-- Close button inside sidebar on mobile -->
         <button class="admin-sidebar-close" id="admin-sidebar-close" aria-label="Close menu">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
+      </div>
+      <div class="sidebar-role-container" style="padding: 0 16px; margin-top: 12px; margin-bottom: 12px;">
+        <span class="badge-status status-approved" id="sidebar-role-badge" style="font-weight: 800; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; background-color: rgba(59, 130, 246, 0.1); color: var(--primary); padding: 6px 12px; border-radius: 4px; display: inline-block;">SUPER ADMIN</span>
       </div>
       
       <div style="font-size: 0.65rem; color: #64748B; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 10px 16px;">System Control</div>
@@ -103,6 +109,18 @@
           </span>
           Content Moderation
         </a>
+        <a class="dashboard-nav-link" data-tab="profile" id="tab-link-profile" style="display: none;">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </span>
+          School Profile
+        </a>
+        <a class="dashboard-nav-link" data-tab="settings" id="tab-link-settings" style="display: none;">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </span>
+          School Settings
+        </a>
       </nav>
       
       <div class="dashboard-sidebar-footer">
@@ -117,6 +135,19 @@
     
     <!-- --- Main Content Workspace --- -->
     <main class="dashboard-main-content">
+
+      <!-- Mobile Fixed Header -->
+      <header class="mobile-fixed-header">
+        <div class="mobile-header-left">
+          <a href="../index.html" class="mobile-back-icon-btn" aria-label="Go back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          </a>
+          <span class="mobile-header-title" id="mobile-header-title">Super Admin Dashboard</span>
+        </div>
+        <button class="mobile-hamburger-btn" id="mobile-hamburger-btn" aria-label="Open menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </header>
       
       <!-- Top header bar -->
       <header class="dashboard-top-bar">
@@ -143,9 +174,19 @@
         
         <!-- ================= OVERVIEW TAB ================= -->
         <section id="overview-tab" class="dashboard-tab-panel active">
+          <!-- Hero Card -->
+          <div class="overview-hero-card" id="overview-hero-card" style="background: linear-gradient(135deg, #1E293B, #0F172A); color: white; padding: 28px; border-radius: 18px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
+            <div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94A3B8; font-weight: 700; margin-bottom: 6px;">Logged in as</div>
+              <h1 id="hero-admin-name" style="font-size: 1.6rem; font-weight: 800; margin: 0; color: white;">Super Administrator</h1>
+              <div id="hero-admin-role" style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px; font-weight: 500;">Role: Super Administrator</div>
+            </div>
+            <span class="hero-role-badge" id="hero-role-badge" style="background: linear-gradient(135deg, #3B82F6, #1D4ED8); color: white; padding: 8px 16px; border-radius: 9999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">Global Access</span>
+          </div>
+
           <!-- Statistics Cards Grid -->
-          <div class="dash-stats-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 32px;">
-            <div class="dash-stat-card">
+          <div class="dash-stats-grid" id="dashboard-stats-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 32px;">
+            <div class="dash-stat-card" id="stat-card-schools">
               <div class="dash-stat-info">
                 <h4>Total Schools</h4>
                 <div class="stat-value" id="stat-total-schools" style="font-size: 2rem; font-weight: 800; color: var(--dark-bg); margin-top: 4px;">0</div>
@@ -153,7 +194,7 @@
               <div class="dash-stat-icon blue" style="font-size: 1.6rem; width: 48px; height: 48px;">🏫</div>
             </div>
             
-            <div class="dash-stat-card">
+            <div class="dash-stat-card" id="stat-card-users">
               <div class="dash-stat-info">
                 <h4>Total Users</h4>
                 <div class="stat-value" id="stat-total-users" style="font-size: 2rem; font-weight: 800; color: var(--dark-bg); margin-top: 4px;">0</div>
@@ -161,7 +202,7 @@
               <div class="dash-stat-icon teal" style="font-size: 1.6rem; width: 48px; height: 48px;">👥</div>
             </div>
             
-            <div class="dash-stat-card">
+            <div class="dash-stat-card" id="stat-card-events">
               <div class="dash-stat-info">
                 <h4>Total Events</h4>
                 <div class="stat-value" id="stat-total-events" style="font-size: 2rem; font-weight: 800; color: var(--dark-bg); margin-top: 4px;">0</div>
@@ -169,15 +210,15 @@
               <div class="dash-stat-icon blue" style="font-size: 1.6rem; width: 48px; height: 48px;">📅</div>
             </div>
             
-            <div class="dash-stat-card">
+            <div class="dash-stat-card" id="stat-card-admissions">
               <div class="dash-stat-info">
-                <h4>Total Admissions</h4>
+                <h4>Admissions</h4>
                 <div class="stat-value" id="stat-total-admissions" style="font-size: 2rem; font-weight: 800; color: var(--dark-bg); margin-top: 4px;">0</div>
               </div>
               <div class="dash-stat-icon orange" style="font-size: 1.6rem; width: 48px; height: 48px;">🎓</div>
             </div>
 
-            <div class="dash-stat-card">
+            <div class="dash-stat-card" id="stat-card-suggestions">
               <div class="dash-stat-info">
                 <h4>Suggestions</h4>
                 <div class="stat-value" id="stat-total-suggestions" style="font-size: 2rem; font-weight: 800; color: var(--dark-bg); margin-top: 4px;">0</div>
@@ -185,38 +226,78 @@
               <div class="dash-stat-icon orange" style="font-size: 1.6rem; width: 48px; height: 48px;">💡</div>
             </div>
           </div>
+
+          <!-- Overview Grid for Actions/Tabs -->
+          <div class="overview-cards-grid" id="overview-cards-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 32px;">
+            <!-- Suggestions Card -->
+            <div class="dash-table-card overview-action-card" id="card-overview-suggestions" style="padding: 24px; cursor: pointer; border-radius: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="font-size: 0.95rem; margin: 0; color: var(--dark-bg); font-weight: 700;">School Suggestions</h3>
+                <span style="font-size: 1rem; color: var(--text-muted);">→</span>
+              </div>
+              <div class="stat-value" id="overview-suggestions-count" style="font-size: 2.2rem; font-weight: 800; color: var(--primary);">0</div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Pending suggestions</p>
+            </div>
+            <!-- Contact Requests Card -->
+            <div class="dash-table-card overview-action-card" id="card-overview-contacts" style="padding: 24px; cursor: pointer; border-radius: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="font-size: 0.95rem; margin: 0; color: var(--dark-bg); font-weight: 700;">Contact Requests</h3>
+                <span style="font-size: 1rem; color: var(--text-muted);">→</span>
+              </div>
+              <div class="stat-value" id="overview-contacts-count" style="font-size: 2.2rem; font-weight: 800; color: #10B981;">0</div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Global contact inquiries</p>
+            </div>
+            <!-- Recent Registrations Card -->
+            <div class="dash-table-card overview-action-card" id="card-overview-registrations" style="padding: 24px; cursor: pointer; border-radius: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="font-size: 0.95rem; margin: 0; color: var(--dark-bg); font-weight: 700;">Recent Registrations</h3>
+                <span style="font-size: 1rem; color: var(--text-muted);">→</span>
+              </div>
+              <div class="stat-value" id="overview-registrations-count" style="font-size: 2.2rem; font-weight: 800; color: #8B5CF6;">0</div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">New event signups</p>
+            </div>
+            <!-- Pending Moderation Card -->
+            <div class="dash-table-card overview-action-card" id="card-overview-moderation" style="padding: 24px; cursor: pointer; border-radius: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="font-size: 0.95rem; margin: 0; color: var(--dark-bg); font-weight: 700;">Pending Moderation</h3>
+                <span style="font-size: 1rem; color: var(--text-muted);">→</span>
+              </div>
+              <div class="stat-value" id="overview-moderation-count" style="font-size: 2.2rem; font-weight: 800; color: #EF4444;">0</div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Flags to review</p>
+            </div>
+          </div>
           
-          <!-- Recent Activity Cards -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <!-- Recent Activity / System Status -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;">
             <!-- System Stats Summary Card -->
-            <div class="dash-table-card" style="padding: 24px;">
-              <h3 style="font-size: 1.1rem; margin-bottom: 20px; color: var(--dark-bg);">System Health & Details</h3>
+            <div class="dash-table-card" id="system-status-card" style="padding: 24px; border-radius: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+              <h3 style="font-size: 1.1rem; margin-bottom: 20px; color: var(--dark-bg); font-weight: 700;">System Status</h3>
               <ul class="about-meta-list" style="display: flex; flex-direction: column; gap: 16px;">
                 <li class="about-meta-item">
-                  <span>Supabase Connection</span>
-                  <span style="color: #10B981; font-weight: 700;">ACTIVE ✓</span>
+                  <span>Database Status</span>
+                  <span style="color: #10B981; font-weight: 700;" id="status-db">ACTIVE ✓</span>
                 </li>
                 <li class="about-meta-item">
-                  <span>Database Mode</span>
-                  <span>Row Level Security (RLS)</span>
+                  <span>Server Status</span>
+                  <span style="color: #10B981; font-weight: 700;" id="status-server">OPERATIONAL ✓</span>
                 </li>
                 <li class="about-meta-item">
-                  <span>Authorized Roles</span>
-                  <span>super_admin, school_admin, visitor</span>
+                  <span>User Roles</span>
+                  <span id="status-roles" style="font-weight: 600;">super_admin, school_admin, visitor</span>
                 </li>
                 <li class="about-meta-item">
-                  <span>New Account Default Role</span>
-                  <span>school_admin</span>
+                  <span>Security Level</span>
+                  <span style="color: #EF4444; font-weight: 700;" id="status-security">SECURE (RLS)</span>
                 </li>
               </ul>
             </div>
             
             <!-- Quick Actions Card -->
-            <div class="dash-table-card" style="padding: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="dash-table-card" id="quick-actions-card" style="padding: 24px; display: flex; flex-direction: column; justify-content: space-between; border-radius: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
               <div>
-                <h3 style="font-size: 1.1rem; margin-bottom: 12px; color: var(--dark-bg);">Platform Operations</h3>
+                <h3 style="font-size: 1.1rem; margin-bottom: 12px; color: var(--dark-bg); font-weight: 700;">Platform Operations</h3>
                 <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">
-                  As a Super Administrator, you have full view access across all institutional resources, active event registrations, admission postings, and user profiles in the CampusLink network.
+                  As a platform administrator, you have full view access across all institutional resources, active event registrations, admission postings, and user profiles in the CampusLink network.
                 </p>
               </div>
               <button class="btn btn-primary" id="go-to-schools-btn" style="width: 100%; padding: 12px; font-size: 0.9rem; border-radius: var(--radius-sm);">Manage Registered Schools</button>
@@ -660,6 +741,83 @@
           </div>
         </section>
 
+        <!-- ================= SCHOOL PROFILE TAB ================= -->
+        <section id="profile-tab" class="dashboard-tab-panel">
+          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
+            <h3 style="font-size: 1.3rem;">School Profile Settings</h3>
+          </div>
+          
+          <div class="dash-form-card" style="border-radius: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <form id="dashboard-profile-form">
+              <div class="dash-form-row">
+                <div class="dash-form-group">
+                  <label for="profile-school-name">School Name *</label>
+                  <input type="text" id="profile-school-name" placeholder="School Name">
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="profile-city">City *</label>
+                  <input type="text" id="profile-city" placeholder="City">
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="profile-state">State *</label>
+                  <input type="text" id="profile-state" placeholder="State">
+                </div>
+              </div>
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group">
+                  <label for="profile-board">Board Affiliation *</label>
+                  <select id="profile-board">
+                    <option value="CBSE">CBSE (Central Board of Secondary Education)</option>
+                    <option value="ICSE">CISCE (ICSE / ISC)</option>
+                    <option value="IB">IB (International Baccalaureate)</option>
+                    <option value="IGCSE">Cambridge (IGCSE / A Levels)</option>
+                    <option value="State Board">State Board</option>
+                  </select>
+                </div>
+                
+                <div class="dash-form-group">
+                  <label for="profile-logo-char">School Logo Character (Used as Avatar Logo) *</label>
+                  <input type="text" id="profile-logo-char" maxlength="1" placeholder="S" style="text-transform: uppercase;">
+                </div>
+              </div>
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group full-width">
+                  <label for="profile-about">About / School History</label>
+                  <textarea id="profile-about" rows="6" placeholder="Describe your school's vision, history, and achievements..."></textarea>
+                </div>
+              </div>
+              
+              <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-size: 0.9rem; border-radius: var(--radius-sm);">Save Profile Settings</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- ================= SCHOOL SETTINGS TAB ================= -->
+        <section id="settings-tab" class="dashboard-tab-panel">
+          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
+            <h3 style="font-size: 1.3rem;">School Settings</h3>
+          </div>
+          <div class="dash-form-card" style="padding: 24px; border-radius: 18px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <h4 style="margin-bottom: 12px; font-weight: 700; font-size: 1.1rem; color: var(--dark-bg);">Notification Preferences</h4>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">Configure how you receive updates and communication alerts.</p>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; cursor: pointer;">
+                <input type="checkbox" checked style="width: 18px; height: 18px;"> Enable Email Alerts for Event Registrations
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; cursor: pointer;">
+                <input type="checkbox" checked style="width: 18px; height: 18px;"> Enable Email Alerts for Admissions
+              </label>
+            </div>
+            <button class="btn btn-primary" onclick="alert('Settings saved successfully!')">Save Settings</button>
+          </div>
+        </section>
+
       </div>
     </main>
   </div>
@@ -782,7 +940,13 @@
   <!-- Mobile Sidebar Toggle -->
   <script>
     (function() {
-      const hamburger = document.getElementById('admin-hamburger');
+      // Detect Android Capacitor platform
+      if (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'android') {
+        document.body.classList.add('platform-android');
+      }
+
+      const hamburger = document.getElementById('mobile-hamburger-btn');
+      const desktopHamburger = document.getElementById('admin-hamburger');
       const sidebar = document.getElementById('admin-sidebar');
       const overlay = document.getElementById('admin-sidebar-overlay');
       const closeBtn = document.getElementById('admin-sidebar-close');
@@ -791,14 +955,17 @@
         sidebar.classList.add('admin-sidebar-open');
         overlay.classList.add('admin-sidebar-overlay-visible');
         document.body.style.overflow = 'hidden';
+        document.body.classList.add('admin-sidebar-open');
       }
       function closeSidebar() {
         sidebar.classList.remove('admin-sidebar-open');
         overlay.classList.remove('admin-sidebar-overlay-visible');
         document.body.style.overflow = '';
+        document.body.classList.remove('admin-sidebar-open');
       }
 
       if (hamburger) hamburger.addEventListener('click', openSidebar);
+      if (desktopHamburger) desktopHamburger.addEventListener('click', openSidebar);
       if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
       if (overlay) overlay.addEventListener('click', closeSidebar);
 

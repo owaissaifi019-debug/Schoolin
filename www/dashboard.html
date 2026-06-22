@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css?v=1.1">
   <link rel="stylesheet" href="admin.css?v=1.0">
 </head>
-<body style="overflow: hidden;">
+<body style="overflow: hidden;" class="school-admin-body">
 
   <!-- Auth Loading Overlay -->
   <div class="auth-loading-overlay" id="auth-loading-overlay">
@@ -25,13 +25,19 @@
     <!-- --- Sidebar Navigation --- -->
     <aside class="dashboard-sidebar" id="dashboard-sidebar">
       <div class="dashboard-logo-section">
-        <a href="index.html" class="logo" style="margin-bottom: 0;">
-          <span>CampusLink</span><span class="logo-dot"></span>
-        </a>
+        <div class="logo-brand-wrapper">
+          <a href="index.html" class="logo" style="margin-bottom: 0;">
+            <span>CampusLink</span><span class="logo-dot"></span>
+          </a>
+          <span class="logo-subtitle">Student Network Platform</span>
+        </div>
         <!-- Close button inside sidebar on mobile -->
         <button class="admin-sidebar-close" id="admin-sidebar-close" aria-label="Close menu">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
+      </div>
+      <div class="sidebar-role-container" style="padding: 0 16px; margin-top: 12px; margin-bottom: 12px;">
+        <span class="badge-status status-approved" id="sidebar-role-badge" style="font-weight: 800; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; background-color: rgba(16, 185, 129, 0.1); color: #10B981; padding: 6px 12px; border-radius: 4px; display: inline-block;">SCHOOL ADMIN</span>
       </div>
       
       <nav class="dashboard-nav">
@@ -100,8 +106,12 @@
       
       <!-- Mobile Fixed Header -->
       <header class="mobile-fixed-header">
-        <a href="index.html" class="mobile-back-btn">← Back</a>
-        <span class="mobile-header-title" id="mobile-header-title">Dashboard</span>
+        <div class="mobile-header-left">
+          <a href="index.html" class="mobile-back-icon-btn" aria-label="Go back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          </a>
+          <span class="mobile-header-title" id="mobile-header-title">Dashboard</span>
+        </div>
         <button class="mobile-hamburger-btn" id="mobile-hamburger-btn" aria-label="Open menu">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
@@ -130,6 +140,16 @@
         
         <!-- ================= OVERVIEW TAB ================= -->
         <section id="overview-tab" class="dashboard-tab-panel active">
+          <!-- Hero Card -->
+          <div class="overview-hero-card" id="overview-hero-card" style="background: linear-gradient(135deg, #1E293B, #0F172A); color: white; padding: 28px; border-radius: 18px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
+            <div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94A3B8; font-weight: 700; margin-bottom: 6px;">Logged in as</div>
+              <h1 id="hero-school-name" style="font-size: 1.6rem; font-weight: 800; margin: 0; color: white;">School Administrator</h1>
+              <div id="hero-school-role" style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px; font-weight: 500;">Role: School Administrator</div>
+            </div>
+            <span class="hero-role-badge" id="hero-school-badge" style="background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 8px 16px; border-radius: 9999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">School Partner</span>
+          </div>
+
           <!-- Statistics Cards Grid -->
           <div class="dash-stats-grid">
             <div class="dash-stat-card">
@@ -583,6 +603,11 @@
   <!-- Mobile Sidebar & Header Interactions -->
   <script>
     (function() {
+      // Detect Android Capacitor platform
+      if (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'android') {
+        document.body.classList.add('platform-android');
+      }
+
       const hamburger = document.getElementById('mobile-hamburger-btn');
       const sidebar = document.getElementById('dashboard-sidebar');
       const overlay = document.getElementById('admin-sidebar-overlay');
@@ -592,11 +617,13 @@
         if (sidebar) sidebar.classList.add('admin-sidebar-open');
         if (overlay) overlay.classList.add('admin-sidebar-overlay-visible');
         document.body.style.overflow = 'hidden';
+        document.body.classList.add('admin-sidebar-open');
       }
       function closeSidebar() {
         if (sidebar) sidebar.classList.remove('admin-sidebar-open');
         if (overlay) overlay.classList.remove('admin-sidebar-overlay-visible');
         document.body.style.overflow = '';
+        document.body.classList.remove('admin-sidebar-open');
       }
 
       if (hamburger) hamburger.addEventListener('click', openSidebar);

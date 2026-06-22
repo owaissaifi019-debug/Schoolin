@@ -6,6 +6,12 @@
 (function () {
   'use strict';
 
+  console.log("NEW AUTH LOADED");
+  console.log("Immediate body class:", document.body ? document.body.className : "No body element yet");
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOMContentLoaded body class:", document.body ? document.body.className : "No body element yet");
+  });
+
   const AUTH_REDIRECT_LOGIN = 'login.html';
   const AUTH_REDIRECT_DASHBOARD = 'dashboard.html';
   const AUTH_REDIRECT_HOME = 'index.html';
@@ -669,6 +675,188 @@
       });
     }
   });
+
+  // ── Capacitor Android Hardware Back Button Handling ─────────────────
+  let lastBackPressTime = 0;
+
+  function isRootPage() {
+    const pathname = window.location.pathname.toLowerCase();
+    return pathname === '' ||
+           pathname.endsWith('/') ||
+           pathname.endsWith('/index.html') ||
+           pathname.endsWith('/admin/index.html') ||
+           pathname.endsWith('/admin/');
+  }
+
+  function showExitToast(message) {
+    let toast = document.getElementById('back-exit-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'back-exit-toast';
+      toast.style.position = 'fixed';
+      toast.style.bottom = '80px'; // above bottom nav
+      toast.style.left = '50%';
+      toast.style.transform = 'translateX(-50%) translateY(20px)';
+      toast.style.backgroundColor = 'rgba(15, 23, 42, 0.9)'; // Premium dark slate
+      toast.style.color = '#ffffff';
+      toast.style.padding = '12px 24px';
+      toast.style.borderRadius = '30px';
+      toast.style.fontSize = '0.9rem';
+      toast.style.fontWeight = '600';
+      toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1)';
+      toast.style.zIndex = '99999';
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      toast.style.pointerEvents = 'none';
+      toast.style.textAlign = 'center';
+      toast.style.whiteSpace = 'nowrap';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    
+    // Force reflow
+    toast.offsetHeight;
+    
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+
+    if (window.exitToastTimeout) {
+      clearTimeout(window.exitToastTimeout);
+    }
+    window.exitToastTimeout = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(20px)';
+    }, 2000);
+  }
+
+  function checkAndCloseOverlays() {
+    // 1. Check open modals (elements with .modal-overlay that are visible/active)
+    const activeModals = Array.from(document.querySelectorAll('.modal-overlay')).filter(modal => {
+      return modal.classList.contains('active') || (modal.style.display && modal.style.display !== 'none');
+    });
+
+    if (activeModals.length > 0) {
+      const activeModal = activeModals[activeModals.length - 1]; // Close topmost modal
+      // Search for close/cancel buttons inside this modal
+      const closeBtn = activeModal.querySelector('.modal-close-btn, [id*="close"], [id*="cancel"], .btn-modal-close, .epm-close, button[class*="close"], button[class*="cancel"]');
+      if (closeBtn) {
+        closeBtn.click();
+      } else {
+        // Fallback: click the overlay itself
+        activeModal.click();
+      }
+      return true;
+    }
+
+    // 2. Check dialogs
+    const activeDialogs = Array.from(document.querySelectorAll('[role="dialog"], .dialog, .dialog-overlay')).filter(dialog => {
+      return dialog.classList.contains('active') || (dialog.style.display && dialog.style.display !== 'none');
+    });
+
+    if (activeDialogs.length > 0) {
+      const activeDialog = activeDialogs[activeDialogs.length - 1];
+      const closeBtn = activeDialog.querySelector('.close-btn, [id*="close"], [id*="cancel"], button[class*="close"], button[class*="cancel"]');
+      if (closeBtn) {
+        closeBtn.click();
+      } else {
+        activeDialog.click();
+      }
+      return true;
+    }
+
+    // 3. Check open sidebars
+    // Admin dashboard / School Admin sidebar (uses .admin-sidebar-open class on body)
+    const isAdminSidebarOpen = document.body.classList.contains('admin-sidebar-open') || 
+                               document.querySelector('.admin-sidebar-open');
+    if (isAdminSidebarOpen) {
+      const closeBtn = document.getElementById('admin-sidebar-close') || 
+                       document.querySelector('.admin-sidebar-close') || 
+                       document.getElementById('admin-sidebar-overlay');
+      if (closeBtn) {
+        closeBtn.click();
+        return true;
+      }
+      // Fallback manual removal
+      document.querySelectorAll('.admin-sidebar-open').forEach(el => el.classList.remove('admin-sidebar-open'));
+      document.querySelectorAll('.admin-sidebar-overlay-visible').forEach(el => el.classList.remove('admin-sidebar-overlay-visible'));
+      document.body.classList.remove('admin-sidebar-open');
+      document.body.style.overflow = '';
+      return true;
+    }
+
+    // Student mobile navigation menu sidebar (uses mobile-nav-active class on body or .nav-links.active)
+    const isMobileNavActive = document.body.classList.contains('mobile-nav-active') || 
+                              document.querySelector('.nav-links.active');
+    if (isMobileNavActive) {
+      const mobileToggle = document.querySelector('.mobile-toggle');
+      if (mobileToggle) {
+        mobileToggle.click();
+        return true;
+      }
+      // Fallback manual removal
+      document.querySelectorAll('.nav-links.active').forEach(el => el.classList.remove('active'));
+      document.body.classList.remove('mobile-nav-active');
+      return true;
+    }
+
+    return false;
+  }
+
+  function handleBackButton() {
+    if (checkAndCloseOverlays()) {
+      console.log('[Capacitor BackButton] Overlay closed.');
+      return;
+    }
+
+    const pathname = window.location.pathname.toLowerCase();
+    if (pathname.endsWith('/dashboard.html')) {
+      console.log('[Capacitor BackButton] Dashboard page. Navigating to home.');
+      window.location.href = 'index.html';
+      return;
+    }
+
+    if (isRootPage()) {
+      const currentTime = Date.now();
+      if (currentTime - lastBackPressTime < 2000) {
+        console.log('[Capacitor BackButton] Exiting application.');
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+          window.Capacitor.Plugins.App.exitApp();
+        }
+      } else {
+        lastBackPressTime = currentTime;
+        showExitToast('Press back again to exit.');
+      }
+    } else {
+      if (window.history && window.history.length > 1) {
+        console.log('[Capacitor BackButton] Navigating back in history.');
+        window.history.back();
+      } else {
+        console.log('[Capacitor BackButton] No history. Navigating to home.');
+        window.location.href = 'index.html';
+      }
+    }
+  }
+
+  function initCapacitorBackButton() {
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+      console.log('[Capacitor BackButton] Initializing App plugin hardware backButton listener.');
+      window.Capacitor.Plugins.App.addListener('backButton', () => {
+        handleBackButton();
+      });
+    } else {
+      // In case registration timing is delayed, wait for DOMContentLoaded
+      document.addEventListener('DOMContentLoaded', () => {
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+          console.log('[Capacitor BackButton] Initializing App plugin hardware backButton listener on DOMContentLoaded.');
+          window.Capacitor.Plugins.App.addListener('backButton', () => {
+            handleBackButton();
+          });
+        }
+      });
+    }
+  }
+
+  initCapacitorBackButton();
 
   // ── Expose API ───────────────────────────────────────────
   window.CampusLink = window.CampusLink || {};

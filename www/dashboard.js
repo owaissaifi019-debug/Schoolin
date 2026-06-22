@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log(window.location.pathname);
+  console.log(document.body.className);
 
   // ── Auth Guard & Supabase Setup ────────────────────────
   const authOverlay = document.getElementById('auth-loading-overlay');
@@ -455,6 +457,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (avatarLetter) avatarLetter.textContent = profile.logoLetter || profile.name.charAt(0);
     if (usernameText) usernameText.textContent = profile.name;
     if (userboardText) userboardText.textContent = `${profile.board} Board • ${profile.city}`;
+
+    // Populate Hero Card details
+    const heroName = document.getElementById('hero-school-name');
+    if (heroName) heroName.textContent = profile.name;
+    const heroRole = document.getElementById('hero-school-role');
+    if (heroRole) heroRole.textContent = `Role: School Administrator`;
+    const heroBadge = document.getElementById('hero-school-badge');
+    if (heroBadge) {
+      heroBadge.textContent = profile.board ? `${profile.board} Board` : 'School Partner';
+    }
   }
 
   // --- Tab Switching Logic ---

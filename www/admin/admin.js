@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const supabase = window.CampusLink && window.CampusLink.supabase;
   let session = null;
   let currentUserProfile = null;
+  let userSchool = null;
 
   // Retrieve current active session from Supabase
   if (auth) {
@@ -131,7 +132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Fallback for development if no session or profile is found (only on localhost)
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   if ((!session || !currentUserProfile) && isLocalhost) {
-    console.log('[Admin Auth] Fallback: No session found on localhost. Bypassing auth check for development using mock owaissaifi003@gmail.com.');
+    console.log('[Admin Auth] Fallback: No session found on localhost. Bypassing auth check for development.');
     session = { user: { email: 'owaissaifi003@gmail.com', id: 'super-admin-dev-id' } };
     currentUserProfile = {
       email: 'owaissaifi003@gmail.com',
@@ -140,16 +141,222 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
-  // Strict check: redirect if not super admin
+  // Strict check: redirect if not logged in
   if (!session || !currentUserProfile) {
     window.location.href = '../login.html';
     return;
   }
 
-  if (currentUserProfile.platform_role !== 'super_admin') {
-    alert('Access Denied: Only Super Administrators have access to this console.');
+  const role = currentUserProfile.platform_role;
+  if (role !== 'super_admin' && role !== 'school_admin') {
+    alert('Access Denied: You do not have permission to access this console.');
     window.location.href = '../index.html';
     return;
+  }
+
+  // Dynamic UI Setup depending on Role
+  if (role === 'school_admin') {
+    // Hide forbidden sidebar links
+    const hideLinks = ['tab-link-schools', 'tab-link-suggestions', 'tab-link-users', 'tab-link-posts', 'tab-link-moderation'];
+    hideLinks.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    
+    // Hide 'System Control' text header
+    const sideHeaders = document.querySelectorAll('aside div');
+    sideHeaders.forEach(el => {
+      if (el.textContent.includes('SYSTEM CONTROL')) {
+        el.style.display = 'none';
+      }
+    });
+    
+    // Show school admin sidebar links
+    const showLinks = ['tab-link-profile', 'tab-link-settings'];
+    showLinks.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'flex';
+    });
+    
+    // Hide global statistics cards on Overview
+    const hideStats = ['stat-card-schools', 'stat-card-suggestions'];
+    hideStats.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    
+    // Rename 'Total Users' to 'Registrations'
+    const cardUsersTitle = document.querySelector('#stat-card-users h4');
+    if (cardUsersTitle) cardUsersTitle.textContent = 'Registrations';
+    const cardUsersIcon = document.querySelector('#stat-card-users .dash-stat-icon');
+    if (cardUsersIcon) cardUsersIcon.textContent = '👥';
+
+    // Adjust grid structure of stats cards to 3 columns on desktop
+    const statsGrid = document.getElementById('dashboard-stats-grid');
+    if (statsGrid) {
+      statsGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    }
+
+    // Hide overview action cards grid
+    const actionCardsGrid = document.getElementById('overview-cards-grid');
+    if (actionCardsGrid) {
+      actionCardsGrid.style.display = 'none';
+    }
+
+    // Hide system controls / status card
+    const sysCard = document.getElementById('system-status-card');
+    if (sysCard) sysCard.style.display = 'none';
+    
+    const qaCard = document.getElementById('quick-actions-card');
+    if (qaCard) qaCard.style.display = 'none';
+
+    // Update top bar title
+    if (topBarTitle) topBarTitle.textContent = 'School Admin Dashboard';
+    const mobTitle = document.getElementById('mobile-header-title');
+    if (mobTitle) mobTitle.textContent = 'School Admin Dashboard';
+    
+    // Update sidebar role badge
+    const sideBadge = document.getElementById('sidebar-role-badge');
+    if (sideBadge) {
+      sideBadge.textContent = 'SCHOOL ADMIN';
+      sideBadge.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+      sideBadge.style.color = '#10B981';
+    }
+
+    // Fetch school
+    if (auth && session.user) {
+      try {
+        userSchool = await auth.getSchoolForUser(session.user.id);
+        if (userSchool) {
+          console.log('[Admin Auth] Loaded school for representative:', userSchool.name);
+          
+          // Update Top Bar & Hero Card
+          const adminUsername = document.getElementById('admin-username');
+          if (adminUsername) adminUsername.textContent = userSchool.name;
+          
+          const adminRoleBadge = document.getElementById('admin-role-badge');
+          if (adminRoleBadge) {
+            adminRoleBadge.textContent = userSchool.board ? `${userSchool.board} BOARD` : 'SCHOOL ADMIN';
+            adminRoleBadge.style.color = '#10B981';
+          }
+          
+          // Hero Card Details
+          const heroName = document.getElementById('hero-admin-name');
+          if (heroName) heroName.textContent = userSchool.name;
+          
+          const heroRole = document.getElementById('hero-admin-role');
+          if (heroRole) heroRole.textContent = `Role: School Administrator`;
+          
+          const heroBadge = document.getElementById('hero-role-badge');
+          if (heroBadge) {
+            heroBadge.textContent = userSchool.city || 'Verified School';
+            heroBadge.style.background = 'linear-gradient(135deg, #10B981, #059669)';
+            heroBadge.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+          }
+
+          // Set up Profile Form values
+          const profName = document.getElementById('profile-school-name');
+          if (profName) profName.value = userSchool.name || '';
+          const profCity = document.getElementById('profile-city');
+          if (profCity) profCity.value = userSchool.city || '';
+          const profState = document.getElementById('profile-state');
+          if (profState) profState.value = userSchool.state || '';
+          const profBoard = document.getElementById('profile-board');
+          if (profBoard) profBoard.value = userSchool.board || 'CBSE';
+          const profLogo = document.getElementById('profile-logo-char');
+          if (profLogo) profLogo.value = userSchool.logo_letter || userSchool.name.charAt(0).toUpperCase();
+          const profAbout = document.getElementById('profile-about');
+          if (profAbout) profAbout.value = userSchool.about || '';
+        }
+      } catch (e) {
+        console.error('[Admin Auth] Error fetching school details:', e);
+      }
+    }
+  } else {
+    // Super admin layout
+    const sideBadge = document.getElementById('sidebar-role-badge');
+    if (sideBadge) {
+      sideBadge.textContent = 'SUPER ADMIN';
+      sideBadge.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+      sideBadge.style.color = '#EF4444';
+    }
+    const mobTitle = document.getElementById('mobile-header-title');
+    if (mobTitle) mobTitle.textContent = 'Super Admin Dashboard';
+  }
+
+  // Bind Profile Form Submit
+  const profileForm = document.getElementById('dashboard-profile-form');
+  if (profileForm) {
+    profileForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!supabase || !userSchool) return;
+
+      const updatedName = document.getElementById('profile-school-name').value.trim();
+      const updatedCity = document.getElementById('profile-city').value.trim();
+      const updatedState = document.getElementById('profile-state').value.trim();
+      const updatedBoard = document.getElementById('profile-board').value;
+      const updatedLogo = document.getElementById('profile-logo-char').value.trim().toUpperCase();
+      const updatedAbout = document.getElementById('profile-about').value.trim();
+
+      showToast('Updating profile settings...', 'info');
+
+      try {
+        const { error } = await supabase
+          .from('schools')
+          .update({
+            name: updatedName,
+            city: updatedCity,
+            state: updatedState,
+            board: updatedBoard,
+            logo_letter: updatedLogo,
+            about: updatedAbout
+          })
+          .eq('id', userSchool.id);
+
+        if (error) throw error;
+
+        showToast('School profile updated successfully!', 'success');
+        // Update local object
+        userSchool.name = updatedName;
+        userSchool.city = updatedCity;
+        userSchool.state = updatedState;
+        userSchool.board = updatedBoard;
+        userSchool.logo_letter = updatedLogo;
+        userSchool.about = updatedAbout;
+
+        // Refresh header/hero
+        const heroName = document.getElementById('hero-admin-name');
+        if (heroName) heroName.textContent = updatedName;
+        const adminUsername = document.getElementById('admin-username');
+        if (adminUsername) adminUsername.textContent = updatedName;
+      } catch (err) {
+        console.error('Failed to update profile:', err);
+        showToast(`Failed to update profile: ${err.message}`, 'error');
+      }
+    });
+  }
+
+  // Bind Overview Click Navigation
+  const clickTab = (tabId) => {
+    const link = document.getElementById(tabId);
+    if (link) link.click();
+  };
+  document.getElementById('card-overview-suggestions')?.addEventListener('click', () => clickTab('tab-link-suggestions'));
+  document.getElementById('card-overview-contacts')?.addEventListener('click', () => clickTab('tab-link-contact-requests'));
+  document.getElementById('card-overview-registrations')?.addEventListener('click', () => clickTab('tab-link-registrations'));
+  document.getElementById('card-overview-moderation')?.addEventListener('click', () => clickTab('tab-link-moderation'));
+
+  function updateOverviewActionCardsCounts() {
+    if (currentUserProfile?.platform_role !== 'super_admin') return;
+    
+    const suggCount = document.getElementById('overview-suggestions-count');
+    if (suggCount) suggCount.textContent = allSuggestions.length;
+    
+    const contactCount = document.getElementById('overview-contacts-count');
+    if (contactCount) contactCount.textContent = allContactRequests.length;
+    
+    const regCount = document.getElementById('overview-registrations-count');
+    if (regCount) regCount.textContent = allRegistrations.length;
   }
 
   if (authOverlay) {
@@ -182,7 +389,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
 
-       let pageTitle = 'Super Admin Dashboard';
+       let pageTitle = currentUserProfile.platform_role === 'school_admin' ? 'School Admin Dashboard' : 'Super Admin Dashboard';
+      if (tabTarget === 'profile') pageTitle = 'School Profile Settings';
+      if (tabTarget === 'settings') pageTitle = 'School Settings';
       if (tabTarget === 'schools') pageTitle = 'School Registry Management';
       if (tabTarget === 'suggestions') pageTitle = 'School Suggestions Inbox';
       if (tabTarget === 'events') pageTitle = 'Event & Fest Registry';
@@ -200,6 +409,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadModerationReports();
       }
       if (topBarTitle) topBarTitle.textContent = pageTitle;
+      const mobTitle = document.getElementById('mobile-header-title');
+      if (mobTitle) mobTitle.textContent = pageTitle;
     });
   });
 
@@ -219,6 +430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .from('event_registrations')
         .select(`
           id,
+          school_id,
           student_name,
           student_grade,
           created_at,
@@ -239,8 +451,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (error) throw error;
 
       if (data) {
-        allRegistrations = data;
-        renderRegistrations(data);
+        allRegistrations = currentUserProfile.platform_role === 'school_admin'
+          ? data.filter(r => r.school_id === userSchool?.id)
+          : data;
+        renderRegistrations(allRegistrations);
+        updateOverviewActionCardsCounts();
+        
+        // Update metric card for school admin
+        if (currentUserProfile.platform_role === 'school_admin' && statUsers) {
+          statUsers.textContent = allRegistrations.length;
+        }
       }
     } catch (e) {
       console.error('Failed to load event registrations from Supabase:', e);
@@ -882,8 +1102,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (error) throw error;
 
       if (data) {
-        allEvents = data;
-        renderEvents(data);
+        allEvents = currentUserProfile.platform_role === 'school_admin'
+          ? data.filter(e => e.school_id === userSchool?.id)
+          : data;
+        renderEvents(allEvents);
+        
+        if (currentUserProfile.platform_role === 'school_admin' && statEvents) {
+          statEvents.textContent = allEvents.length;
+        }
       }
     } catch (e) {
       console.error('Failed to load events from Supabase:', e);
@@ -994,8 +1220,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (error) throw error;
 
       if (data) {
-        allAdmissions = data;
-        renderAdmissions(data);
+        allAdmissions = currentUserProfile.platform_role === 'school_admin'
+          ? data.filter(a => a.school_id === userSchool?.id)
+          : data;
+        renderAdmissions(allAdmissions);
+        
+        if (currentUserProfile.platform_role === 'school_admin' && statAdmissions) {
+          statAdmissions.textContent = allAdmissions.length;
+        }
       }
     } catch (e) {
       console.error('Failed to load admissions from Supabase:', e);
@@ -1974,8 +2206,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (error) throw error;
 
       if (data) {
-        allApplications = data;
-        renderApplications(data);
+        allApplications = currentUserProfile.platform_role === 'school_admin'
+          ? data.filter(a => a.school_id === userSchool?.id)
+          : data;
+        renderApplications(allApplications);
       }
     } catch (e) {
       console.error('Failed to load admission applications from Supabase:', e);
@@ -2148,8 +2382,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (error) throw error;
 
       if (data) {
-        allContactRequests = data;
-        renderContactRequests(data);
+        allContactRequests = currentUserProfile.platform_role === 'school_admin'
+          ? data.filter(c => c.school_id === userSchool?.id)
+          : data;
+        renderContactRequests(allContactRequests);
+        updateOverviewActionCardsCounts();
       }
     } catch (e) {
       console.error('Failed to load contact requests from Supabase:', e);
@@ -2525,17 +2762,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Initial Data Load ────────────────────────────────────
   if (supabase) {
-    await loadSystemStats();
-    await loadSchoolsData();
-    await loadUsersData(); // Loaded before suggestions so email lookup works
-    await loadSuggestionsData();
-    await loadEventsData();
-    await loadRegistrationsData();
-    await loadAdmissionsData();
-    await loadApplicationsData();
-    await loadPostsData();
-    await loadContactRequestsData();
-    await loadModerationReports();
-    renderAnalytics();
+    if (currentUserProfile.platform_role === 'school_admin') {
+      // For school admin, only load events, registrations, admissions, applications, contact requests
+      await loadEventsData();
+      await loadRegistrationsData();
+      await loadAdmissionsData();
+      await loadApplicationsData();
+      await loadContactRequestsData();
+    } else {
+      await loadSystemStats();
+      await loadSchoolsData();
+      await loadUsersData(); // Loaded before suggestions so email lookup works
+      await loadSuggestionsData();
+      await loadEventsData();
+      await loadRegistrationsData();
+      await loadAdmissionsData();
+      await loadApplicationsData();
+      await loadPostsData();
+      await loadContactRequestsData();
+      await loadModerationReports();
+      renderAnalytics();
+    }
   }
 });

@@ -45,6 +45,11 @@
   transform: scale(0.92);
 }
 
+/* ── Sidebar Logo Subtitle (hidden on desktop) ── */
+.logo-subtitle {
+  display: none;
+}
+
 /* ── Sidebar Overlay Backdrop (mobile) ── */
 .admin-sidebar-overlay {
   display: none;
@@ -258,9 +263,9 @@
     top: 0 !important;
     left: 0 !important;
     height: 100vh !important;
-    width: 280px !important;
-    max-width: 85vw !important;
-    z-index: 999 !important;
+    width: 82% !important;
+    max-width: 82% !important;
+    z-index: 2000 !important;
     transform: translateX(-100%) !important;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     flex-direction: column !important;
@@ -332,6 +337,7 @@
     height: 100vh !important;
     overflow-y: auto !important;
     margin-left: 0 !important;
+    padding: 0 !important;
   }
 
   /* Top bar — compact, hamburger visible */
@@ -782,40 +788,59 @@
     top: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    height: 56px !important;
-    background-color: #0F172A !important; /* Slate 900 */
+    height: calc(64px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    background-color: #0F172A !important; /* solid Slate 900 */
+    background: #0F172A !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     color: #FFFFFF !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 0 16px !important;
     z-index: 1000 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    box-sizing: border-box !important;
   }
 
-  .mobile-back-btn {
-    color: rgba(255, 255, 255, 0.9) !important;
-    font-size: 0.85rem !important;
-    font-weight: 700 !important;
-    text-decoration: none !important;
-    display: inline-flex !important;
+  .mobile-header-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  .mobile-back-icon-btn {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 6px 10px !important;
-    border-radius: var(--radius-sm) !important;
-    background: rgba(255, 255, 255, 0.08) !important;
-    transition: var(--transition-fast) !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #FFFFFF !important;
+    text-decoration: none !important;
+    transition: background-color 0.2s ease, transform 0.1s ease !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
   }
-  .mobile-back-btn:active {
-    background: rgba(255, 255, 255, 0.15) !important;
+  .mobile-back-icon-btn:active {
+    background-color: rgba(255, 255, 255, 0.18) !important;
+    transform: scale(0.95) !important;
   }
 
   .mobile-header-title {
-    font-size: 1.1rem !important;
-    font-weight: 800 !important;
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
     color: #FFFFFF !important;
     letter-spacing: -0.01em !important;
-    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 220px !important;
+    text-align: left !important;
   }
 
   .mobile-hamburger-btn {
@@ -826,13 +851,26 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 8px !important;
-    border-radius: var(--radius-sm) !important;
-    background: rgba(255, 255, 255, 0.08) !important;
-    transition: var(--transition-fast) !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    transition: background-color 0.2s ease, transform 0.1s ease !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
   }
   .mobile-hamburger-btn:active {
-    background: rgba(255, 255, 255, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.18) !important;
+    transform: scale(0.95) !important;
+  }
+
+  /* Back arrow SVG inside back button */
+  .mobile-back-icon-btn svg,
+  .mobile-hamburger-btn svg {
+    width: 20px !important;
+    height: 20px !important;
+    display: block !important;
   }
 
   /* School Information Card Mobile UI */
@@ -846,6 +884,7 @@
     margin-bottom: 16px !important;
     padding: 0 !important;
     background: transparent !important;
+    position: static !important; /* Reset sticky positioning on mobile for School Admin */
   }
 
   .dashboard-user-info {
@@ -983,3 +1022,389 @@
   #contact-requests-tbody td:not([colspan]):nth-child(6)::before { content: "Status"; }
   #contact-requests-tbody td:not([colspan]):nth-child(7)::before { content: "Actions"; }
 }
+
+/* =====================================================
+   SchoolIn Mobile Admin Dashboard Redesign Overrides
+   ===================================================== */
+
+@media (max-width: 992px) {
+  /* Viewport Padding constraints (padding-top: 16px to dashboard content container) */
+  .dashboard-workspace {
+    padding: 16px 16px 20px 16px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  body:not(.super-admin-body) .dashboard-workspace {
+    padding-top: 0 !important;
+  }
+
+  /* Backdrop z-index: 1900 and solid darker color overlay */
+  .admin-sidebar-overlay {
+    z-index: 1900 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+  }
+
+  /* When sidebar is open: hide the hamburger button */
+  body.admin-sidebar-open #mobile-hamburger-btn {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* Super Admin old top-bar hidden on mobile */
+  .super-admin-body .dashboard-top-bar {
+    display: none !important;
+  }
+
+  /* School Admin legacy top-bar hidden on mobile (replaced by .mobile-fixed-header) */
+  .school-admin-body .dashboard-top-bar {
+    display: none !important;
+  }
+
+  /* Spacing overrides for first dashboard elements to prevent touching the header (First card margin-top: 0) */
+  .super-admin-body .overview-hero-card {
+    margin-top: 0 !important;
+  }
+
+  body:not(.super-admin-body) .dashboard-top-bar {
+    margin-top: 16px !important;
+  }
+
+  /* Sidebar sliding animations and width limits: z-index: 2000, width: 82% */
+  .dashboard-sidebar {
+    width: 82% !important;
+    max-width: 82% !important;
+    background-color: #0F172A !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    box-shadow: none !important;
+    z-index: 2000 !important;
+  }
+
+  /* Mobile Sidebar Header Premium Styles */
+  .dashboard-logo-section {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 20px !important;
+    height: 90px !important;
+    box-sizing: border-box !important;
+    background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .logo-brand-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    align-items: flex-start !important;
+  }
+
+  .dashboard-logo-section .logo {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    opacity: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    text-decoration: none !important;
+    line-height: 1.2 !important;
+  }
+
+  .dashboard-logo-section .logo-dot {
+    display: inline-block !important;
+    width: 6px !important;
+    height: 6px !important;
+    background-color: #3B82F6 !important;
+    border-radius: 50% !important;
+    margin-left: 2px !important;
+    align-self: flex-end !important;
+    margin-bottom: 4px !important;
+  }
+
+  .logo-subtitle {
+    display: block !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    line-height: 1.2 !important;
+  }
+
+  .admin-sidebar-close {
+    display: inline-flex !important;
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    border: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    transition: background 0.2s, transform 0.1s !important;
+  }
+
+  .admin-sidebar-close:active {
+    background: rgba(255, 255, 255, 0.16) !important;
+    transform: scale(0.95) !important;
+  }
+
+  .admin-sidebar-close svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .sidebar-role-container {
+    padding: 0 20px !important;
+    margin-top: 16px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .dashboard-nav-link {
+    padding: 14px 18px !important; /* Large touch targets */
+    font-size: 0.92rem !important;
+    color: #94A3B8 !important;
+    border-radius: 12px !important;
+    margin: 2px 8px !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .dashboard-nav-link.active {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    color: #3B82F6 !important;
+    border-left: none !important;
+    box-shadow: inset 4px 0 0 #3B82F6 !important;
+  }
+
+  .dashboard-sidebar-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    margin-top: auto !important;
+    background-color: #0F172A !important;
+    padding: 16px 12px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    z-index: 10 !important;
+  }
+
+  .dashboard-sidebar-footer .dashboard-nav-link.logout {
+    background-color: rgba(239, 68, 68, 0.08) !important;
+    color: #EF4444 !important;
+    padding: 12px !important;
+    border-radius: 10px !important;
+    justify-content: center !important;
+    margin: 0 !important;
+  }
+
+  /* Premium Responsive Cards and soft box-shadows */
+  .dash-table-card,
+  .dash-form-card,
+  .overview-hero-card,
+  .moderation-card,
+  .overview-action-card {
+    border-radius: 18px !important; /* 18px border radius */
+    border: 1px solid rgba(15, 23, 42, 0.05) !important;
+    box-shadow: 0 10px 25px -12px rgba(15, 23, 42, 0.08), 0 4px 12px -8px rgba(15, 23, 42, 0.04) !important;
+    margin-bottom: 20px !important;
+    padding: 20px !important;
+    background-color: var(--white) !important;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
+    animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+
+  /* Statistics Cards layout: 2 Columns */
+  .dash-stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important; /* 2 columns */
+    gap: 16px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .dash-stats-grid > .dash-stat-card:last-child {
+    grid-column: span 1 !important; /* Consistent 2 col layout flow */
+  }
+
+  .dash-stats-grid .dash-stat-card {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    padding: 16px !important;
+    border-radius: 18px !important; /* 18px border radius */
+    min-height: 115px !important;
+    background: var(--white) !important;
+    border: 1px solid rgba(15, 23, 42, 0.05) !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03) !important;
+    margin: 0 !important;
+    animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-info {
+    order: 1 !important;
+    margin-top: 14px !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-info h4 {
+    font-size: 0.72rem !important; /* Small labels */
+    color: var(--text-muted) !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin: 0 !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-info .stat-value {
+    font-size: 1.8rem !important; /* Large numbers */
+    font-weight: 800 !important;
+    color: #0F172A !important;
+    margin-top: 4px !important;
+  }
+
+  .dash-stats-grid .dash-stat-card .dash-stat-icon {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important; /* Icon in corner */
+    margin: 0 !important;
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+
+  /* Action Cards Styles (Full width, Touch area, Chevron) */
+  .overview-cards-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .overview-action-card {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 20px !important;
+    margin: 0 !important;
+    border-radius: 18px !important;
+    background: var(--white) !important;
+    border: 1px solid rgba(15, 23, 42, 0.05) !important;
+  }
+
+  .overview-action-card > div:first-child {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    align-items: flex-start !important;
+    margin: 0 !important;
+  }
+
+  .overview-action-card h3 {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    color: var(--dark-bg) !important;
+  }
+
+  .overview-action-card .stat-value {
+    font-size: 1.5rem !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    order: -1 !important;
+  }
+
+  .overview-action-card p {
+    display: none !important; /* Hide label subtext on mobile */
+  }
+
+  /* Add chevron indicator */
+  .overview-action-card span:last-child {
+    font-size: 1.25rem !important;
+    color: var(--text-muted) !important;
+    transition: transform 0.2s ease !important;
+  }
+
+  .overview-action-card:active span:last-child {
+    transform: translateX(4px) !important;
+  }
+
+  /* Collapsed table card configurations */
+  .dash-table tbody tr {
+    border-radius: 18px !important; /* 18px border radius */
+    border: 1px solid rgba(15, 23, 42, 0.06) !important;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.03) !important;
+    margin-bottom: 16px !important;
+    padding: 8px 0 !important;
+  }
+
+  .dash-table tbody td {
+    padding: 12px 18px !important;
+  }
+
+  /* Tap scale effect for touch response */
+  .btn:active,
+  .dashboard-nav-link:active,
+  .overview-action-card:active,
+  .dash-stat-card:active {
+    transform: scale(0.96) !important;
+    transition: transform 0.1s ease !important;
+  }
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Skeletons */
+.skeleton-loader {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Reset body padding-top for Admin dashboards to fix top white space leak */
+body.school-admin-body,
+body.super-admin-body {
+  padding-top: 0 !important;
+}
+
+/* ── Android WebView Specific Overrides ── */
+body.platform-android .dashboard-layout {
+  min-height: 100vh !important;
+}
+
+body.platform-android .mobile-fixed-header {
+  height: calc(64px + env(safe-area-inset-top, 0px)) !important;
+  padding-top: env(safe-area-inset-top, 0px) !important;
+}
+
+@media (max-width: 992px) {
+  body.school-admin-body .dashboard-main-content {
+    padding: 0 !important;
+  }
+}
+
