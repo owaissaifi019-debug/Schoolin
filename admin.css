@@ -1873,3 +1873,107 @@ body.platform-android .mobile-fixed-header {
   }
 }
 
+/* ═══════════════════════════════════════════
+   COMMUNITY MEMBERS — Filter Buttons & Table
+   ═══════════════════════════════════════════ */
+.cm-filter-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border-color);
+  background: var(--white);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.cm-filter-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(0, 102, 200, 0.04);
+}
+
+.cm-filter-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+@media (max-width: 768px) {
+  /* Community Members Table Labels */
+  #community-members-tbody td:not([colspan]):nth-child(1)::before { content: "Member"; }
+  #community-members-tbody td:not([colspan]):nth-child(2)::before { content: "Role"; }
+  #community-members-tbody td:not([colspan]):nth-child(3)::before { content: "Assigned"; }
+  #community-members-tbody td:not([colspan]):nth-child(4)::before { content: "Actions"; }
+}
+
+/* ==========================================
+   Add Community Member Modal (Responsive Modal/Bottom Sheet)
+   ========================================== */
+#add-member-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.6) !important;
+  z-index: 2000 !important;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#add-member-modal.active {
+  opacity: 1 !important;
+  pointer-events: all !important;
+  display: flex !important;
+}
+
+#add-member-modal .modal-card {
+  background: var(--white);
+  width: 100%;
+  max-width: 520px;
+  border-radius: 18px !important;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  border: 1px solid var(--border-color);
+  transform: translateY(20px);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#add-member-modal.active .modal-card {
+  transform: translateY(0) !important;
+}
+
+/* Mobile Bottom Sheet styling */
+@media (max-width: 768px) {
+  #add-member-modal {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  
+  #add-member-modal .modal-card {
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 85vh !important;
+    transform: translateY(100%) !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+  }
+  
+  #add-member-modal.active .modal-card {
+    transform: translateY(0) !important;
+  }
+}

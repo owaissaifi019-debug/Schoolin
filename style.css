@@ -15673,5 +15673,154 @@ header:not(.mobile-fixed-header):not(.dashboard-top-bar) .container {
   }
 }
 
+/* ═════════════════════════════════════════
+   SCHOOL COMMUNITY MEMBERS
+   ═════════════════════════════════════════ */
+.cm-member-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
 
+.cm-member-card {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-smooth);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
 
+.cm-member-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(0, 102, 200, 0.2);
+}
+
+.cm-member-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 14px;
+  border: 2px solid var(--white);
+  box-shadow: 0 0 0 2px rgba(0, 102, 200, 0.08);
+}
+
+.cm-member-avatar-placeholder {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-light), #DBEAFE);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 14px;
+  border: 2px solid var(--white);
+  box-shadow: 0 0 0 2px rgba(0, 102, 200, 0.08);
+}
+
+.cm-member-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dark-bg);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.cm-member-name .verified-badge-sm {
+  width: 14px;
+  height: 14px;
+  color: var(--primary);
+  display: inline-block;
+}
+
+.cm-member-title {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  text-transform: capitalize;
+}
+
+.cm-member-btn {
+  margin-top: auto;
+  font-size: 0.8rem;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background-color: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: var(--transition-fast);
+  cursor: pointer;
+  display: inline-block;
+  width: 100%;
+}
+
+.cm-member-btn:hover {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+/* User Profile School Affiliation Badge */
+.profile-affiliation-badge-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(22, 163, 74, 0.08); /* light green */
+  color: #16A34A; /* green */
+  border: 1px solid rgba(22, 163, 74, 0.2);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.profile-affiliation-badge-container.unverified {
+  background-color: var(--light-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.profile-affiliation-badge-container a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  font-weight: 800;
+}
+
+.profile-affiliation-badge-container a:hover {
+  color: var(--primary-hover);
+}
+
+.profile-affiliation-icon {
+  font-size: 1rem;
+}
+
+.profile-affiliation-verified-tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #16A34A;
+  color: white;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 0.55rem;
+  font-weight: 900;
+}

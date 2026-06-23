@@ -59,6 +59,9 @@
       <a class="dashboard-nav-link" data-tab="registrations">
         <span class="icon">📝</span> Registrations
       </a>
+      <a class="dashboard-nav-link" data-tab="community-members">
+        <span class="icon">🏅</span> Community Members
+      </a>
       <a class="dashboard-nav-link" data-tab="applications">
         <span class="icon">📁</span> Applications
       </a>
@@ -130,6 +133,12 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           </span>
           Students
+        </a>
+        <a class="dashboard-nav-link" data-tab="community-members">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          </span>
+          Community Members
         </a>
         <a class="dashboard-nav-link" data-tab="applications">
           <span class="icon">
@@ -651,6 +660,93 @@
             </div>
           </div>
         </section>
+        
+        <!-- ================= COMMUNITY MEMBERS TAB ================= -->
+        <section id="community-members-tab" class="dashboard-tab-panel">
+          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
+            <h3 style="font-size: 1.3rem;">Community Members</h3>
+            <div class="dash-header-actions">
+              <button class="btn btn-primary" id="btn-add-member" style="padding: 10px 20px; font-size: 0.85rem; border-radius: var(--radius-sm);">+ Add Member</button>
+            </div>
+          </div>
+
+          <!-- Role Filter Bar -->
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
+            <button class="cm-filter-btn active" data-role="all">All</button>
+            <button class="cm-filter-btn" data-role="student">Students</button>
+            <button class="cm-filter-btn" data-role="teacher">Teachers</button>
+            <button class="cm-filter-btn" data-role="alumni">Alumni</button>
+            <button class="cm-filter-btn" data-role="staff">Staff</button>
+            <button class="cm-filter-btn" data-role="faculty">Faculty</button>
+            <button class="cm-filter-btn" data-role="counselor">Counselors</button>
+          </div>
+
+          <!-- Members Table -->
+          <div class="dash-table-card" style="padding: 24px;">
+            <div class="dash-table-wrapper">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Role</th>
+                    <th>Assigned Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="community-members-tbody">
+                  <tr>
+                    <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                      Loading community members...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Add Member Modal -->
+        <div class="modal-overlay" id="add-member-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(4px);">
+          <div class="modal-card" style="background: var(--white); width: 100%; max-width: 520px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); display: flex; flex-direction: column; max-height: 80vh; border: 1px solid var(--border-color);">
+            <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--dark-bg);">Add Community Member</h3>
+                <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: var(--text-muted);">Select a school connection and assign a verified role.</p>
+              </div>
+              <button id="close-add-member-modal" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-muted); font-weight: 300;">&times;</button>
+            </div>
+            <div style="padding: 24px; overflow-y: auto; flex-grow: 1;">
+              <!-- Search -->
+              <div style="margin-bottom: 16px;">
+                <input type="text" id="member-search-input" placeholder="Search connections by name..." style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none;">
+              </div>
+              <!-- Connections List -->
+              <div id="member-candidates-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto;">
+                <p style="text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 0.88rem;">Loading connections...</p>
+              </div>
+              <!-- Role Selector (shown after selecting a user) -->
+              <div id="member-role-selector" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                <div style="margin-bottom: 12px; background: var(--bg-light); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                  <div style="font-weight: 700; font-size: 0.9rem; color: var(--dark-bg);" id="selected-candidate-name">Selected User</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: capitalize;" id="selected-candidate-status">Status: Student</div>
+                </div>
+                <label style="font-weight: 600; font-size: 0.88rem; color: var(--text-main); margin-bottom: 8px; display: block;">Assign Role *</label>
+                <select id="member-role-select" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none;">
+                  <option value="">Select Role...</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="alumni">Alumni</option>
+                  <option value="staff">Staff</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="counselor">Counselor</option>
+                </select>
+              </div>
+            </div>
+            <div style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px;">
+              <button class="btn btn-secondary" id="btn-cancel-add-member" style="padding: 10px 20px; font-size: 0.85rem;">Cancel</button>
+              <button class="btn btn-primary" id="btn-confirm-add-member" style="padding: 10px 20px; font-size: 0.85rem;" disabled>Assign Role</button>
+            </div>
+          </div>
+        </div>
         
         <!-- ================= PROFILE TAB ================= -->
         <section id="profile-tab" class="dashboard-tab-panel">

@@ -214,6 +214,7 @@
 
       // Fetch School details if linked
       let school = null;
+      let affiliation = null;
       if (profile.school_id) {
         const { data: schoolData, error: schoolError } = await sb
           .from('schools')
@@ -223,6 +224,21 @@
         
         if (!schoolError) {
           school = schoolData;
+        }
+
+        try {
+          const { data: affData, error: affError } = await sb
+            .from('school_members')
+            .select('id, role, assigned_at')
+            .eq('school_id', profile.school_id)
+            .eq('user_id', profileId)
+            .maybeSingle();
+
+          if (!affError && affData) {
+            affiliation = affData;
+          }
+        } catch (affErr) {
+          console.warn('Failed to query school affiliation:', affErr);
         }
       }
 
@@ -311,7 +327,7 @@
       }
 
       // Render the profile views
-      renderProfileView(profile, school, followersCount, isFollowing, postsCount, eventsCount);
+      renderProfileView(profile, school, followersCount, isFollowing, postsCount, eventsCount, affiliation);
 
       // Update connections count display
       const connectionsEl = document.getElementById('profile-connections-count');
@@ -358,7 +374,7 @@
   }
 
   // --- Render Profile View Mode ---
-  function renderProfileView(profile, school, followersCount, isFollowing, postsCount = 0, eventsCount = 0) {
+  function renderProfileView(profile, school, followersCount, isFollowing, postsCount = 0, eventsCount = 0, affiliation = null) {
     const auth = getAuth();
 
     // 0. Cover photo display
@@ -614,6 +630,56 @@
 
     if (sbClassVal) sbClassVal.textContent = profile.class || 'Not Specified';
     if (sbEmailVal) sbEmailVal.textContent = isOwner ? (profile.email || 'Private') : 'Private';
+
+    // 8. School Affiliation Badge
+    const affContainer = document.getElementById('profile-affiliation-badge-container');
+    if (affContainer) {
+      affContainer.style.display = 'none';
+      affContainer.innerHTML = '';
+      
+      if (school) {
+        if (affiliation) {
+          // Verified member badge
+          let icon = '🏅';
+          let roleTitle = 'Member';
+          
+          if (affiliation.role === 'teacher') {
+            icon = '🏅';
+            roleTitle = 'Teacher';
+          } else if (affiliation.role === 'alumni') {
+            icon = '🎓';
+            roleTitle = 'Alumni';
+          } else if (affiliation.role === 'student') {
+            icon = '📚';
+            roleTitle = 'Student';
+          } else if (affiliation.role) {
+            roleTitle = affiliation.role;
+          }
+          
+          affContainer.className = 'profile-affiliation-badge-container';
+          affContainer.innerHTML = `
+            <span class="profile-affiliation-icon">${icon}</span>
+            <span>
+              ${roleTitle} at <a href="school-profile.html?id=${school.id}">${school.name}</a>
+              <span style="font-weight: normal; opacity: 0.85;">— Verified by School</span>
+            </span>
+            <span class="profile-affiliation-verified-tick" title="Verified Member">✓</span>
+          `;
+          affContainer.style.display = 'inline-flex';
+        } else {
+          // Unverified member badge
+          affContainer.className = 'profile-affiliation-badge-container unverified';
+          affContainer.innerHTML = `
+            <span class="profile-affiliation-icon">🏫</span>
+            <span>
+              Member of <a href="school-profile.html?id=${school.id}">${school.name}</a>
+              <span style="font-weight: normal; opacity: 0.85;">— Unverified</span>
+            </span>
+          `;
+          affContainer.style.display = 'inline-flex';
+        }
+      }
+    }
   }
 
   // --- Follow Actions ---

@@ -248,6 +248,9 @@
         <button class="profile-tab-btn" data-tab="achievements">
           <span>🏆</span> Achievements
         </button>
+        <button class="profile-tab-btn" data-tab="community">
+          <span>🏅</span> Community
+        </button>
       </aside>
 
       <!-- Right content area panels -->
@@ -377,6 +380,60 @@
           </p>
           <div class="achievements-timeline" id="achievements-timeline-box">
             <!-- Timeline elements dynamically loaded -->
+          </div>
+        </div>
+
+        <!-- Tab 5: Community -->
+        <div class="profile-tab-panel" id="panel-community">
+          <h2>Community Members</h2>
+          <p style="color: var(--text-muted); margin-bottom: 30px;">
+            Verified teachers, faculty, alumni, staff, and students associated with this institution.
+          </p>
+
+          <!-- Teachers & Faculty Section -->
+          <div class="cm-section" id="cm-section-faculty" style="margin-bottom: 32px; display: none;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>👨‍🏫</span> Teachers & Faculty
+            </h3>
+            <div class="cm-member-grid" id="cm-grid-faculty">
+              <!-- Dynamic member cards -->
+            </div>
+          </div>
+
+          <!-- Alumni Section -->
+          <div class="cm-section" id="cm-section-alumni" style="margin-bottom: 32px; display: none;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>🎓</span> Alumni
+            </h3>
+            <div class="cm-member-grid" id="cm-grid-alumni">
+              <!-- Dynamic member cards -->
+            </div>
+          </div>
+
+          <!-- Staff Section -->
+          <div class="cm-section" id="cm-section-staff" style="margin-bottom: 32px; display: none;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>🏅</span> Staff
+            </h3>
+            <div class="cm-member-grid" id="cm-grid-staff">
+              <!-- Dynamic member cards -->
+            </div>
+          </div>
+
+          <!-- Students Section -->
+          <div class="cm-section" id="cm-section-students" style="margin-bottom: 32px; display: none;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>📚</span> Students
+            </h3>
+            <div class="cm-member-grid" id="cm-grid-students">
+              <!-- Dynamic member cards -->
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div id="cm-empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+            <p style="font-size: 1.1rem; margin-bottom: 4px;">No community members yet.</p>
+            <p style="font-size: 0.88rem;">This school has not assigned any verified members.</p>
           </div>
         </div>
       </main>

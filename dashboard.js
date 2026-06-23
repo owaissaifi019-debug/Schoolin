@@ -123,7 +123,8 @@ document.addEventListener('DOMContentLoaded', async () => {
               state: school.state || '',
               board: school.board || '',
               logoLetter: school.logo_letter || school.name.charAt(0).toUpperCase(),
-              about: school.about || ''
+              about: school.about || '',
+              admin_user_id: school.admin_user_id
             };
             saveState('campuslink_profile', profile);
             
@@ -255,6 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderAdmissions();
     renderApplications();
     renderContactRequests();
+    loadCommunityMembers();
   }
 
   // --- Seed Data Configuration ---
@@ -393,6 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tabTarget === 'admissions') tabName = 'Admissions Announcements';
       if (tabTarget === 'applications') tabName = 'Admissions Applications Received';
       if (tabTarget === 'contact-requests') tabName = 'Contact Requests Received';
+      if (tabTarget === 'community-members') tabName = 'Community Members';
       if (tabTarget === 'profile') tabName = 'School Profile Settings';
       if (topBarTitle) topBarTitle.textContent = tabName;
     });
@@ -1948,6 +1951,668 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
   });
+
+  // ============================================================
+  // COMMUNITY MEMBERS MODULE
+  // ============================================================
+  let communityMembers = getStoredData('campuslink_community_members', []);
+  let cmFilterRole = 'all';
+  let selectedCandidateId = null;
+
+  const cmTbody = document.getElementById('community-members-tbody');
+  const addMemberModal = document.getElementById('add-member-modal');
+  const memberCandidatesList = document.getElementById('member-candidates-list');
+  const memberRoleSelector = document.getElementById('member-role-selector');
+  const memberRoleSelect = document.getElementById('member-role-select');
+  const memberSearchInput = document.getElementById('member-search-input');
+  const btnConfirmAddMember = document.getElementById('btn-confirm-add-member');
+
+  // Role badge color map
+  const ROLE_COLORS = {
+    student: { bg: '#EFF6FF', color: '#2563EB', border: 'rgba(37, 99, 235, 0.15)' },
+    teacher: { bg: '#F0FDF4', color: '#16A34A', border: 'rgba(22, 163, 74, 0.15)' },
+    alumni: { bg: '#FFF7ED', color: '#EA580C', border: 'rgba(234, 88, 12, 0.15)' },
+    staff: { bg: '#F5F3FF', color: '#7C3AED', border: 'rgba(124, 58, 237, 0.15)' },
+    faculty: { bg: '#ECFDF5', color: '#059669', border: 'rgba(5, 150, 105, 0.15)' },
+    counselor: { bg: '#FEF2F2', color: '#DC2626', border: 'rgba(220, 38, 38, 0.15)' }
+  };
+
+  function getRoleBadgeHtml(role) {
+    const c = ROLE_COLORS[role] || ROLE_COLORS.student;
+    return `<span style="display:inline-block; padding:3px 10px; border-radius:4px; font-size:0.75rem; font-weight:700; text-transform:capitalize; background:${c.bg}; color:${c.color}; border:1.5px solid ${c.border};">${role}</span>`;
+  }
+
+  // Load community members from Supabase
+  async function loadCommunityMembers() {
+    if (!supabase || !profile || !profile.id) return;
+    const currentSchool = profile;
+    try {
+      // 1. Fetch school members
+      const { data: members, error: memError } = await supabase
+        .from('school_members')
+        .select(`
+          id, role, assigned_at,
+          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified, school_id)
+        `)
+        .eq('school_id', profile.id);
+
+      if (memError) throw memError;
+
+      // 2. Fetch accepted conversations (connections)
+      const { data: connections, error: connError } = await supabase
+        .from('conversations')
+        .select(`
+          id,
+          status,
+          created_at,
+          user:profiles!initiator_id(id, full_name, avatar_url, user_type, class, is_verified, school_id)
+        `)
+        .eq('school_id', profile.id)
+        .eq('status', 'accepted');
+
+      if (connError) throw connError;
+
+      // Report if the query returns empty
+      if (!connections || connections.length === 0) {
+        console.warn("Failing Query: select id, status, created_at, user:profiles!initiator_id(...) from conversations where school_id = '" + profile.id + "' and status = 'accepted'");
+      }
+
+      // Map school members by user_id
+      const memberMap = {};
+      if (members) {
+        members.forEach(m => {
+          if (m.user && m.user.id) {
+            memberMap[m.user.id] = m;
+          }
+        });
+      }
+
+      const combined = [];
+      const studentsList = [];
+      const seenUserIds = new Set();
+
+      // Process accepted connections
+      if (connections) {
+        connections.forEach(conn => {
+          const user = conn.user;
+          if (!user) return;
+
+          // Prevent duplicate rows if a user has multiple accepted connections/conversations
+          if (seenUserIds.has(user.id)) return;
+          seenUserIds.add(user.id);
+
+          // Check if there is an explicit member record
+          const memberRecord = memberMap[user.id];
+          let role = null;
+          let memberId = 'temp-' + user.id;
+          let assignedAt = conn.created_at;
+
+          if (memberRecord) {
+            role = memberRecord.role;
+            memberId = memberRecord.id;
+            assignedAt = memberRecord.assigned_at || conn.created_at;
+          } else {
+            // Apply automatic rules
+            if (user.school_id === profile.id) {
+              role = 'student';
+            } else if (user.user_type === 'teacher') {
+              role = 'teacher';
+            } else if (user.user_type === 'alumni') {
+              role = 'alumni';
+            } else if (user.user_type === 'staff') {
+              role = 'staff';
+            } else if (user.user_type === 'faculty') {
+              role = 'faculty';
+            } else if (user.user_type === 'counselor') {
+              role = 'counselor';
+            }
+          }
+
+          // If a valid role is found, add to combined list
+          if (role) {
+            const memberObj = {
+              id: memberId,
+              role: role,
+              assigned_at: assignedAt,
+              user: user
+            };
+            combined.push(memberObj);
+
+            if (role === 'student') {
+              studentsList.push(memberObj);
+            }
+          }
+        });
+      }
+
+      communityMembers = combined;
+      saveState('campuslink_community_members', communityMembers);
+
+      // Debug logs exactly as requested
+      const students = studentsList;
+      console.log("School ID:", currentSchool.id);
+      console.log("Accepted connections:", connections);
+      console.log("Students:", students);
+
+    } catch (err) {
+      console.warn('Failed to load community members, loading from local fallback:', err.message);
+      communityMembers = getStoredData('campuslink_community_members', []);
+    }
+    renderCommunityMembers();
+  }
+
+  // Render community members table
+  function renderCommunityMembers() {
+    if (!cmTbody) return;
+    cmTbody.innerHTML = '';
+
+    const filtered = cmFilterRole === 'all'
+      ? communityMembers
+      : communityMembers.filter(m => m.role === cmFilterRole);
+
+    if (filtered.length === 0) {
+      cmTbody.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            ${communityMembers.length === 0
+              ? 'No community members assigned yet. Click <strong>+ Add Member</strong> to get started.'
+              : 'No members found for the selected role filter.'}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    filtered.forEach(member => {
+      const u = member.user || {};
+      const name = u.full_name || 'Unknown';
+      const initial = name.charAt(0).toUpperCase();
+      const avatarHtml = u.avatar_url
+        ? `<div style="width:36px;height:36px;border-radius:50%;background-image:url(${u.avatar_url});background-size:cover;background-position:center;flex-shrink:0;border:1px solid rgba(0,0,0,0.05);"></div>`
+        : `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#EBF5FF,#DBEAFE);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);flex-shrink:0;font-size:0.85rem;">${initial}</div>`;
+      const dateStr = member.assigned_at ? new Date(member.assigned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${avatarHtml}
+            <div>
+              <div style="font-weight:600;color:var(--dark-bg);font-size:0.88rem;">${name}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);text-transform:capitalize;">${u.user_type || 'Member'}${u.class ? ' • ' + u.class : ''}</div>
+            </div>
+          </div>
+        </td>
+        <td>${getRoleBadgeHtml(member.role)}</td>
+        <td style="font-size:0.85rem;color:var(--text-muted);">${dateStr}</td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <select class="cm-change-role-select" data-member-id="${member.id}" data-user-id="${u.id || ''}" style="padding:5px 8px;font-size:0.75rem;border:1px solid var(--border-color);border-radius:4px;outline:none;cursor:pointer;">
+              <option value="student" ${member.role==='student'?'selected':''}>Student</option>
+              <option value="teacher" ${member.role==='teacher'?'selected':''}>Teacher</option>
+              <option value="alumni" ${member.role==='alumni'?'selected':''}>Alumni</option>
+              <option value="staff" ${member.role==='staff'?'selected':''}>Staff</option>
+              <option value="faculty" ${member.role==='faculty'?'selected':''}>Faculty</option>
+              <option value="counselor" ${member.role==='counselor'?'selected':''}>Counselor</option>
+            </select>
+            <button class="btn-action btn-reject cm-remove-btn" data-member-id="${member.id}" data-user-id="${u.id || ''}" style="padding:5px 10px;font-size:0.72rem;">Remove</button>
+          </div>
+        </td>
+      `;
+      cmTbody.appendChild(tr);
+    });
+
+    // Attach change-role listeners
+    cmTbody.querySelectorAll('.cm-change-role-select').forEach(sel => {
+      sel.addEventListener('change', async (e) => {
+        const memberId = e.target.dataset.memberId;
+        const userId = e.target.dataset.userId;
+        const newRole = e.target.value;
+        await changeRole(memberId, newRole, userId);
+      });
+    });
+
+    // Attach remove listeners
+    cmTbody.querySelectorAll('.cm-remove-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const memberId = e.target.dataset.memberId;
+        const userId = e.target.dataset.userId;
+        if (confirm('Remove this member from your school community?')) {
+          await removeMember(memberId, userId);
+        }
+      });
+    });
+  }
+
+  // Change member role
+  async function changeRole(memberId, newRole, userId = null) {
+    if (!supabase) return;
+    try {
+      let error = null;
+      if (memberId && memberId.startsWith('temp-')) {
+        const uId = userId || memberId.replace('temp-', '');
+        const { error: err } = await supabase
+          .from('school_members')
+          .upsert({
+            school_id: profile.id,
+            user_id: uId,
+            role: newRole,
+            assigned_by: session?.user?.id
+          }, { onConflict: 'school_id,user_id' });
+        error = err;
+      } else {
+        const { error: err } = await supabase
+          .from('school_members')
+          .update({ role: newRole })
+          .eq('id', memberId);
+        error = err;
+      }
+      if (error) throw error;
+      showToast(`Role updated to ${newRole}!`);
+      await loadCommunityMembers();
+    } catch (err) {
+      console.error('Failed to change role:', err);
+      showToast('Failed to update role: ' + err.message, 'error');
+    }
+  }
+
+  // Remove member
+  async function removeMember(memberId, userId = null) {
+    if (!supabase) return;
+    try {
+      let error = null;
+      if (memberId && memberId.startsWith('temp-')) {
+        const uId = userId || memberId.replace('temp-', '');
+        const { error: convErr } = await supabase
+          .from('conversations')
+          .update({ status: 'ignored' })
+          .eq('school_id', profile.id)
+          .eq('initiator_id', uId)
+          .eq('status', 'accepted');
+        error = convErr;
+      } else {
+        const { data: memberData, error: getErr } = await supabase
+          .from('school_members')
+          .select('user_id')
+          .eq('id', memberId)
+          .maybeSingle();
+
+        if (!getErr && memberData) {
+          await supabase
+            .from('conversations')
+            .update({ status: 'ignored' })
+            .eq('school_id', profile.id)
+            .eq('initiator_id', memberData.user_id)
+            .eq('status', 'accepted');
+        }
+
+        const { error: delErr } = await supabase
+          .from('school_members')
+          .delete()
+          .eq('id', memberId);
+        error = delErr;
+      }
+      if (error) throw error;
+      showToast('Member removed successfully.');
+      await loadCommunityMembers();
+    } catch (err) {
+      console.error('Failed to remove member:', err);
+      showToast('Failed to remove member: ' + err.message, 'error');
+    }
+  }
+
+  // Filter buttons
+  document.querySelectorAll('.cm-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cm-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      cmFilterRole = btn.dataset.role;
+      renderCommunityMembers();
+    });
+  });
+
+  // --- Add Member Modal ---
+  const btnAddMember = document.getElementById('btn-add-member');
+  if (btnAddMember) {
+    btnAddMember.addEventListener('click', () => {
+      console.log("Add Member clicked");
+      openAddMemberModal();
+    });
+  }
+  document.getElementById('close-add-member-modal')?.addEventListener('click', closeAddMemberModal);
+  document.getElementById('btn-cancel-add-member')?.addEventListener('click', closeAddMemberModal);
+  if (addMemberModal) {
+    addMemberModal.addEventListener('click', (e) => {
+      if (e.target === addMemberModal) closeAddMemberModal();
+    });
+  }
+
+  async function openAddMemberModal() {
+    if (!addMemberModal) return;
+    selectedCandidateId = null;
+    if (memberRoleSelector) memberRoleSelector.style.display = 'none';
+    if (memberRoleSelect) memberRoleSelect.value = '';
+    if (btnConfirmAddMember) btnConfirmAddMember.disabled = true;
+    if (memberSearchInput) memberSearchInput.value = '';
+    addMemberModal.style.display = 'flex';
+    addMemberModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    await loadMemberCandidates();
+  }
+
+  function closeAddMemberModal() {
+    if (addMemberModal) {
+      addMemberModal.classList.remove('active');
+      addMemberModal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+  }
+
+  // Load users who joined this school but are NOT already members
+  async function loadMemberCandidates(searchQuery = '') {
+    if (!memberCandidatesList) return;
+    memberCandidatesList.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px 0;font-size:0.88rem;">Loading connections...</p>';
+
+    try {
+      const currentUserId = session?.user?.id;
+      let explicitUserIds = [];
+
+      // 1. Try to get existing school members from Supabase
+      if (supabase && profile?.id) {
+        try {
+          const { data: explicitMembers, error: extError } = await supabase
+            .from('school_members')
+            .select('user_id')
+            .eq('school_id', profile.id);
+
+          if (!extError && explicitMembers) {
+            explicitUserIds = explicitMembers.map(m => m.user_id);
+          }
+        } catch (e) {
+          console.warn('Failed to fetch explicit school members from Supabase:', e);
+        }
+      }
+
+      // Query Sources
+      let connectionUsers = [];
+      let schoolRelationshipUsers = [];
+      let schoolLinkedStudents = [];
+
+      if (supabase && profile?.id && currentUserId) {
+        // Source A: User-to-User Connections from connections table
+        try {
+          const { data: conns, error: connErr } = await supabase
+            .from('connections')
+            .select(`
+              requester:profiles!requester_id(id, full_name, avatar_url, user_type, class, school_id, platform_role),
+              receiver:profiles!receiver_id(id, full_name, avatar_url, user_type, class, school_id, platform_role)
+            `)
+            .eq('status', 'accepted')
+            .or(`requester_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
+
+          if (!connErr && conns) {
+            conns.forEach(c => {
+              const other = (c.requester && c.requester.id === currentUserId) ? c.receiver : c.requester;
+              if (other && other.id) {
+                connectionUsers.push(other);
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to query connections table:', e);
+        }
+
+        // Source B: Accepted School Conversations from conversations table
+        try {
+          const { data: convs, error: convErr } = await supabase
+            .from('conversations')
+            .select(`
+              initiator:profiles!initiator_id(id, full_name, avatar_url, user_type, class, school_id, platform_role)
+            `)
+            .eq('school_id', profile.id)
+            .eq('status', 'accepted');
+
+          if (!convErr && convs) {
+            convs.forEach(c => {
+              if (c.initiator && c.initiator.id) {
+                schoolRelationshipUsers.push(c.initiator);
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to query accepted school relationships:', e);
+        }
+
+        // Source C: Students linked to the school in profiles table
+        try {
+          const { data: students, error: studErr } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url, user_type, class, school_id, platform_role')
+            .eq('school_id', profile.id)
+            .eq('user_type', 'student');
+
+          if (!studErr && students) {
+            schoolLinkedStudents = students;
+          }
+        } catch (e) {
+          console.warn('Failed to query school-linked students:', e);
+        }
+      }
+
+      // Merge and deduplicate candidates by user ID
+      const candidateMap = new Map();
+
+      schoolRelationshipUsers.forEach(u => candidateMap.set(u.id, u));
+      connectionUsers.forEach(u => candidateMap.set(u.id, u));
+      schoolLinkedStudents.forEach(u => candidateMap.set(u.id, u));
+
+      // Local storage fallback if no candidates fetched from Supabase
+      if (candidateMap.size === 0) {
+        const localRequests = contactRequests || [];
+        localRequests.forEach(req => {
+          if (req.status === 'accepted' && req.initiator) {
+            const init = req.initiator;
+            const userId = init.id || req.initiator_id;
+            if (userId) {
+              candidateMap.set(userId, {
+                id: userId,
+                full_name: init.full_name || init.name || 'Connection',
+                avatar_url: init.avatar_url,
+                user_type: init.user_type || 'user',
+                class: init.class,
+                school_id: init.school_id,
+                platform_role: init.platform_role || 'user'
+              });
+            }
+          }
+        });
+      }
+
+      // Filter candidates based on exclusions
+      let candidates = Array.from(candidateMap.values()).filter(p => {
+        if (!p || !p.id) return false;
+        
+        // Exclude current logged in user
+        if (p.id === currentUserId) return false;
+        
+        // Exclude school owner/admin by ID
+        if (profile?.admin_user_id && p.id === profile.admin_user_id) return false;
+        
+        // Exclude school representative
+        if (p.user_type === 'school_representative') return false;
+        
+        // Exclude school owner/admin by roles
+        if (p.platform_role === 'school_admin' || p.platform_role === 'super_admin') return false;
+        
+        // Exclude users who are already members
+        if (explicitUserIds.includes(p.id)) return false;
+
+        return true;
+      });
+
+      // Filter by search query in-memory if provided
+      if (searchQuery.trim()) {
+        const term = searchQuery.toLowerCase().trim();
+        candidates = candidates.filter(p => 
+          p.full_name && p.full_name.toLowerCase().includes(term)
+        );
+      }
+
+      if (candidates.length === 0) {
+        memberCandidatesList.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px 0;font-size:0.88rem;">No eligible connections found.</p>';
+        return;
+      }
+
+      memberCandidatesList.innerHTML = '';
+      candidates.forEach(p => {
+        const initial = (p.full_name || '?').charAt(0).toUpperCase();
+        const avatarHtml = p.avatar_url
+          ? `<div style="width:36px;height:36px;border-radius:50%;background-image:url(${p.avatar_url});background-size:cover;background-position:center;flex-shrink:0;border:1px solid rgba(0,0,0,0.05);"></div>`
+          : `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#EBF5FF,#DBEAFE);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);flex-shrink:0;font-size:0.85rem;">${initial}</div>`;
+
+        const item = document.createElement('div');
+        item.className = 'cm-candidate-item';
+        item.dataset.userId = p.id;
+        item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background 0.15s ease;border:1.5px solid transparent;';
+        item.innerHTML = `
+          ${avatarHtml}
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:0.88rem;color:var(--dark-bg);">${p.full_name}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:capitalize;">${p.user_type || 'Member'}${p.class ? ' • ' + p.class : ''}</div>
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          // Deselect others
+          memberCandidatesList.querySelectorAll('.cm-candidate-item').forEach(el => {
+            el.style.borderColor = 'transparent';
+            el.style.backgroundColor = '';
+          });
+          // Select this
+          item.style.borderColor = 'var(--primary)';
+          item.style.backgroundColor = 'var(--primary-light)';
+          selectedCandidateId = p.id;
+
+          // Update selected candidate details in role selector
+          const nameEl = document.getElementById('selected-candidate-name');
+          const statusEl = document.getElementById('selected-candidate-status');
+          if (nameEl) nameEl.textContent = p.full_name || 'Selected User';
+          if (statusEl) statusEl.textContent = 'Current status: ' + (p.user_type || 'Member');
+
+          // Handle role options based on user type
+          if (p.user_type === 'student') {
+            // Students remain automatic - populate and select Student
+            memberRoleSelect.innerHTML = `<option value="student" selected>Student (Automatic)</option>`;
+            memberRoleSelect.disabled = true;
+          } else {
+            // For others, allow Teacher, Alumni, Staff, Faculty, Counselor
+            memberRoleSelect.innerHTML = `
+              <option value="">Select Role...</option>
+              <option value="teacher">Teacher</option>
+              <option value="alumni">Alumni</option>
+              <option value="staff">Staff</option>
+              <option value="faculty">Faculty</option>
+              <option value="counselor">Counselor</option>
+            `;
+            memberRoleSelect.disabled = false;
+          }
+
+          // Show role selector
+          if (memberRoleSelector) memberRoleSelector.style.display = 'block';
+          updateConfirmBtn();
+        });
+
+        item.addEventListener('mouseenter', () => { if (item.style.borderColor !== 'var(--primary)') item.style.backgroundColor = 'var(--light-bg)'; });
+        item.addEventListener('mouseleave', () => { if (item.style.borderColor !== 'var(--primary)') item.style.backgroundColor = ''; });
+
+        memberCandidatesList.appendChild(item);
+      });
+    } catch (err) {
+      console.error('Failed to load candidates:', err);
+      memberCandidatesList.innerHTML = '<p style="text-align:center;color:#EF4444;padding:20px 0;font-size:0.88rem;">Error loading connections.</p>';
+    }
+  }
+
+  // Search filter
+  if (memberSearchInput) {
+    let searchTimeout;
+    memberSearchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => loadMemberCandidates(memberSearchInput.value), 300);
+    });
+  }
+
+  // Role select change
+  if (memberRoleSelect) {
+    memberRoleSelect.addEventListener('change', updateConfirmBtn);
+  }
+
+  function updateConfirmBtn() {
+    if (btnConfirmAddMember) {
+      btnConfirmAddMember.disabled = !(selectedCandidateId && memberRoleSelect?.value);
+    }
+  }
+
+  // Confirm add member
+  if (btnConfirmAddMember) {
+    btnConfirmAddMember.addEventListener('click', async () => {
+      if (!selectedCandidateId || !memberRoleSelect?.value) return;
+      btnConfirmAddMember.disabled = true;
+      btnConfirmAddMember.textContent = 'Assigning...';
+      try {
+        if (supabase && profile?.id && session?.user?.id) {
+          try {
+            const { error } = await supabase
+              .from('school_members')
+              .insert({
+                school_id: profile.id,
+                user_id: selectedCandidateId,
+                role: memberRoleSelect.value,
+                assigned_by: session.user.id
+              });
+            if (error) throw error;
+          } catch (dbErr) {
+            console.warn('Database save failed, saving to local fallback:', dbErr);
+          }
+        }
+
+        // Local fallback / sync
+        const candidateItem = memberCandidatesList.querySelector(`.cm-candidate-item[data-user-id="${selectedCandidateId}"]`);
+        const candidateName = candidateItem ? candidateItem.querySelector('div > div:first-child').textContent : 'New Member';
+        const candidateUserType = candidateItem ? candidateItem.querySelector('div > div:last-child').textContent.split(' • ')[0] : 'user';
+
+        const existingIdx = communityMembers.findIndex(m => m.user?.id === selectedCandidateId);
+        const newMember = {
+          id: existingIdx >= 0 ? communityMembers[existingIdx].id : 'local-' + Date.now(),
+          role: memberRoleSelect.value,
+          assigned_at: new Date().toISOString(),
+          user: {
+            id: selectedCandidateId,
+            full_name: candidateName,
+            user_type: candidateUserType,
+            school_id: profile.id
+          }
+        };
+
+        if (existingIdx >= 0) {
+          communityMembers[existingIdx] = newMember;
+        } else {
+          communityMembers.push(newMember);
+        }
+
+        saveState('campuslink_community_members', communityMembers);
+        showToast(`Member assigned as ${memberRoleSelect.value}!`);
+        closeAddMemberModal();
+        renderCommunityMembers();
+      } catch (err) {
+        console.error('Failed to add member:', err);
+        showToast('Failed to add member: ' + err.message, 'error');
+      } finally {
+        btnConfirmAddMember.disabled = false;
+        btnConfirmAddMember.textContent = 'Assign Role';
+      }
+    });
+  }
 
   // --- Init Dashboard Rendering ---
   loadDashboardData().then(() => {
