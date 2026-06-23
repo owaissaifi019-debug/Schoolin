@@ -209,7 +209,7 @@
       const firstPart = conv.conversation_participants[0];
       if (firstPart?.school) {
         return {
-          id: firstPart.school.id,
+          id: firstPart.school_id || firstPart.school.id,
           name: firstPart.school.name,
           logoLetter: firstPart.school.logo_letter || firstPart.school.name.charAt(0).toUpperCase(),
           colorClass: firstPart.school.color_class || 'bg-gradient-1',
@@ -225,7 +225,7 @@
         const roleLabel = auth ? auth.getUserTypeLabel(firstPart.profile.user_type) : 'Member';
         const headline = firstPart.profile.class ? `${firstPart.profile.class} • ${roleLabel}` : roleLabel;
         return {
-          id: firstPart.profile.id,
+          id: firstPart.user_id || firstPart.profile.id,
           name: firstPart.profile.full_name || 'Member',
           avatarUrl: firstPart.profile.avatar_url,
           logoLetter: (firstPart.profile.full_name || 'M').charAt(0).toUpperCase(),
@@ -237,41 +237,42 @@
           schoolName: firstPart.profile.school?.name || 'Not Linked'
         };
       }
-      return { name: 'SchoolIn Member', avatarUrl: null, logoLetter: 'S', headline: '', isSchool: false };
+      return { id: 'unknown', name: 'SchoolIn Member', avatarUrl: null, logoLetter: 'S', headline: '', isSchool: false };
     }
 
-    if (otherPart.school) {
+    if (otherPart.school_id || otherPart.school) {
+      const schoolObj = otherPart.school || {};
+      const schoolName = schoolObj.name || 'School';
       return {
-        id: otherPart.school.id,
-        name: otherPart.school.name,
-        logoLetter: otherPart.school.logo_letter || otherPart.school.name.charAt(0).toUpperCase(),
-        colorClass: otherPart.school.color_class || 'bg-gradient-1',
-        avatarUrl: otherPart.school.logo_url || null,
-        headline: `${otherPart.school.city || 'India'} • School Account`,
+        id: otherPart.school_id || schoolObj.id,
+        name: schoolName,
+        logoLetter: schoolObj.logo_letter || schoolName.charAt(0).toUpperCase(),
+        colorClass: schoolObj.color_class || 'bg-gradient-1',
+        avatarUrl: schoolObj.logo_url || null,
+        headline: `${schoolObj.city || 'India'} • School Account`,
         isSchool: true,
-        city: otherPart.school.city || 'India',
-        board: otherPart.school.board || 'CBSE',
-        verificationBadge: otherPart.school.verification_badge || 'blue'
+        city: schoolObj.city || 'India',
+        board: schoolObj.board || 'CBSE',
+        verificationBadge: schoolObj.verification_badge || 'blue'
       };
-    } else if (otherPart.profile) {
+    } else {
+      const profileObj = otherPart.profile || {};
       const auth = getAuth();
-      const roleLabel = auth.getUserTypeLabel(otherPart.profile.user_type);
-      const headline = otherPart.profile.class ? `${otherPart.profile.class} • ${roleLabel}` : roleLabel;
+      const roleLabel = profileObj.user_type ? auth.getUserTypeLabel(profileObj.user_type) : 'Member';
+      const headline = profileObj.class ? `${profileObj.class} • ${roleLabel}` : roleLabel;
       return {
-        id: otherPart.profile.id,
-        name: otherPart.profile.full_name || 'Member',
-        avatarUrl: otherPart.profile.avatar_url,
-        logoLetter: (otherPart.profile.full_name || '?').charAt(0).toUpperCase(),
+        id: otherPart.user_id || profileObj.id,
+        name: profileObj.full_name || 'Member',
+        avatarUrl: profileObj.avatar_url || null,
+        logoLetter: (profileObj.full_name || '?').charAt(0).toUpperCase(),
         colorClass: 'bg-gradient-1',
         headline: headline,
         isSchool: false,
-        isVerified: otherPart.profile.is_verified,
+        isVerified: !!profileObj.is_verified,
         userType: roleLabel,
-        schoolName: otherPart.profile.school?.name || 'Not Linked'
+        schoolName: profileObj.school?.name || 'Not Linked'
       };
     }
-
-    return { name: 'SchoolIn Member', avatarUrl: null, headline: '', isSchool: false };
   }
 
   // --- Render Conversation Sidebar List ---
@@ -290,8 +291,9 @@
       const isInitiator = c.initiator_id === currentUser.id;
 
       if (currentTab === 'active') {
-        // Show accepted, OR pending (both initiator and receiver)
+        // Show accepted conversations, and pending conversations only if we are the initiator
         if (c.status === 'ignored') return false;
+        if (c.status === 'pending' && !isInitiator) return false; // Receiver sees pending only in Requests tab
       } else {
         // Show pending requests where we are the receiver
         if (c.status !== 'pending' || isInitiator) return false;
@@ -480,7 +482,7 @@
 
     // Update URL query parameter without reloading
     const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?chat_id=${chatId}`;
-    window.history.pushState({ path: newurl }, '', newurl);
+    window.history.pushState({ chatOpen: true, chatId: chatId }, '', newurl);
 
     // Mobile view transition
     if (messagingCard) {
@@ -710,6 +712,15 @@
         chatHeaderActions.appendChild(badgeSpan);
       }
 
+      // Add "Request Sent" badge if pending and initiated by current user
+      if (conv.status === 'pending' && conv.initiator_id === currentUser.id) {
+        const sentBadge = document.createElement('span');
+        sentBadge.className = 'inquiry-badge-tag general_inquiry';
+        sentBadge.style.cssText = 'font-size:0.8rem; padding: 6px 12px; border-radius: var(--radius-sm); margin-top: 0; background-color: var(--warning-light, #FFFBEB); color: var(--warning, #D97706);';
+        sentBadge.textContent = 'Request Sent';
+        chatHeaderActions.appendChild(sentBadge);
+      }
+
       // Add collapsible toggle button
       const toggleProfileBtn = document.createElement('button');
       toggleProfileBtn.className = 'btn-toggle-profile';
@@ -736,10 +747,20 @@
     // Message Request Bar setup
     if (messageRequestBar) {
       if (conv.status === 'pending') {
-        // Pending is now treated exactly like accepted, allowing direct reply and hiding request banner
-        messageRequestBar.style.display = 'none';
-        chatMessageInput.disabled = false;
-        btnSendMessage.disabled = false;
+        if (conv.initiator_id === currentUser.id) {
+          // Hide request bar, disable nothing for initiator
+          messageRequestBar.style.display = 'none';
+          chatMessageInput.disabled = false;
+          btnSendMessage.disabled = false;
+        } else {
+          // Show Accept/Ignore buttons, disable typing for receiver
+          messageRequestBar.style.display = 'block';
+          if (requestBarText) requestBarText.textContent = 'Would you like to accept this message request?';
+          document.getElementById('btn-accept-request').style.display = 'inline-flex';
+          document.getElementById('btn-ignore-request').style.display = 'inline-flex';
+          chatMessageInput.disabled = true;
+          btnSendMessage.disabled = true;
+        }
       } else if (conv.status === 'ignored') {
         messageRequestBar.style.display = 'block';
         if (requestBarText) requestBarText.textContent = '🚫 This request has been ignored. You cannot send messages.';
@@ -900,6 +921,17 @@
       chatEmptyState.style.display = 'none';
       chatActiveInterface.style.display = 'flex';
 
+      // Mobile: open chat view full-screen
+      if (messagingCard) {
+        messagingCard.classList.add('chat-open');
+      }
+      // Replace current history entry with inbox URL (so back goes to inbox first, then previous page)
+      const inboxUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({ chatOpen: false }, '', inboxUrl);
+      // Push chat-open state so browser back returns to inbox
+      const chatUrl = inboxUrl + `?new_chat_with=${profileId}`;
+      window.history.pushState({ chatOpen: true, newChatWith: profileId }, '', chatUrl);
+
       if (chatRecipientName) {
         const verifiedBadge = profile.is_verified ? `
           <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
@@ -951,6 +983,22 @@
       showToast('Error setting up chat: ' + err.message, 'error');
     }
   }
+  // --- Close Mobile Chat (WhatsApp-style back navigation) ---
+  function closeMobileChat() {
+    activeChatId = null;
+    if (messagingCard) {
+      messagingCard.classList.remove('chat-open');
+    }
+    // Reset chat interface to empty state
+    if (chatActiveInterface) chatActiveInterface.style.display = 'none';
+    if (chatEmptyState) chatEmptyState.style.display = 'flex';
+    // Clear new chat recipient if any
+    if (chatSendForm) delete chatSendForm.dataset.newChatRecipient;
+    renderConversationList();
+
+    // Navigate back in history (pops the chat-open state)
+    window.history.back();
+  }
 
   // --- Bind Event Listeners ---
   function setupEventListeners() {
@@ -984,16 +1032,24 @@
     // Back Button (Mobile layout toggle)
     if (btnChatBack) {
       btnChatBack.addEventListener('click', () => {
-        activeChatId = null;
-        if (messagingCard) {
-          messagingCard.classList.remove('chat-open');
-        }
-        
-        // Remove query param from URL
-        const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.pushState({ path: newurl }, '', newurl);
+        closeMobileChat();
       });
     }
+
+    // Browser back button support (popstate)
+    window.addEventListener('popstate', (e) => {
+      if (messagingCard && messagingCard.classList.contains('chat-open')) {
+        // We came back from a chat-open state, close the chat view
+        messagingCard.classList.remove('chat-open');
+        activeChatId = null;
+        // Reset chat interface
+        if (chatActiveInterface) chatActiveInterface.style.display = 'none';
+        if (chatEmptyState) chatEmptyState.style.display = 'flex';
+        // Clear new chat recipient if any
+        if (chatSendForm) delete chatSendForm.dataset.newChatRecipient;
+        renderConversationList();
+      }
+    });
 
     // Accept Message Request
     if (btnAcceptRequest) {
@@ -1074,12 +1130,30 @@
           const newRecipientId = chatSendForm.dataset.newChatRecipient;
 
           if (newRecipientId) {
+            // Check connections table to see if they are connected
+            let isConnected = false;
+            try {
+              const { data: connData, error: connError } = await sb
+                .from('connections')
+                .select('status')
+                .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${newRecipientId}),and(requester_id.eq.${newRecipientId},receiver_id.eq.${currentUser.id})`)
+                .maybeSingle();
+
+              if (!connError && connData && connData.status === 'accepted') {
+                isConnected = true;
+              }
+            } catch (connCheckErr) {
+              console.warn('Failed to verify connection status, defaulting to pending request:', connCheckErr);
+            }
+
+            const convStatus = isConnected ? 'accepted' : 'pending';
+
             // SCENARIO A: Creating a new direct conversation on first message
-            // 1. Create conversation record (status pending)
+            // 1. Create conversation record
             const { data: conv, error: convError } = await sb
               .from('conversations')
               .insert({
-                status: 'accepted',
+                status: convStatus,
                 initiator_id: currentUser.id
               })
               .select()
@@ -1132,7 +1206,7 @@
             delete chatSendForm.dataset.newChatRecipient;
             chatMessageInput.value = '';
             
-            showToast('Message sent!');
+            showToast(convStatus === 'accepted' ? 'Message sent!' : 'Message request sent!');
             activeChatId = conv.id;
             await loadConversations();
             selectConversation(conv.id);

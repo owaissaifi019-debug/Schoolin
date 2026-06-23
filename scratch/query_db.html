@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="out">Loading...</div>
+  <script>
+    const SUPABASE_URL = 'https://cfeeqgokzkzblddefhxn.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmZWVxZ29remt6YmxkZGVmaHhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTM1NTIsImV4cCI6MjA5NjA4OTU1Mn0.vzeLfLLeOajdsUaE__jvs_VoxzbvmX0j7p3GVAa26lI';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const profileId = 'c00a1de8-9d83-447a-91cc-8ebd1a5e697d';
+
+    async function run() {
+      try {
+        const { data: profile } = await sb.from('profiles').select('*').eq('id', profileId).maybeSingle();
+        const { count: posts } = await sb.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', profileId);
+        const { count: events } = await sb.from('event_registrations').select('*', { count: 'exact', head: true }).eq('student_id', profileId);
+        const { count: follows } = await sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profileId);
+        const { count: connections } = await sb.from('connections').select('*', { count: 'exact', head: true }).eq('status', 'accepted').or(`requester_id.eq.${profileId},receiver_id.eq.${profileId}`);
+        
+        let school = null;
+        if (profile && profile.school_id) {
+          const { data } = await sb.from('schools').select('*').eq('id', profile.school_id).maybeSingle();
+          school = data;
+        }
+
+        document.getElementById('out').innerHTML = JSON.stringify({
+          profile,
+          posts,
+          events,
+          follows,
+          connections,
+          school
+        }, null, 2);
+      } catch (e) {
+        document.getElementById('out').textContent = e.toString();
+      }
+    }
+    run();
+  </script>
+</body>
+</html>

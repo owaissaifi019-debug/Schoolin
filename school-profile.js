@@ -1719,12 +1719,25 @@ function showToast(message, type = 'success') {
         }
 
         const sb = window.CampusLink.supabase;
+        const auth = window.CampusLink.auth;
+        
+        let conversationStatus = 'pending';
+        if (auth && currentUser) {
+          try {
+            const profile = await auth.getProfile(currentUser.id);
+            if (profile && profile.school_id === dbSchool.id) {
+              conversationStatus = 'accepted';
+            }
+          } catch (profileErr) {
+            console.warn('Error verifying school membership for inquiry:', profileErr);
+          }
+        }
         
         // 1. Create a conversation
         const { data: conv, error: convError } = await sb
           .from('conversations')
           .insert({
-            status: 'accepted',
+            status: conversationStatus,
             initiator_id: currentUser.id,
             school_id: dbSchool.id,
             inquiry_type: inquiryType
