@@ -64,7 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
             logoLetter: s.logo_letter || s.name.charAt(0).toUpperCase(),
             colorClass: s.color_class || 'bg-gradient-1',
             eventsCount: s.events_count || 0,
-            verificationBadge: s.verification_badge || 'none'
+            verificationBadge: s.verification_badge || 'none',
+            logoUrl: s.logo_url || null,
+            coverUrl: s.cover_url || null
           }));
         } else {
           schools = DEFAULT_SCHOOLS;
@@ -204,13 +206,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'school-card-item';
       card.innerHTML = `
-        <div class="school-card-banner-bg ${school.colorClass}">
-          <div class="school-logo-overlap dt-only">${school.logoLetter}</div>
+        <div class="school-card-banner-bg ${school.colorClass}" style="${school.coverUrl ? `background-image: url('${school.coverUrl}'); background-size: cover; background-position: center;` : ''}">
+          <div class="school-logo-overlap dt-only" style="${school.logoUrl ? `background-image: url('${school.logoUrl}'); background-size: cover; background-position: center; font-size: 0; color: transparent; border: 1px solid var(--border-color);` : ''}">${school.logoUrl ? '' : school.logoLetter}</div>
         </div>
         <div class="school-card-content">
           <!-- Mobile Specific inline School Identity -->
           <div class="school-mobile-identity">
-            <div class="school-mobile-logo-box ${school.colorClass}">${school.logoLetter}</div>
+            <div class="school-mobile-logo-box ${school.colorClass}" style="${school.logoUrl ? `background-image: url('${school.logoUrl}'); background-size: cover; background-position: center; font-size: 0; color: transparent; border: 1px solid var(--border-color);` : ''}">${school.logoUrl ? '' : school.logoLetter}</div>
             <div class="school-mobile-info">
               <h3 class="school-mobile-name"><a href="school-profile.html?id=${school.id}">${school.name}</a>${badgeHtml}</h3>
               <div class="school-mobile-meta">

@@ -695,6 +695,38 @@
                 </div>
               </div>
               
+              <div class="dash-form-row upload-row" style="margin-top: 16px; margin-bottom: 24px; display: flex; gap: 24px; flex-wrap: wrap;">
+                <!-- Logo Upload -->
+                <div class="dash-form-group" style="flex: 1; min-width: 250px;">
+                  <label style="font-weight: 600; font-size: 0.88rem; color: var(--text-main); margin-bottom: 8px; display: block;">School Logo (Recommended: Square Image)</label>
+                  <div style="display: flex; align-items: center; gap: 16px;">
+                    <div id="dashboard-logo-preview" class="logo-preview-box" style="width: 60px; height: 60px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; background-color: var(--bg-light); background-size: cover; background-position: center; color: var(--primary);">
+                      S
+                    </div>
+                    <div style="flex-grow: 1;">
+                      <input type="file" id="input-upload-logo" accept="image/*" style="display: none;">
+                      <button type="button" class="btn btn-secondary" onclick="document.getElementById('input-upload-logo').click()" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm);">Upload Logo</button>
+                      <p style="margin: 4px 0 0 0; font-size: 0.72rem; color: var(--text-muted);">Max size: 2MB. Format: PNG, JPG.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Cover Photo Upload -->
+                <div class="dash-form-group" style="flex: 1; min-width: 250px;">
+                  <label style="font-weight: 600; font-size: 0.88rem; color: var(--text-main); margin-bottom: 8px; display: block;">Cover Photo (Recommended: Wide Banner)</label>
+                  <div style="display: flex; align-items: center; gap: 16px;">
+                    <div id="dashboard-cover-preview" class="cover-preview-box" style="width: 120px; height: 60px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; background-color: var(--bg-light); background-size: cover; background-position: center; color: var(--text-muted);">
+                      No Banner
+                    </div>
+                    <div style="flex-grow: 1;">
+                      <input type="file" id="input-upload-cover" accept="image/*" style="display: none;">
+                      <button type="button" class="btn btn-secondary" onclick="document.getElementById('input-upload-cover').click()" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm);">Upload Cover</button>
+                      <p style="margin: 4px 0 0 0; font-size: 0.72rem; color: var(--text-muted);">Max size: 2MB. Format: PNG, JPG.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="dash-form-row">
                 <div class="dash-form-group full-width">
                   <label for="profile-about">About / School History</label>

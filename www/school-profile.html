@@ -571,6 +571,36 @@
               <input type="text" id="edit-sch-logo-letter" maxlength="1" placeholder="e.g. D" style="text-transform: uppercase;">
             </div>
           </div>
+
+          <div class="form-row" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+            <!-- Logo Upload -->
+            <div class="form-group col-6">
+              <label style="font-weight: 600; font-size: 0.88rem; color: var(--text-main); margin-bottom: 8px; display: block;">School Logo (Recommended: Square)</label>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div id="edit-sch-logo-preview" style="width: 50px; height: 50px; border-radius: 6px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700; background-color: var(--bg-light); background-size: cover; background-position: center; color: var(--primary);">
+                  D
+                </div>
+                <div>
+                  <input type="file" id="edit-sch-upload-logo" accept="image/*" style="display: none;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('edit-sch-upload-logo').click()" style="padding: 6px 12px; font-size: 0.75rem;">Upload Logo</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cover Upload -->
+            <div class="form-group col-6">
+              <label style="font-weight: 600; font-size: 0.88rem; color: var(--text-main); margin-bottom: 8px; display: block;">Cover Photo (Recommended: Banner)</label>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div id="edit-sch-cover-preview" style="width: 80px; height: 50px; border-radius: 6px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; background-color: var(--bg-light); background-size: cover; background-position: center; color: var(--text-muted);">
+                  No Banner
+                </div>
+                <div>
+                  <input type="file" id="edit-sch-upload-cover" accept="image/*" style="display: none;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('edit-sch-upload-cover').click()" style="padding: 6px 12px; font-size: 0.75rem;">Upload Cover</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Tab 3: Achievements -->

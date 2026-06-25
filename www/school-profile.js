@@ -338,6 +338,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Build currentProfile from the fetched school record
+        console.log('[DEBUG] Received school object:', dbSchool);
+        console.log('[DEBUG] logo_url:', dbSchool?.logo_url, '| cover_url:', dbSchool?.cover_url);
         if (dbSchool) {
           let description = dbSchool.about || 'Verified academic partner school.';
           let schoolAchievements = [
@@ -370,6 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
             est: dbSchool.est_year || '1995',
             size: dbSchool.campus_size || '10 Acres',
             logoLetter: dbSchool.logo_letter || dbSchool.name.charAt(0).toUpperCase(),
+            logoUrl: dbSchool.logo_url || '',
+            coverUrl: dbSchool.cover_url || '',
             colorClass: dbSchool.color_class || 'color-1',
             about: description,
             achievements: schoolAchievements,
@@ -484,10 +488,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const logo = document.getElementById('profile-logo');
     
     if (banner) {
-      banner.className = `profile-banner ${currentProfile.colorClass}`;
+      if (currentProfile.coverUrl) {
+        banner.className = 'profile-banner';
+        banner.style.backgroundImage = `url('${currentProfile.coverUrl}')`;
+        banner.style.display = 'block';
+      } else {
+        banner.className = `profile-banner ${currentProfile.colorClass}`;
+        banner.style.backgroundImage = '';
+        banner.style.display = 'none';
+      }
     }
     if (logo) {
-      logo.textContent = currentProfile.logoLetter;
+      if (currentProfile.logoUrl) {
+        logo.style.backgroundImage = `url('${currentProfile.logoUrl}')`;
+        logo.style.backgroundSize = 'cover';
+        logo.style.backgroundPosition = 'center';
+        logo.style.border = '4px solid var(--white)';
+        logo.textContent = '';
+      } else {
+        logo.style.backgroundImage = '';
+        logo.textContent = currentProfile.logoLetter;
+      }
     }
 
     // Name & Badges
@@ -1207,6 +1228,8 @@ function showToast(message, type = 'success') {
 
     let tempAchievements = [];
     let tempHighlights = [];
+    let tempLogoUrl = dbSchool.logo_url || '';
+    let tempCoverUrl = dbSchool.cover_url || '';
 
     function renderEditAchievements() {
       const listEl = document.getElementById('sch-achievements-editable-list');
@@ -1433,6 +1456,32 @@ function showToast(message, type = 'success') {
       renderEditAchievements();
       renderEditHighlights();
 
+      // Initialize logo/cover previews
+      tempLogoUrl = dbSchool.logo_url || '';
+      tempCoverUrl = dbSchool.cover_url || '';
+
+      const editLogoPreview = document.getElementById('edit-sch-logo-preview');
+      if (editLogoPreview) {
+        if (tempLogoUrl) {
+          editLogoPreview.style.backgroundImage = `url('${tempLogoUrl}')`;
+          editLogoPreview.textContent = '';
+        } else {
+          editLogoPreview.style.backgroundImage = '';
+          editLogoPreview.textContent = dbSchool.logo_letter || (dbSchool.name ? dbSchool.name.charAt(0).toUpperCase() : '');
+        }
+      }
+
+      const editCoverPreview = document.getElementById('edit-sch-cover-preview');
+      if (editCoverPreview) {
+        if (tempCoverUrl) {
+          editCoverPreview.style.backgroundImage = `url('${tempCoverUrl}')`;
+          editCoverPreview.textContent = '';
+        } else {
+          editCoverPreview.style.backgroundImage = '';
+          editCoverPreview.textContent = 'No Banner';
+        }
+      }
+
       modal.classList.add('active');
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
@@ -1447,6 +1496,148 @@ function showToast(message, type = 'success') {
         }, 150);
       }
     });
+
+    // Upload Change Listeners for logo and cover in edit modal
+    const uploadLogoInput = document.getElementById('edit-sch-upload-logo');
+    const uploadCoverInput = document.getElementById('edit-sch-upload-cover');
+
+    if (uploadLogoInput) {
+      uploadLogoInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+          showToast('Logo image must be smaller than 2MB.', 'error');
+          uploadLogoInput.value = '';
+          return;
+        }
+
+        showToast('Uploading logo...', 'info');
+
+        const supabase = window.CampusLink && window.CampusLink.supabase;
+        console.log('[UPLOAD-DEBUG] Profile modal logo upload started. supabase:', !!supabase, '| dbSchool.id:', dbSchool.id);
+        if (supabase && dbSchool.id && dbSchool.id.length > 8) {
+          try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `${dbSchool.id}/${fileName}`;
+            console.log('[UPLOAD-DEBUG] Profile logo filePath:', filePath);
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('school-logos')
+              .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+              });
+
+            console.log('[UPLOAD-DEBUG] Profile logo storage upload result:', { uploadData, uploadError });
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage.from('school-logos').getPublicUrl(filePath);
+            const publicUrl = urlData?.publicUrl;
+            console.log('[UPLOAD-DEBUG] Profile logo publicUrl:', publicUrl);
+
+            if (!publicUrl) throw new Error('Failed to get public URL');
+
+            tempLogoUrl = publicUrl;
+            
+            const editLogoPreview = document.getElementById('edit-sch-logo-preview');
+            if (editLogoPreview) {
+              editLogoPreview.style.backgroundImage = `url('${publicUrl}')`;
+              editLogoPreview.textContent = '';
+            }
+
+            showToast('Logo uploaded successfully!');
+          } catch (err) {
+            console.error('Logo upload failed:', err);
+            showToast('Failed to upload logo: ' + err.message, 'error');
+          }
+        } else {
+          // Local fallback (base64)
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            tempLogoUrl = event.target.result;
+            const editLogoPreview = document.getElementById('edit-sch-logo-preview');
+            if (editLogoPreview) {
+              editLogoPreview.style.backgroundImage = `url('${tempLogoUrl}')`;
+              editLogoPreview.textContent = '';
+            }
+            showToast('Logo updated (local state)!');
+          };
+          reader.readAsDataURL(file);
+        }
+        uploadLogoInput.value = '';
+      });
+    }
+
+    if (uploadCoverInput) {
+      uploadCoverInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+          showToast('Cover photo must be smaller than 2MB.', 'error');
+          uploadCoverInput.value = '';
+          return;
+        }
+
+        showToast('Uploading cover banner...', 'info');
+
+        const supabase = window.CampusLink && window.CampusLink.supabase;
+        console.log('[UPLOAD-DEBUG] Profile modal cover upload started. supabase:', !!supabase, '| dbSchool.id:', dbSchool.id);
+        if (supabase && dbSchool.id && dbSchool.id.length > 8) {
+          try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `${dbSchool.id}/${fileName}`;
+            console.log('[UPLOAD-DEBUG] Profile cover filePath:', filePath);
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('school-covers')
+              .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+              });
+
+            console.log('[UPLOAD-DEBUG] Profile cover storage upload result:', { uploadData, uploadError });
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage.from('school-covers').getPublicUrl(filePath);
+            const publicUrl = urlData?.publicUrl;
+            console.log('[UPLOAD-DEBUG] Profile cover publicUrl:', publicUrl);
+
+            if (!publicUrl) throw new Error('Failed to get public URL');
+
+            tempCoverUrl = publicUrl;
+
+            const editCoverPreview = document.getElementById('edit-sch-cover-preview');
+            if (editCoverPreview) {
+              editCoverPreview.style.backgroundImage = `url('${publicUrl}')`;
+              editCoverPreview.textContent = '';
+            }
+
+            showToast('Cover banner uploaded successfully!');
+          } catch (err) {
+            console.error('Cover upload failed:', err);
+            showToast('Failed to upload cover banner: ' + err.message, 'error');
+          }
+        } else {
+          // Local fallback (base64)
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            tempCoverUrl = event.target.result;
+            const editCoverPreview = document.getElementById('edit-sch-cover-preview');
+            if (editCoverPreview) {
+              editCoverPreview.style.backgroundImage = `url('${tempCoverUrl}')`;
+              editCoverPreview.textContent = '';
+            }
+            showToast('Cover banner updated (local state)!');
+          };
+          reader.readAsDataURL(file);
+        }
+        uploadCoverInput.value = '';
+      });
+    }
 
     // Close modal
     const closeModal = () => {
@@ -1513,15 +1704,22 @@ function showToast(message, type = 'success') {
           campus_size: document.getElementById('edit-sch-size').value.trim() || null,
           logo_letter: document.getElementById('edit-sch-logo-letter').value.trim().toUpperCase() || null,
           color_class: document.getElementById('edit-sch-color-class').value,
+          logo_url: tempLogoUrl || null,
+          cover_url: tempCoverUrl || null,
           about: aboutJSON
         };
 
+        console.log('[UPLOAD-DEBUG] Form submit updateData:', updateData);
+        console.log('[UPLOAD-DEBUG] tempLogoUrl:', tempLogoUrl, '| tempCoverUrl:', tempCoverUrl);
+
         try {
-          const { error } = await supabase
+          const { data: saveData, error } = await supabase
             .from('schools')
             .update(updateData)
-            .eq('id', dbSchool.id);
+            .eq('id', dbSchool.id)
+            .select();
 
+          console.log('[UPLOAD-DEBUG] Form submit DB result:', { saveData, error, schoolId: dbSchool.id });
           if (error) throw error;
 
           showToast('School profile updated successfully!');

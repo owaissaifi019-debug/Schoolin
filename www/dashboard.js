@@ -123,6 +123,8 @@ document.addEventListener('DOMContentLoaded', async () => {
               state: school.state || '',
               board: school.board || '',
               logoLetter: school.logo_letter || school.name.charAt(0).toUpperCase(),
+              logoUrl: school.logo_url || '',
+              coverUrl: school.cover_url || '',
               about: school.about || ''
             };
             saveState('campuslink_profile', profile);
@@ -264,6 +266,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     state: "",
     board: "",
     logoLetter: "L",
+    logoUrl: "",
+    coverUrl: "",
     about: ""
   };
 
@@ -350,7 +354,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Update Profile Header ---
   function renderProfileHeader() {
-    if (avatarLetter) avatarLetter.textContent = profile.logoLetter || profile.name.charAt(0);
+    if (avatarLetter) {
+      if (profile.logoUrl) {
+        avatarLetter.style.backgroundImage = `url('${profile.logoUrl}')`;
+        avatarLetter.style.backgroundSize = 'cover';
+        avatarLetter.style.backgroundPosition = 'center';
+        avatarLetter.textContent = '';
+      } else {
+        avatarLetter.style.backgroundImage = '';
+        avatarLetter.textContent = profile.logoLetter || profile.name.charAt(0);
+      }
+    }
     if (usernameText) usernameText.textContent = profile.name;
     if (userboardText) userboardText.textContent = `${profile.board} Board • ${profile.city}`;
 
@@ -1599,12 +1613,213 @@ document.addEventListener('DOMContentLoaded', async () => {
   function populateProfileForm() {
     if (!profileForm) return;
     
-    document.getElementById('profile-school-name').value = profile.name;
-    document.getElementById('profile-city').value = profile.city;
-    document.getElementById('profile-state').value = profile.state;
-    document.getElementById('profile-board').value = profile.board;
-    document.getElementById('profile-logo-char').value = profile.logoLetter;
-    document.getElementById('profile-about').value = profile.about;
+    document.getElementById('profile-school-name').value = profile.name || '';
+    document.getElementById('profile-city').value = profile.city || '';
+    document.getElementById('profile-state').value = profile.state || '';
+    document.getElementById('profile-board').value = profile.board || 'CBSE';
+    document.getElementById('profile-logo-char').value = profile.logoLetter || '';
+    document.getElementById('profile-about').value = profile.about || '';
+
+    // Update previews
+    const logoPreview = document.getElementById('dashboard-logo-preview');
+    if (logoPreview) {
+      if (profile.logoUrl) {
+        logoPreview.style.backgroundImage = `url('${profile.logoUrl}')`;
+        logoPreview.textContent = '';
+      } else {
+        logoPreview.style.backgroundImage = '';
+        logoPreview.textContent = profile.logoLetter || (profile.name ? profile.name.charAt(0).toUpperCase() : '');
+      }
+    }
+
+    const coverPreview = document.getElementById('dashboard-cover-preview');
+    if (coverPreview) {
+      if (profile.coverUrl) {
+        coverPreview.style.backgroundImage = `url('${profile.coverUrl}')`;
+        coverPreview.textContent = '';
+      } else {
+        coverPreview.style.backgroundImage = '';
+        coverPreview.textContent = 'No Banner';
+      }
+    }
+  }
+
+  // --- School Logo and Cover Upload Listeners ---
+  const inputUploadLogo = document.getElementById('input-upload-logo');
+  const inputUploadCover = document.getElementById('input-upload-cover');
+
+  if (inputUploadLogo) {
+    inputUploadLogo.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Size restriction (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Logo image must be smaller than 2MB.', 'error');
+        inputUploadLogo.value = '';
+        return;
+      }
+
+      showToast('Uploading logo...', 'info');
+
+      console.log('[UPLOAD-DEBUG] Logo upload started. supabase:', !!supabase, '| profile.id:', profile.id, '| profile.id.length:', profile.id?.length);
+      if (supabase && profile.id && profile.id.length > 8) {
+        try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `${profile.id}/${fileName}`;
+          console.log('[UPLOAD-DEBUG] Logo filePath:', filePath);
+
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('school-logos')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          console.log('[UPLOAD-DEBUG] Logo storage upload result:', { uploadData, uploadError });
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = supabase.storage.from('school-logos').getPublicUrl(filePath);
+          const publicUrl = urlData?.publicUrl;
+          console.log('[UPLOAD-DEBUG] Logo publicUrl:', publicUrl);
+
+          if (!publicUrl) throw new Error('Failed to get public URL');
+
+          // Update database
+          const { data: dbData, error: dbError } = await supabase.from('schools')
+            .update({ logo_url: publicUrl })
+            .eq('id', profile.id)
+            .select();
+
+          console.log('[UPLOAD-DEBUG] Logo DB update result:', { dbData, dbError, schoolId: profile.id });
+          if (dbError) throw dbError;
+
+          // Update local state
+          profile.logoUrl = publicUrl;
+          saveState('campuslink_profile', profile);
+
+          // Update preview UI
+          const logoPreview = document.getElementById('dashboard-logo-preview');
+          if (logoPreview) {
+            logoPreview.style.backgroundImage = `url('${publicUrl}')`;
+            logoPreview.textContent = '';
+          }
+
+          showToast('School logo updated successfully!');
+          renderProfileHeader();
+        } catch (err) {
+          console.error('Logo upload failed:', err);
+          showToast('Failed to upload logo: ' + err.message, 'error');
+        }
+      } else {
+        // Local fallback (base64)
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64Url = event.target.result;
+          profile.logoUrl = base64Url;
+          saveState('campuslink_profile', profile);
+
+          const logoPreview = document.getElementById('dashboard-logo-preview');
+          if (logoPreview) {
+            logoPreview.style.backgroundImage = `url('${base64Url}')`;
+            logoPreview.textContent = '';
+          }
+
+          showToast('School logo updated (local state)!');
+          renderProfileHeader();
+        };
+        reader.readAsDataURL(file);
+      }
+      inputUploadLogo.value = '';
+    });
+  }
+
+  if (inputUploadCover) {
+    inputUploadCover.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Size restriction (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Cover photo must be smaller than 2MB.', 'error');
+        inputUploadCover.value = '';
+        return;
+      }
+
+      showToast('Uploading cover banner...', 'info');
+
+      console.log('[UPLOAD-DEBUG] Cover upload started. supabase:', !!supabase, '| profile.id:', profile.id, '| profile.id.length:', profile.id?.length);
+      if (supabase && profile.id && profile.id.length > 8) {
+        try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `${profile.id}/${fileName}`;
+          console.log('[UPLOAD-DEBUG] Cover filePath:', filePath);
+
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('school-covers')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          console.log('[UPLOAD-DEBUG] Cover storage upload result:', { uploadData, uploadError });
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = supabase.storage.from('school-covers').getPublicUrl(filePath);
+          const publicUrl = urlData?.publicUrl;
+          console.log('[UPLOAD-DEBUG] Cover publicUrl:', publicUrl);
+
+          if (!publicUrl) throw new Error('Failed to get public URL');
+
+          // Update database
+          const { data: dbData, error: dbError } = await supabase.from('schools')
+            .update({ cover_url: publicUrl })
+            .eq('id', profile.id)
+            .select();
+
+          console.log('[UPLOAD-DEBUG] Cover DB update result:', { dbData, dbError, schoolId: profile.id });
+          if (dbError) throw dbError;
+
+          // Update local state
+          profile.coverUrl = publicUrl;
+          saveState('campuslink_profile', profile);
+
+          // Update preview UI
+          const coverPreview = document.getElementById('dashboard-cover-preview');
+          if (coverPreview) {
+            coverPreview.style.backgroundImage = `url('${publicUrl}')`;
+            coverPreview.textContent = '';
+          }
+
+          showToast('Cover banner updated successfully!');
+          renderProfileHeader();
+        } catch (err) {
+          console.error('Cover upload failed:', err);
+          showToast('Failed to upload cover banner: ' + err.message, 'error');
+        }
+      } else {
+        // Local fallback (base64)
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64Url = event.target.result;
+          profile.coverUrl = base64Url;
+          saveState('campuslink_profile', profile);
+
+          const coverPreview = document.getElementById('dashboard-cover-preview');
+          if (coverPreview) {
+            coverPreview.style.backgroundImage = `url('${base64Url}')`;
+            coverPreview.textContent = '';
+          }
+
+          showToast('Cover banner updated (local state)!');
+          renderProfileHeader();
+        };
+        reader.readAsDataURL(file);
+      }
+      inputUploadCover.value = '';
+    });
   }
 
   if (profileForm) {
@@ -1626,7 +1841,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             state,
             board,
             logo_letter: logoLetter,
-            about
+            about,
+            logo_url: profile.logoUrl || null,
+            cover_url: profile.coverUrl || null
           }).eq('id', profile.id);
           
           if (error) throw error;
@@ -1638,13 +1855,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       } else {
         const oldName = profile.name;
-        // Update school profile
+        // Update school profile while preserving logo/cover URLs
         profile = {
+          id: profile.id,
           name,
           city,
           state,
           board,
           logoLetter,
+          logoUrl: profile.logoUrl || '',
+          coverUrl: profile.coverUrl || '',
           about
         };
         saveState('campuslink_profile', profile);

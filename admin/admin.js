@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const postsTbody = document.getElementById('posts-tbody');
   const postSearch = document.getElementById('post-search');
   const postTypeFilter = document.getElementById('post-type-filter');
+  const postTopicFilter = document.getElementById('post-topic-filter');
 
   // Contact Requests Table & Filters
   const contactRequestsTbody = document.getElementById('contact-requests-tbody');
@@ -1805,19 +1806,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       const authorName = post.profiles ? (post.profiles.full_name || 'Anonymous') : 'Anonymous';
       const authorEmail = post.profiles ? (post.profiles.email || '') : '';
       
-      let typeBadgeClass = 'status-approved';
-      if (post.post_type === 'achievement') typeBadgeClass = 'status-approved';
-      if (post.post_type === 'competition_win') typeBadgeClass = 'status-approved';
-      if (post.post_type === 'project') typeBadgeClass = 'status-pending';
-      if (post.post_type === 'event') typeBadgeClass = 'status-approved';
+      let typeBadgeClass = 'status-pending';
+      if (post.post_type === 'school') typeBadgeClass = 'status-approved';
 
-      const typeLabels = {
-        achievement: 'Achievement',
-        competition_win: 'Competition Win',
-        project: 'Project',
-        event: 'Event'
-      };
-      const typeLabel = typeLabels[post.post_type] || post.post_type;
+      const typeLabel = post.post_type === 'school' ? 'School' : 'Personal';
+      const topicLabel = post.topic || 'general';
 
       tr.innerHTML = `
         <td style="padding: 12px 16px;">
@@ -1827,7 +1820,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td style="padding: 12px 16px; max-width: 380px;">
           <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.4; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;" title="${post.content.replace(/"/g, '&quot;')}">${post.content}</div>
         </td>
-        <td style="padding: 12px 16px;"><span class="badge-status ${typeBadgeClass}" style="font-weight:700;">${typeLabel.toUpperCase()}</span></td>
+        <td style="padding: 12px 16px;">
+          <span class="badge-status ${typeBadgeClass}" style="font-weight:700; margin-right:4px;">${typeLabel.toUpperCase()}</span>
+          <span class="badge-status" style="font-weight:700; background-color:#F3F4F6; color:#374151; border:1px solid #D1D5DB; text-transform: uppercase; font-size: 0.72rem; padding: 4px 8px; border-radius: 4px; display:inline-block;">${topicLabel}</span>
+        </td>
         <td style="padding: 12px 16px; font-size: 0.85rem; color: var(--text-muted);">${createdDate}</td>
         <td style="padding: 12px 16px;">
           <button class="btn btn-secondary btn-delete-post" data-id="${post.id}" data-author-id="${post.user_id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Delete</button>
@@ -1854,6 +1850,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!postSearch || !postTypeFilter) return;
     const query = postSearch.value.trim().toLowerCase();
     const type = postTypeFilter.value;
+    const topic = postTopicFilter ? postTopicFilter.value : '';
 
     const filtered = allPosts.filter(post => {
       const authorName = post.profiles ? (post.profiles.full_name || '').toLowerCase() : '';
@@ -1862,8 +1859,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       const matchesSearch = authorName.includes(query) || authorEmail.includes(query) || content.includes(query);
       const matchesType = !type || post.post_type === type;
+      const matchesTopic = !topic || (post.topic || 'general') === topic;
       
-      return matchesSearch && matchesType;
+      return matchesSearch && matchesType && matchesTopic;
     });
 
     renderPosts(filtered);
@@ -1997,6 +1995,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Bind post filters
   if (postSearch) postSearch.addEventListener('input', filterPosts);
   if (postTypeFilter) postTypeFilter.addEventListener('change', filterPosts);
+  if (postTopicFilter) postTopicFilter.addEventListener('change', filterPosts);
 
   // ── Platform Analytics Rendering ─────────────────────────
   function renderAnalytics() {
@@ -2099,20 +2098,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 3. Post Activity breakdown
-    const postTypeCounts = {
+    const postTopicCounts = {
+      general: 0,
       achievement: 0,
       competition_win: 0,
       project: 0,
       event: 0
     };
     allPosts.forEach(p => {
-      if (postTypeCounts[p.post_type] !== undefined) {
-        postTypeCounts[p.post_type]++;
+      const topic = p.topic || 'general';
+      if (postTopicCounts[topic] !== undefined) {
+        postTopicCounts[topic]++;
       }
     });
 
     const totalPosts = allPosts.length || 1;
     const postLabels = {
+      general: 'General',
       achievement: 'Achievements',
       competition_win: 'Competitions',
       project: 'Projects',
@@ -2120,6 +2122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     
     const postColors = {
+      general: '#64748B',
       achievement: 'var(--primary)',
       competition_win: '#8B5CF6',
       project: '#EC4899',
@@ -2129,8 +2132,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const postsBox = document.getElementById('analytics-posts-box');
     if (postsBox) {
       postsBox.innerHTML = '';
-      Object.keys(postTypeCounts).forEach(type => {
-        const count = postTypeCounts[type];
+      Object.keys(postTopicCounts).forEach(type => {
+        const count = postTopicCounts[type];
         const percent = Math.round((count / totalPosts) * 100);
         const bar = document.createElement('div');
         bar.style.display = 'flex';

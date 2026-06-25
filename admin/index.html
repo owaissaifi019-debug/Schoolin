@@ -680,10 +680,16 @@
               <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 0;">Feed Posts Registry</h3>
               
               <!-- Search & Filters -->
-              <div style="display: flex; gap: 12px; flex-grow: 1; justify-content: flex-end; max-width: 500px; width: 100%;">
+              <div style="display: flex; gap: 12px; flex-grow: 1; justify-content: flex-end; max-width: 600px; width: 100%;">
                 <input type="text" id="post-search" placeholder="Search by content or author..." style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; flex-grow: 1; outline: none;">
-                <select id="post-type-filter" style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: white; cursor: pointer; max-width: 180px;">
+                <select id="post-type-filter" style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: white; cursor: pointer; max-width: 140px;">
                   <option value="">All Types</option>
+                  <option value="personal">Personal</option>
+                  <option value="school">School</option>
+                </select>
+                <select id="post-topic-filter" style="padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: white; cursor: pointer; max-width: 140px;">
+                  <option value="">All Topics</option>
+                  <option value="general">General</option>
                   <option value="achievement">Achievement</option>
                   <option value="competition_win">Competition Win</option>
                   <option value="project">Project</option>

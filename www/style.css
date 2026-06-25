@@ -2469,7 +2469,12 @@ footer {
 
 /* --- School Profile Page Styles --- */
 .profile-banner {
-  display: none; /* hide banner and remove gap */
+  display: none; /* hidden by default; JS shows it when cover_url exists */
+  width: 100%;
+  height: 220px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .profile-banner.color-1 { background: linear-gradient(135deg, #0066C8, #00A3FF); }
@@ -11936,10 +11941,10 @@ html, body {
   .post-author-name {
     font-size: 0.88rem !important;
     font-weight: 700 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: 140px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    max-width: none !important;
   }
 
   .post-author-role {
@@ -12454,7 +12459,7 @@ html, body {
   .post-header {
     position: relative !important;
     display: flex !important;
-    align-items: center !important;
+    align-items: flex-start !important;
     gap: 10px !important;
     margin-bottom: 12px !important;
   }
@@ -12476,10 +12481,10 @@ html, body {
     font-size: 0.88rem !important;
     font-weight: 700 !important;
     color: var(--text-main) !important;
-    max-width: 140px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    max-width: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
   }
 
   /* More Menu Ellipsis button placement */
@@ -12954,7 +12959,7 @@ html, body {
     padding-right: 28px !important;
   }
   .post-author-name {
-    max-width: 90px !important;
+    max-width: none !important;
   }
   .btn-post-action span {
     font-size: 0.7rem !important;
@@ -15246,6 +15251,121 @@ header:not(.mobile-fixed-header):not(.dashboard-top-bar) .container {
     flex: 1 1 100% !important;
   }
 }
+
+/* --- School Posting System Additions --- */
+.topic-filter-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+.topic-filter-container::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
+.topic-filter-pill {
+  background-color: var(--light-bg, #f3f4f6);
+  border: 1px solid var(--border-color, #e5e7eb);
+  color: var(--text-main, #374151);
+  padding: 6px 14px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.topic-filter-pill:hover {
+  background-color: var(--border-color, #e5e7eb);
+}
+
+.topic-filter-pill.active {
+  background-color: var(--primary-light, rgba(79, 70, 229, 0.1));
+  color: var(--primary, #4f46e5);
+  border-color: var(--primary, #4f46e5);
+  font-weight: 600;
+}
+
+.feed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.feed-badge.official-school-badge {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.feed-badge.school-rep-badge {
+  background-color: rgba(79, 70, 229, 0.1);
+  color: #4f46e5;
+  border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+/* Modal styling adjustment */
+.post-modal-content select#post-as-select {
+  margin-top: 4px;
+}
+
+/* --- Post Interaction System Improvements --- */
+.btn-like.liked svg {
+  fill: var(--primary) !important;
+  stroke: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+.btn-like.liked span {
+  color: var(--primary) !important;
+  font-weight: 700 !important;
+}
+
+@keyframes like-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.like-animated svg {
+  animation: like-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Share Post Modal fallback styling */
+#share-post-modal .modal-content {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+}
+
+.share-option-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.share-option-btn:hover {
+  background-color: var(--light-bg);
+}
+
 
 
 

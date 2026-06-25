@@ -631,6 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentUser = null;
   let currentUserProfile = null;
   let activeFeedFilter = 'all';
+  let activeTopicFilter = 'all';
   let userFollows = { users: new Set(), schools: new Set() };
 
   // Relative time helper
@@ -656,15 +657,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   }
 
-  // Post type details helper
-  function getPostTypeDisplay(type) {
+  // Topic details helper (returns null for general)
+  function getTopicDisplay(topic) {
     const displays = {
       achievement: { label: 'Achievement', icon: '🏆', class: 'type-achievement' },
       competition_win: { label: 'Competition Win', icon: '🥇', class: 'type-win' },
       project: { label: 'Project', icon: '💻', class: 'type-project' },
       event: { label: 'Event', icon: '📅', class: 'type-event' }
     };
-    return displays[type] || { label: 'Post', icon: '📝', class: '' };
+    return displays[topic] || null;
   }
 
   // Initialise Social Feed elements and load data
@@ -695,10 +696,27 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTrendingEventsWidget();
     loadFeaturedSchoolsWidget();
     setupFeedFilterTabs();
+    setupTopicFilters();
     loadFeed();
 
     // Setup Create Post Form Submit
     initCreatePostForm();
+  }
+
+  // Setup topic filter pills listeners
+  function setupTopicFilters() {
+    const container = document.getElementById('topic-filter-container');
+    if (!container) return;
+
+    const pills = container.querySelectorAll('.topic-filter-pill');
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        pills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        activeTopicFilter = pill.getAttribute('data-topic');
+        loadFeed();
+      });
+    });
   }
 
   // Load user follow details
@@ -971,10 +989,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Create Post Modal Controls
   const createPostModal = document.getElementById('create-post-modal');
   const createPostForm = document.getElementById('create-post-form');
-  const postTypeSelect = document.getElementById('post-type-select');
+  const postTopicSelect = document.getElementById('post-topic-select');
   const postContentTextarea = document.getElementById('post-content-textarea');
 
-  function openCreatePostModal(type = 'achievement') {
+  function openCreatePostModal(topic = 'achievement') {
     if (!createPostModal) return;
     
     // Reset mode back to create
@@ -993,12 +1011,53 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     
-    if (postTypeSelect) {
-      postTypeSelect.value = type;
+    if (postTopicSelect) {
+      postTopicSelect.value = topic;
     }
     if (postContentTextarea) {
       postContentTextarea.value = '';
     }
+
+    // Dynamic Post As dropdown configuration based on user roles
+    const postAsGroup = document.getElementById('post-as-group');
+    const postAsSelect = document.getElementById('post-as-select');
+    
+    if (postAsGroup && postAsSelect && currentUserProfile) {
+      const p = currentUserProfile;
+      const role = p.platform_role;
+      const type = p.user_type;
+      
+      if (role === 'super_admin') {
+        postAsGroup.style.display = 'block';
+        postAsSelect.innerHTML = `
+          <option value="personal">👤 Personal Post (as Admin)</option>
+          <option value="school">🏫 Official School Account</option>
+        `;
+        postAsSelect.value = 'personal';
+      } else if (type === 'school_representative' && role === 'user') {
+        postAsGroup.style.display = 'block';
+        postAsSelect.innerHTML = `
+          <option value="personal">👤 School Representative</option>
+          <option value="school">🏫 Official School Account</option>
+        `;
+        postAsSelect.value = 'personal';
+      } else if (role === 'school_admin') {
+        postAsGroup.style.display = 'none';
+        postAsSelect.innerHTML = `
+          <option value="school">🏫 Official School Account</option>
+        `;
+        postAsSelect.value = 'school';
+      } else {
+        postAsGroup.style.display = 'none';
+        postAsSelect.innerHTML = `
+          <option value="personal">👤 Personal Post</option>
+        `;
+        postAsSelect.value = 'personal';
+      }
+    } else if (postAsGroup) {
+      postAsGroup.style.display = 'none';
+    }
+
     createPostModal.classList.add('active');
     document.body.style.overflow = 'hidden';
   }
@@ -1103,6 +1162,120 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- Share Post Modal Controls ---
+  const sharePostModal = document.getElementById('share-post-modal');
+  let activeSharePostId = null;
+  let activeShareUrl = '';
+
+  function openShareModal(postId, shareUrl) {
+    if (!sharePostModal) return;
+    activeSharePostId = postId;
+    activeShareUrl = shareUrl;
+    sharePostModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSharePostModal() {
+    if (!sharePostModal) return;
+    sharePostModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+  }
+
+  const shareModalClose = document.getElementById('share-modal-close');
+  if (shareModalClose) shareModalClose.addEventListener('click', closeSharePostModal);
+  if (sharePostModal) {
+    sharePostModal.addEventListener('click', (e) => {
+      if (e.target === sharePostModal) closeSharePostModal();
+    });
+  }
+
+  // Setup click listeners for sharing channels
+  const shareToWhatsappBtn = document.getElementById('share-to-whatsapp');
+  const shareToTelegramBtn = document.getElementById('share-to-telegram');
+  const shareToEmailBtn = document.getElementById('share-to-email');
+  const shareCopyLinkBtn = document.getElementById('share-copy-link');
+
+  if (shareToWhatsappBtn) {
+    shareToWhatsappBtn.addEventListener('click', () => {
+      if (!activeShareUrl) return;
+      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent('Check out this post on CampusLink: ' + activeShareUrl)}`;
+      window.open(url, '_blank');
+      incrementShareCount(activeSharePostId);
+      closeSharePostModal();
+    });
+  }
+
+  if (shareToTelegramBtn) {
+    shareToTelegramBtn.addEventListener('click', () => {
+      if (!activeShareUrl) return;
+      const url = `https://t.me/share/url?url=${encodeURIComponent(activeShareUrl)}&text=${encodeURIComponent('Check out this post on CampusLink')}`;
+      window.open(url, '_blank');
+      incrementShareCount(activeSharePostId);
+      closeSharePostModal();
+    });
+  }
+
+  if (shareToEmailBtn) {
+    shareToEmailBtn.addEventListener('click', () => {
+      if (!activeShareUrl) return;
+      const url = `mailto:?subject=${encodeURIComponent('CampusLink Post')}&body=${encodeURIComponent('Check out this post on CampusLink: ' + activeShareUrl)}`;
+      window.location.href = url;
+      incrementShareCount(activeSharePostId);
+      closeSharePostModal();
+    });
+  }
+
+  if (shareCopyLinkBtn) {
+    shareCopyLinkBtn.addEventListener('click', () => {
+      if (!activeShareUrl) return;
+      fallbackCopy(activeShareUrl);
+      incrementShareCount(activeSharePostId);
+      closeSharePostModal();
+    });
+  }
+
+  function incrementShareCount(postId) {
+    if (!postId) return;
+    const card = document.querySelector(`.btn-share-post[data-post-id="${postId}"]`)?.closest('.feed-post-card');
+    if (card) {
+      const sharesNumSpan = card.querySelector('.shares-number');
+      if (sharesNumSpan) {
+        let currentShares = parseInt(sharesNumSpan.textContent, 10) || 0;
+        sharesNumSpan.textContent = currentShares + 1;
+      }
+    }
+  }
+
+  function fallbackCopy(url) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        showToast('Post link copied to clipboard!');
+      }).catch(err => {
+        console.error('Failed to copy post link:', err);
+        executeTextareaCopy(url);
+      });
+    } else {
+      executeTextareaCopy(url);
+    }
+  }
+
+  function executeTextareaCopy(url) {
+    const textarea = document.createElement('textarea');
+    textarea.value = url;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      showToast('Post link copied to clipboard!');
+    } catch (copyErr) {
+      console.error('Failed fallback copy:', copyErr);
+      alert('Failed to copy link: ' + url);
+    }
+    document.body.removeChild(textarea);
+  }
+
   // Form Submit Handler
   function initCreatePostForm() {
     if (!createPostForm) return;
@@ -1121,19 +1294,43 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
 
       const mode = newForm.getAttribute('data-mode') || 'create';
+      const submitBtn = newForm.querySelector('#post-submit-btn');
+
       if (mode === 'edit') {
         const editPostId = newForm.getAttribute('data-post-id');
         const newContent = newForm.querySelector('#post-content-textarea').value.trim();
         if (!newContent) return;
 
-        // Perform visual update
-        const card = document.querySelector(`.feed-post-card[data-post-id="${editPostId}"]`);
-        if (card) {
-          const textEl = card.querySelector('.post-text-content');
-          if (textEl) textEl.textContent = newContent;
+        try {
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+          }
+          const { error } = await supabase
+            .from('posts')
+            .update({ content: newContent })
+            .eq('id', editPostId);
+
+          if (error) throw error;
+
+          // Perform visual update
+          const card = document.querySelector(`.feed-post-card[data-post-id="${editPostId}"]`);
+          if (card) {
+            const textEl = card.querySelector('.post-text-content');
+            if (textEl) textEl.textContent = newContent;
+          }
+          closeCreatePostModal();
+          showToast('Post updated successfully!');
+          loadFeed();
+        } catch (err) {
+          console.error('Error updating post:', err);
+          alert('Failed to update post: ' + err.message);
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Post';
+          }
         }
-        closeCreatePostModal();
-        showToast('Post updated successfully!');
         return;
       }
 
@@ -1142,9 +1339,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const type = newForm.querySelector('#post-type-select').value;
+      const postAsSelect = newForm.querySelector('#post-as-select');
+      const postTopicSelectEl = newForm.querySelector('#post-topic-select');
+      
+      const type = postAsSelect ? postAsSelect.value : 'personal';
+      const topic = postTopicSelectEl ? postTopicSelectEl.value : 'general';
       const content = newForm.querySelector('#post-content-textarea').value.trim();
-      const submitBtn = newForm.querySelector('#post-submit-btn');
 
       if (!content) return;
 
@@ -1154,13 +1354,20 @@ document.addEventListener('DOMContentLoaded', () => {
           submitBtn.textContent = 'Posting...';
         }
 
+        const insertData = {
+          user_id: currentUser.id,
+          content: content,
+          post_type: type,
+          topic: topic
+        };
+
+        if (type === 'school' && currentUserProfile && currentUserProfile.school_id) {
+          insertData.school_id = currentUserProfile.school_id;
+        }
+
         const { error } = await supabase
           .from('posts')
-          .insert({
-            user_id: currentUser.id,
-            content: content,
-            post_type: type
-          });
+          .insert(insertData);
 
         if (error) throw error;
 
@@ -1211,7 +1418,10 @@ document.addEventListener('DOMContentLoaded', () => {
             is_verified,
             schools (
               name,
-              verification_badge
+              verification_badge,
+              logo_url,
+              logo_letter,
+              color_class
             )
           ),
           post_likes (
@@ -1230,7 +1440,10 @@ document.addEventListener('DOMContentLoaded', () => {
               school_id,
               schools (
                 name,
-                verification_badge
+                verification_badge,
+                logo_url,
+                logo_letter,
+                color_class
               )
             )
           )
@@ -1257,6 +1470,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
+      // Filter by topic
+      if (activeTopicFilter && activeTopicFilter !== 'all') {
+        filteredPosts = filteredPosts.filter(post => {
+          const postTopic = post.topic || 'general';
+          return postTopic === activeTopicFilter;
+        });
+      }
+
       // Check for specific post in URL query params
       const urlParams = new URLSearchParams(window.location.search);
       const targetPostId = urlParams.get('post');
@@ -1277,7 +1498,10 @@ document.addEventListener('DOMContentLoaded', () => {
                   is_verified,
                   schools (
                     name,
-                    verification_badge
+                    verification_badge,
+                    logo_url,
+                    logo_letter,
+                    color_class
                   )
                 ),
                 post_likes (
@@ -1296,7 +1520,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     school_id,
                     schools (
                       name,
-                      verification_badge
+                      verification_badge,
+                      logo_url,
+                      logo_letter,
+                      color_class
                     )
                   )
                 )
@@ -1375,16 +1602,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     posts.forEach(post => {
       const p = post.profiles || {};
-      const authorName = p.full_name || 'Anonymous User';
-      const authorInitials = getInitials(authorName);
-      const authorAvatar = p.avatar_url
+      let authorName = p.full_name || 'Anonymous User';
+      let authorInitials = getInitials(authorName);
+      let authorAvatar = p.avatar_url
         ? `<img src="${p.avatar_url}" alt="${authorName}" class="post-avatar-img">`
         : `<div class="post-avatar-placeholder">${authorInitials}</div>`;
 
       // Profile url
       let profileUrl = `profile.html?id=${post.user_id}`;
-      if ((p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id) {
-        profileUrl = `school-profile.html?id=${p.school_id}`;
+
+      if (post.post_type === 'school' && p.schools) {
+        const s = p.schools;
+        authorName = s.name || 'Official School';
+        authorInitials = s.logo_letter || authorName.charAt(0).toUpperCase();
+        authorAvatar = s.logo_url
+          ? `<img src="${s.logo_url}" alt="${authorName}" class="post-avatar-img">`
+          : `<div class="post-avatar-placeholder ${s.color_class || 'bg-gradient-1'}">${authorInitials}</div>`;
+        profileUrl = `school-profile.html?id=${post.school_id || p.school_id}`;
+      } else {
+        if ((p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id) {
+          profileUrl = `school-profile.html?id=${p.school_id}`;
+        }
       }
 
       // Headline construction
@@ -1397,7 +1635,18 @@ document.addEventListener('DOMContentLoaded', () => {
         headlineText += ` at ${schoolName}`;
       }
 
-      const typeDisplay = getPostTypeDisplay(post.post_type);
+      // Topic badge row
+      const topicDisplay = getTopicDisplay(post.topic);
+      let topicBadgeHtml = '';
+      if (topicDisplay) {
+        topicBadgeHtml = `
+          <div class="post-type-badge-row">
+            <span class="post-type-badge ${topicDisplay.class}">
+              <span class="badge-icon">${topicDisplay.icon}</span> ${topicDisplay.label}
+            </span>
+          </div>
+        `;
+      }
 
       // Check if current user liked
       const likes = post.post_likes || [];
@@ -1408,6 +1657,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const sortedComments = [...comments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
       const isAuthorSchool = (p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id;
+      
+      // Standard blue/gold verification badge
       let badgeHtml = '';
       if (isAuthorSchool && p.schools?.verification_badge === 'gold') {
         badgeHtml = `
@@ -1421,6 +1672,16 @@ document.addEventListener('DOMContentLoaded', () => {
             <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
             <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
           </svg>`;
+      }
+
+      // Add Official School Post or School Representative badges
+      let roleBadgeHtml = '';
+      if (post.post_type === 'personal' && p.user_type === 'school_representative') {
+        roleBadgeHtml = `
+          <span class="feed-badge school-rep-badge">
+            👤 School Representative
+          </span>
+        `;
       }
 
       const card = document.createElement('article');
@@ -1465,7 +1726,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </a>
           <div class="post-meta-info">
             <div class="post-author-row">
-              <a href="${profileUrl}" class="post-author-name">${authorName}${badgeHtml}</a>
+              <a href="${profileUrl}" class="post-author-name">${authorName}${badgeHtml}${roleBadgeHtml}</a>
             </div>
             <div class="post-meta-sub-row">
               <span class="post-author-headline">${headlineText}</span>
@@ -1496,11 +1757,7 @@ document.addEventListener('DOMContentLoaded', () => {
           `}
         </div>
 
-        <div class="post-type-badge-row">
-          <span class="post-type-badge ${typeDisplay.class}">
-            <span class="badge-icon">${typeDisplay.icon}</span> ${typeDisplay.label}
-          </span>
-        </div>
+        ${topicBadgeHtml}
 
         <div class="post-body">
           <p class="post-text-content">${post.content}</p>
@@ -1509,13 +1766,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="post-stats-row">
           <div class="post-stats-left">
-            <div class="reactions-icons-group" style="display: ${likes.length > 0 ? 'flex' : 'none'};">
-              <span class="reaction-badge-icon react-like">👍</span>
-              <span class="reaction-badge-icon react-heart">❤️</span>
-              <span class="reaction-badge-icon react-clap">👏</span>
-            </div>
             <span class="likes-count-display">
-              ${likes.length > 0 ? '<span class="likes-emoji">👍</span> ' : ''}<span class="likes-number">${likes.length}</span> ${likes.length === 1 ? 'like' : 'likes'}
+              <span class="likes-number">${likes.length}</span> ${likes.length === 1 ? 'like' : 'likes'}
             </span>
           </div>
           <div class="post-stats-right">
@@ -1598,13 +1850,15 @@ document.addEventListener('DOMContentLoaded', () => {
                   <svg class="verified-badge verified-badge-sm gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
                     <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
                     <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
-                  </svg>`;
+                  </svg>
+                `;
               } else if ((isCommenterSchool && cp.schools?.verification_badge === 'blue') || (!isCommenterSchool && cp.is_verified)) {
                 commenterBadge = `
                   <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="${isCommenterSchool ? 'Verified School' : 'Verified Profile'}" style="display:inline-block; vertical-align:middle; margin-left:4px;">
                     <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
                     <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
-                  </svg>`;
+                  </svg>
+                `;
               }
 
               return `
@@ -1856,37 +2110,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bind Share clicks
     feedContainer.querySelectorAll('.btn-share-post').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const postId = e.currentTarget.getAttribute('data-post-id');
         const shareUrl = `${window.location.origin}${window.location.pathname}?post=${postId}`;
-        
-        function fallbackCopy(url) {
-          const textarea = document.createElement('textarea');
-          textarea.value = url;
-          textarea.style.position = 'fixed';
-          textarea.style.left = '-9999px';
-          document.body.appendChild(textarea);
-          textarea.select();
-          try {
-            document.execCommand('copy');
-            showToast('Post link copied to clipboard!');
-          } catch (copyErr) {
-            console.error('Failed fallback copy:', copyErr);
-            alert('Failed to copy link: ' + url);
-          }
-          document.body.removeChild(textarea);
-        }
 
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(shareUrl).then(() => {
-            showToast('Post link copied to clipboard!');
-          }).catch(err => {
-            console.error('Failed to copy post link:', err);
-            fallbackCopy(shareUrl);
-          });
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: 'CampusLink Post',
+              text: 'Check out this post on CampusLink:',
+              url: shareUrl
+            });
+            incrementShareCount(postId);
+            showToast('Post shared successfully!');
+          } catch (err) {
+            console.log('Web share cancelled or failed:', err);
+          }
         } else {
-          fallbackCopy(shareUrl);
+          openShareModal(postId, shareUrl);
         }
       });
     });
@@ -1912,17 +2154,17 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       btn.classList.add('liked');
       currentLikes++;
+      
+      // Trigger pop animation
+      btn.classList.remove('like-animated');
+      void btn.offsetWidth; // Force reflow
+      btn.classList.add('like-animated');
+      setTimeout(() => {
+        btn.classList.remove('like-animated');
+      }, 300);
     }
     likeNumSpan.textContent = currentLikes;
-    const reactionsGroup = btn.closest('.feed-post-card').querySelector('.reactions-icons-group');
-    if (reactionsGroup) {
-      reactionsGroup.style.display = currentLikes > 0 ? 'flex' : 'none';
-    }
-    if (currentLikes > 0) {
-      likesCountDisplay.innerHTML = `<span class="likes-emoji">👍</span> <span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
-    } else {
-      likesCountDisplay.innerHTML = `<span class="likes-number">${currentLikes}</span> likes`;
-    }
+    likesCountDisplay.innerHTML = `<span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
 
     try {
       if (isLiked) {
@@ -1981,15 +2223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLikes = Math.max(0, currentLikes - 1);
       }
       likeNumSpan.textContent = currentLikes;
-      const reactionsGroupFallback = btn.closest('.feed-post-card').querySelector('.reactions-icons-group');
-      if (reactionsGroupFallback) {
-        reactionsGroupFallback.style.display = currentLikes > 0 ? 'flex' : 'none';
-      }
-      if (currentLikes > 0) {
-        likesCountDisplay.innerHTML = `<span class="likes-emoji">👍</span> <span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
-      } else {
-        likesCountDisplay.innerHTML = `<span class="likes-number">${currentLikes}</span> likes`;
-      }
+      likesCountDisplay.innerHTML = `<span class="likes-number">${currentLikes}</span> ${currentLikes === 1 ? 'like' : 'likes'}`;
       alert('Could not update like. Please try again.');
     }
   }

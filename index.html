@@ -229,6 +229,16 @@
           <button class="feed-filter-tab filter-tab-mobile-only" data-filter="opportunities" style="display: none; background: none; border: none; font-size: 0.95rem; font-weight: 500; padding: 8px 16px; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all 0.2s; outline: none; margin-bottom: -2px;">Opportunities</button>
         </div>
 
+        <!-- Topic Filter Pills -->
+        <div class="topic-filter-container" id="topic-filter-container">
+          <button class="topic-filter-pill active" data-topic="all">All Topics</button>
+          <button class="topic-filter-pill" data-topic="general">General</button>
+          <button class="topic-filter-pill" data-topic="achievement">🏆 Achievements</button>
+          <button class="topic-filter-pill" data-topic="competition_win">🥇 Competition Wins</button>
+          <button class="topic-filter-pill" data-topic="project">💻 Projects</button>
+          <button class="topic-filter-pill" data-topic="event">📅 Events</button>
+        </div>
+
         <div id="social-feed" class="social-feed-list">
           <div class="feed-loading-state">
             <div class="spinner"></div>
@@ -280,10 +290,21 @@
       </div>
 
       <form id="create-post-form">
-        <div class="form-group">
-          <label for="post-type-select">Post Type</label>
+        <div class="form-group" id="post-as-group" style="display: none;">
+          <label for="post-as-select">Post As</label>
           <div class="select-wrapper">
-            <select id="post-type-select" required>
+            <select id="post-as-select">
+              <option value="personal">👤 School Representative</option>
+              <option value="school">🏫 Official School Account</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="post-topic-select">Topic</label>
+          <div class="select-wrapper">
+            <select id="post-topic-select" required>
+              <option value="general">📝 General</option>
               <option value="achievement">🏆 Achievement</option>
               <option value="competition_win">🥇 Competition Win</option>
               <option value="project">💻 Project</option>
@@ -341,6 +362,35 @@
           <button type="submit" class="btn btn-primary" id="report-submit-btn" style="padding: 10px 24px; background-color: var(--accent); border-color: var(--accent);">Submit Report</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- --- Share Post Modal --- -->
+  <div class="modal-overlay" id="share-post-modal">
+    <div class="modal-content post-modal-content" style="max-width: 400px; padding: 24px; border-radius: var(--radius-lg);">
+      <button class="modal-close-btn" id="share-modal-close" aria-label="Close modal">&times;</button>
+      <div class="modal-title" style="margin-bottom: 16px;">
+        <h3>Share Post</h3>
+        <p>Choose a platform to share this post:</p>
+      </div>
+      <div class="share-options-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 8px; text-align: center;">
+        <button class="share-option-btn" id="share-to-whatsapp">
+          <div style="font-size: 2rem; margin-bottom: 4px;">💬</div>
+          <span style="font-size: 0.75rem; font-weight: 600; display: block;">WhatsApp</span>
+        </button>
+        <button class="share-option-btn" id="share-to-telegram">
+          <div style="font-size: 2rem; margin-bottom: 4px;">✈️</div>
+          <span style="font-size: 0.75rem; font-weight: 600; display: block;">Telegram</span>
+        </button>
+        <button class="share-option-btn" id="share-to-email">
+          <div style="font-size: 2rem; margin-bottom: 4px;">✉️</div>
+          <span style="font-size: 0.75rem; font-weight: 600; display: block;">Email</span>
+        </button>
+        <button class="share-option-btn" id="share-copy-link">
+          <div style="font-size: 2rem; margin-bottom: 4px;">🔗</div>
+          <span style="font-size: 0.75rem; font-weight: 600; display: block;">Copy Link</span>
+        </button>
+      </div>
     </div>
   </div>
 
