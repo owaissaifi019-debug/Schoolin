@@ -283,6 +283,41 @@
             </div>
           </div>
 
+          <!-- Suggested Connections Section (New premium tabbed interface) -->
+          <div class="suggested-connections-card" id="suggested-connections-card" style="display: none;">
+            <div class="suggested-header-row">
+              <h2 class="suggested-section-title">Suggested Connections</h2>
+              
+              <!-- Tab controls -->
+              <div class="suggested-tabs-container">
+                <button class="suggested-tab active" data-tab="pymk">
+                  People You May Know
+                </button>
+                <button class="suggested-tab" data-tab="mutuals">
+                  Mutual Connections
+                </button>
+                <button class="suggested-tab" data-tab="school">
+                  From Your School
+                </button>
+                <button class="suggested-tab" data-tab="active">
+                  Recently Active
+                </button>
+              </div>
+            </div>
+            
+            <!-- Cards list / grid container -->
+            <div class="suggested-grid" id="suggested-grid">
+              <!-- Dynamically populated cards -->
+            </div>
+            
+            <!-- Empty state for suggested connections -->
+            <div class="suggested-empty-state" id="suggested-empty-state" style="display: none;">
+              <div class="empty-icon">👥</div>
+              <h3>No suggestions in this category</h3>
+              <p>Try exploring other categories or updating your profile to get better recommendations.</p>
+            </div>
+          </div>
+
           <!-- Suggestions Section (People You May Know) -->
           <div class="suggestions-card">
             <div class="suggestions-header-row">

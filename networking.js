@@ -42,6 +42,10 @@
   let showAllInvitations = false;
   let suggestedSchools = [];
   let profilesError = null;
+  let allAcceptedConnections = [];
+  let connectionGraph = new Map();
+  let currentUserProfile = null;
+  let activeSuggestedTab = 'pymk';
 
   const DEFAULT_SCHOOLS = [
     { id: '1', name: "Delhi Public School, RK Puram", city: "New Delhi", logoLetter: "D", colorClass: "bg-gradient-1", verificationBadge: 'blue' },
@@ -59,8 +63,22 @@
     await Promise.all([
       loadProfiles(),
       loadFollows(),
-      loadConnections()
+      loadConnections(),
+      loadAllAcceptedConnections()
     ]);
+
+    if (currentUser) {
+      currentUserProfile = allProfiles.find(p => p.id === currentUser.id);
+      if (!currentUserProfile && auth && supabase) {
+        currentUserProfile = await auth.getProfile(currentUser.id);
+        if (currentUserProfile && currentUserProfile.school_id) {
+          const { data: sch } = await supabase.from('schools').select('name, city').eq('id', currentUserProfile.school_id).maybeSingle();
+          if (sch) {
+            currentUserProfile.schools = sch;
+          }
+        }
+      }
+    }
 
     // Show connections tab if logged in
     const connTab = document.getElementById('net-tab-connections');
@@ -74,6 +92,10 @@
 
     renderPendingRequests();
     renderCards();
+    if (currentUser) {
+      initSuggestedTabs();
+      renderSuggestedConnections();
+    }
     setupEventListeners();
   }
 
@@ -323,6 +345,329 @@
     } catch (err) {
       console.warn('Error loading connections:', err);
     }
+  }
+
+  async function loadAllAcceptedConnections() {
+    if (!supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('connections')
+        .select('*')
+        .eq('status', 'accepted');
+      if (error) throw error;
+      
+      allAcceptedConnections = data || [];
+      
+      connectionGraph.clear();
+      allAcceptedConnections.forEach(c => {
+        const u1 = c.requester_id;
+        const u2 = c.receiver_id;
+        
+        if (!connectionGraph.has(u1)) connectionGraph.set(u1, new Set());
+        if (!connectionGraph.has(u2)) connectionGraph.set(u2, new Set());
+        
+        connectionGraph.get(u1).add(u2);
+        connectionGraph.get(u2).add(u1);
+      });
+    } catch (err) {
+      console.warn('Error loading all accepted connections:', err);
+    }
+  }
+
+  function getMutualConnections(targetUserId) {
+    if (!currentUser) return [];
+    const myConns = connectionGraph.get(currentUser.id) || new Set();
+    const theirConns = connectionGraph.get(targetUserId) || new Set();
+    
+    const mutuals = [];
+    myConns.forEach(uid => {
+      if (theirConns.has(uid)) {
+        mutuals.push(uid);
+      }
+    });
+    return mutuals;
+  }
+
+  function formatMutualConnections(mutualIds) {
+    if (!mutualIds || mutualIds.length === 0) return '';
+    
+    const names = [];
+    mutualIds.forEach(id => {
+      const p = allProfiles.find(prof => prof.id === id);
+      if (p && p.full_name) {
+        const firstName = p.full_name.trim().split(' ')[0];
+        names.push(firstName);
+      }
+    });
+    
+    const count = names.length;
+    if (count === 0) return '';
+    if (count === 1) return `Connected with ${names[0]}`;
+    if (count === 2) return `Connected with ${names[0]} and ${names[1]}`;
+    if (count === 3) return `Connected with ${names[0]}, ${names[1]} and ${names[2]}`;
+    return `Connected with ${names[0]}, ${names[1]} and ${count - 2} others`;
+  }
+
+  function calculateSuggestionScore(p) {
+    if (!currentUser || !currentUserProfile) return 0;
+    if (p.id === currentUser.id) return -99999;
+    
+    let score = 0;
+    
+    // 1. Same school
+    if (currentUserProfile.school_id && p.school_id === currentUserProfile.school_id) {
+      score += 1000;
+    }
+    
+    // 2. Mutual connections
+    const mutuals = getMutualConnections(p.id);
+    if (mutuals.length > 0) {
+      score += 100 * mutuals.length;
+    }
+    
+    // 3. Same class/grade
+    if (currentUserProfile.class && p.class && currentUserProfile.class.trim().toLowerCase() === p.class.trim().toLowerCase()) {
+      score += 50;
+    }
+    
+    // 4. Same city
+    const myCity = currentUserProfile.schools?.city || '';
+    const theirCity = p.schools?.city || '';
+    if (myCity && theirCity && myCity.toLowerCase() === theirCity.toLowerCase()) {
+      score += 20;
+    }
+    
+    // 5. Shared clubs/events (skills and sports)
+    const mySkills = currentUserProfile.skills || [];
+    const theirSkills = p.skills || [];
+    const sharedSkills = mySkills.filter(s => theirSkills.includes(s));
+    
+    const mySports = currentUserProfile.sports || [];
+    const theirSports = p.sports || [];
+    const sharedSports = mySports.filter(s => theirSports.includes(s));
+    
+    const sharedCount = sharedSkills.length + sharedSports.length;
+    if (sharedCount > 0) {
+      score += 10 * sharedCount;
+    }
+    
+    return score;
+  }
+
+  function createSuggestedPersonCard(p) {
+    const card = document.createElement('div');
+    card.className = 'net-card net-person-card suggested-person-card';
+    card.dataset.userId = p.id;
+
+    const displayName = p.full_name || 'CampusLink User';
+    const verifiedBadge = p.is_verified ? `
+      <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
+        <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+        <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+      </svg>
+    ` : '';
+    const initial = displayName.charAt(0).toUpperCase();
+    const typeLabel = auth ? auth.getUserTypeLabel(p.user_type) : p.user_type;
+    const schoolName = p.schools?.name || '';
+    const bio = p.bio || '';
+    const isFollowing = userFollows.users.has(p.id);
+    const conn = userConnections.get(p.id);
+    let connectBtnHtml = '';
+
+    if (currentUser && currentUser.id !== p.id) {
+      if (conn) {
+        if (conn.status === 'accepted') {
+          connectBtnHtml = `
+            <button class="btn-connected" data-connect-id="${p.id}" data-connect-status="accepted" title="Connected - Click to disconnect">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Connected</span>
+            </button>
+          `;
+        } else if (conn.status === 'pending') {
+          if (conn.requester_id === currentUser.id) {
+            connectBtnHtml = `
+              <button class="btn-requested" disabled>
+                <span>✓ Requested</span>
+              </button>
+            `;
+          } else {
+            connectBtnHtml = `
+              <button class="btn-connect" data-connect-id="${p.id}" data-connect-status="pending_received" title="Accept Request">
+                <span>Accept</span>
+              </button>
+            `;
+          }
+        } else if (conn.status === 'rejected') {
+          connectBtnHtml = `
+            <button class="btn-connect" data-connect-id="${p.id}" data-connect-status="none" title="Connect">
+              <span>Connect</span>
+            </button>
+          `;
+        }
+      } else {
+        connectBtnHtml = `
+          <button class="btn-connect" data-connect-id="${p.id}" data-connect-status="none" title="Connect">
+            <span>Connect</span>
+          </button>
+        `;
+      }
+    } else if (!currentUser) {
+      connectBtnHtml = `
+        <button class="btn-connect" data-connect-id="${p.id}" data-connect-status="none" title="Connect">
+          <span>Connect</span>
+        </button>
+      `;
+    }
+
+    const followBtnHtml = currentUser && currentUser.id !== p.id ? `
+      <button class="btn ${isFollowing ? 'btn-following' : 'btn-follow'}" 
+              data-follow-type="user" data-follow-id="${p.id}" title="${isFollowing ? 'Following' : 'Follow'}">
+        ${isFollowing ? 'Following' : 'Follow'}
+      </button>
+    ` : '';
+
+    const avatarHtml = p.avatar_url
+      ? `<img src="${p.avatar_url}" alt="${displayName}" class="net-card-avatar-img" onerror="this.onerror=null; this.outerHTML='<div class=&quot;net-card-avatar-placeholder&quot;>${initial}</div>';">`
+      : `<div class="net-card-avatar-placeholder">${initial}</div>`;
+
+    const profileUrl = `profile.html?id=${p.id}`;
+
+    // Calculate mutual connections
+    const mutualIds = getMutualConnections(p.id);
+    const mutualCount = mutualIds.length;
+    const mutualNamesText = formatMutualConnections(mutualIds);
+
+    let mutualHtml = '';
+    if (mutualCount > 0) {
+      mutualHtml = `
+        <div class="suggested-card-mutual-info">
+          <span class="suggested-mutual-count">${mutualCount} mutual connection${mutualCount !== 1 ? 's' : ''}</span>
+          <span class="suggested-mutual-names">${mutualNamesText}</span>
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <button class="net-card-close-btn" aria-label="Dismiss suggestion" onclick="this.closest('.net-card').remove()">&times;</button>
+      <div class="net-card-banner ${getColorClass(p.user_type)}"></div>
+      <div class="net-card-body">
+        <a href="${profileUrl}" class="net-card-avatar-link">
+          ${avatarHtml}
+        </a>
+        <a href="${profileUrl}" class="net-card-name">${displayName}${verifiedBadge}</a>
+        <span class="net-card-headline">${bio ? truncate(bio, 55) : `${typeLabel}${schoolName ? ` at ${schoolName}` : ''}`}</span>
+        ${schoolName ? `<span class="suggested-card-school">🏫 ${schoolName}</span>` : ''}
+        ${mutualHtml}
+      </div>
+      <div class="net-card-footer">
+        ${currentUser && currentUser.id !== p.id ? `
+          <div class="suggestion-actions-row">
+            ${connectBtnHtml}
+            ${followBtnHtml}
+          </div>
+        ` : `
+          <a href="${profileUrl}" class="btn btn-secondary btn-view-profile" style="width: 100%; text-align: center;">View Profile</a>
+        `}
+      </div>
+    `;
+
+    return card;
+  }
+
+  function renderSuggestedConnections() {
+    const cardContainer = document.getElementById('suggested-connections-card');
+    const grid = document.getElementById('suggested-grid');
+    const emptyState = document.getElementById('suggested-empty-state');
+    
+    if (!cardContainer || !grid) return;
+
+    if (!currentUser) {
+      cardContainer.style.display = 'none';
+      return;
+    }
+
+    cardContainer.style.display = 'block';
+    grid.innerHTML = '';
+
+    // Filter out: self, accepted connections, pending connections
+    let pool = allProfiles.filter(p => {
+      if (p.id === currentUser.id) return false;
+      const conn = userConnections.get(p.id);
+      if (conn && (conn.status === 'accepted' || conn.status === 'pending')) return false;
+      return true;
+    });
+
+    let suggestions = [];
+
+    if (activeSuggestedTab === 'pymk') {
+      // Sort by suggestion score descending
+      pool.forEach(p => {
+        p.tempScore = calculateSuggestionScore(p);
+      });
+      suggestions = pool.filter(p => p.tempScore > -9999);
+      suggestions.sort((a, b) => b.tempScore - a.tempScore);
+    } else if (activeSuggestedTab === 'mutuals') {
+      // Mutual Connections (mutual count > 0)
+      suggestions = pool.filter(p => {
+        const mutuals = getMutualConnections(p.id);
+        p.tempMutualCount = mutuals.length;
+        return mutuals.length > 0;
+      });
+      suggestions.sort((a, b) => {
+        if (b.tempMutualCount !== a.tempMutualCount) {
+          return b.tempMutualCount - a.tempMutualCount;
+        }
+        return calculateSuggestionScore(b) - calculateSuggestionScore(a);
+      });
+    } else if (activeSuggestedTab === 'school') {
+      // From Your School (student type and matching school_id)
+      const mySchoolId = currentUserProfile?.school_id;
+      if (mySchoolId) {
+        suggestions = pool.filter(p => p.user_type === 'student' && p.school_id === mySchoolId);
+        suggestions.sort((a, b) => calculateSuggestionScore(b) - calculateSuggestionScore(a));
+      } else {
+        suggestions = [];
+      }
+    } else if (activeSuggestedTab === 'active') {
+      // Recently Active (created_at descending)
+      suggestions = [...pool];
+      suggestions.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
+        const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+        return dateB - dateA;
+      });
+    }
+
+    // Limit to top 8 suggestions
+    const displaySuggestions = suggestions.slice(0, 8);
+
+    if (displaySuggestions.length === 0) {
+      grid.style.display = 'none';
+      if (emptyState) emptyState.style.display = 'flex';
+    } else {
+      if (emptyState) emptyState.style.display = 'none';
+      grid.style.display = '';
+      
+      displaySuggestions.forEach(p => {
+        grid.appendChild(createSuggestedPersonCard(p));
+      });
+    }
+  }
+
+  function initSuggestedTabs() {
+    const tabs = document.querySelectorAll('.suggested-tab');
+    tabs.forEach(tab => {
+      // Avoid duplicate listeners by removing and adding, or just replacing node clone
+      const newTab = tab.cloneNode(true);
+      tab.parentNode.replaceChild(newTab, tab);
+      
+      newTab.addEventListener('click', () => {
+        document.querySelectorAll('.suggested-tab').forEach(t => t.classList.remove('active'));
+        newTab.classList.add('active');
+        activeSuggestedTab = newTab.dataset.tab;
+        renderSuggestedConnections();
+      });
+    });
   }
 
   function renderPendingRequests() {
@@ -814,6 +1159,9 @@
       }
       renderSuggestedSchools();
       renderCards();
+      if (currentUser) {
+        renderSuggestedConnections();
+      }
     }
   }
 
@@ -927,8 +1275,12 @@
       }
 
       await loadConnections();
+      await loadAllAcceptedConnections();
       renderPendingRequests();
       renderCards();
+      if (currentUser) {
+        renderSuggestedConnections();
+      }
       if (typeof renderSearchOverlayResults === 'function') {
         renderSearchOverlayResults();
       }
@@ -996,6 +1348,25 @@
     const grid = document.getElementById('net-card-grid');
     if (grid) {
       grid.addEventListener('click', (e) => {
+        const followBtn = e.target.closest('.btn-follow, .btn-following');
+        if (followBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFollow(followBtn);
+        }
+
+        const connectBtn = e.target.closest('.btn-connect, .btn-requested, .btn-connected');
+        if (connectBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleConnection(connectBtn);
+        }
+      });
+    }
+    // Suggested Grid Follow & Connect delegation
+    const suggestedGrid = document.getElementById('suggested-grid');
+    if (suggestedGrid) {
+      suggestedGrid.addEventListener('click', (e) => {
         const followBtn = e.target.closest('.btn-follow, .btn-following');
         if (followBtn) {
           e.preventDefault();
@@ -1093,8 +1464,12 @@
 
           // Reload and update
           await loadConnections();
+          await loadAllAcceptedConnections();
           renderPendingRequests();
           renderCards();
+          if (currentUser) {
+            renderSuggestedConnections();
+          }
         } catch (err) {
           console.error('Pending request action failed:', err);
           showToast(err.message || 'Action failed', 'error');
