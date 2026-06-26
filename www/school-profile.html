@@ -165,7 +165,12 @@
   <!-- --- Profile Header Summary Card --- -->
   <div class="profile-header-wrapper">
     <div class="container">
-      <div class="profile-header-box">
+      <div class="profile-header-box" style="position: relative;">
+        <!-- Circular Edit School Button (Only visible to school owner/admin) -->
+        <button class="btn btn-primary" id="btn-edit-school" style="display: none; position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 50%; padding: 0; align-items: center; justify-content: center; background: #e8effe; color: #0066c8; border: none; z-index: 10;" title="Edit School">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="14 2 18 6 7 17 3 17 3 13 14 2"/></svg>
+        </button>
+
         <div class="profile-meta-group">
           <!-- School logo overlap -->
           <div class="profile-logo-circle" id="profile-logo">...</div>
@@ -183,49 +188,46 @@
                 </svg>
                 <span id="profile-location-text">Loading...</span>
               </span>
-              <span class="meta-separator" style="color: var(--text-muted);">•</span>
-              <span id="profile-followers-count" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">... followers</span>
+            </div>
+            
+            <div class="profile-stats-row">
+              <div class="profile-stat-item" id="stat-posts" style="cursor: pointer;">
+                <span class="stat-value" id="profile-posts-count">0</span>
+                <span class="stat-label">Posts</span>
+              </div>
+              <div class="profile-stat-item" id="stat-events" style="cursor: pointer;">
+                <span class="stat-value" id="profile-events-count">0</span>
+                <span class="stat-label">Events</span>
+              </div>
+              <div class="profile-stat-item" id="stat-followers" style="cursor: pointer;">
+                <span class="stat-value" id="profile-followers-count-stat">0</span>
+                <span class="stat-label">Followers</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="profile-actions" id="profile-actions-area" style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn btn-secondary" id="btn-join-school" style="padding: 10px 20px; font-size: 0.9rem; transition: all 0.2s ease;">Join School</button>
-          <button class="btn btn-primary" id="btn-edit-school" style="display: none; padding: 10px 20px; font-size: 0.9rem; gap: 8px;">
-            <svg class="icon-fade" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="14 2 18 6 7 17 3 17 3 13 14 2"/></svg>
-            <span>Edit School</span>
-          </button>
-          <div class="profile-secondary-actions-row" style="display: flex; gap: 8px;">
-            <!-- Follow button for school -->
-            <button class="btn btn-follow" id="btn-follow-school" style="display: none; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; font-size: 0.9rem;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              <span>Follow</span>
-            </button>
+          <div class="profile-main-actions-row" style="display: flex; gap: 8px; width: 100%; flex-wrap: nowrap;">
+            <!-- Row 1: Join, Contact, Follow -->
+            <button class="btn btn-secondary" id="btn-join-school" style="padding: 10px 20px; font-size: 0.9rem; transition: all 0.2s ease;">Join School</button>
+            
             <button class="btn btn-primary" id="btn-contact-school" style="display: none; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; font-size: 0.9rem;">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
               <span>Contact</span>
             </button>
-            <!-- Share School Profile Button -->
-            <button class="btn btn-secondary" id="btn-share-school" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; font-size: 0.9rem;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-              <span>Share</span>
+            
+            <button class="btn btn-follow" id="btn-follow-school" style="display: none; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; font-size: 0.9rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Follow</span>
             </button>
           </div>
-        </div>
-        <!-- Admin-Only Management Action Row -->
-        <div class="profile-admin-actions-row" id="profile-admin-actions" style="display: none; width: 100%; margin-top: 12px; flex-direction: column; gap: 6px;">
-          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">School Management</div>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%;">
-            <a href="dashboard.html?tab=events" class="btn btn-secondary" style="flex: 1; min-width: 120px; font-size: 0.8rem; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 18px; text-decoration: none; border: 1px solid rgba(0, 102, 200, 0.2);">
-              <span>📅</span> Manage Events
-            </a>
-            <a href="dashboard.html?tab=admissions" class="btn btn-secondary" style="flex: 1; min-width: 120px; font-size: 0.8rem; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 18px; text-decoration: none; border: 1px solid rgba(0, 102, 200, 0.2);">
-              <span>🏫</span> Manage Admissions
-            </a>
-            <a href="dashboard.html?tab=applications" class="btn btn-secondary" style="flex: 1; min-width: 120px; font-size: 0.8rem; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 18px; text-decoration: none; border: 1px solid rgba(0, 102, 200, 0.2);">
-              <span>📄</span> Applications
-            </a>
-          </div>
+          
+          <!-- Row 2: Share -->
+          <button class="btn btn-secondary" id="btn-share-school" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; font-size: 0.9rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <span>Share</span>
+          </button>
         </div>
       </div>
     </div>
@@ -247,6 +249,9 @@
         </button>
         <button class="profile-tab-btn" data-tab="achievements">
           <span>🏆</span> Achievements
+        </button>
+        <button class="profile-tab-btn" data-tab="community">
+          <span>🏅</span> Community
         </button>
       </aside>
 
@@ -311,8 +316,37 @@
           <p style="color: var(--text-muted); margin-bottom: 24px;">
             Here are the current active opportunities, fests, workshops, and sports leagues hosted by this institution.
           </p>
-          <div class="showcase-grid" id="profile-events-grid" style="grid-template-columns: 1fr;">
-            <!-- Events rendered dynamically -->
+          
+          <div class="events-categories-stack" style="display: flex; flex-direction: column; gap: 24px; margin-top: 20px;">
+            <!-- Upcoming Events -->
+            <div class="events-group-container" id="events-upcoming-group">
+              <h3 style="font-size: 1.15rem; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-weight: 700;">
+                <span>📅</span> Upcoming Opportunities
+              </h3>
+              <div class="events-list-grid" id="events-upcoming-list" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+            
+            <!-- Ongoing Events -->
+            <div class="events-group-container" id="events-ongoing-group" style="display: none;">
+              <h3 style="font-size: 1.15rem; color: #16A34A; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-weight: 700;">
+                <span>🟢</span> Ongoing Events
+              </h3>
+              <div class="events-list-grid" id="events-ongoing-list" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Past Events -->
+            <div class="events-group-container" id="events-past-group" style="display: none;">
+              <h3 style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-weight: 700;">
+                <span>⏮️</span> Past Events
+              </h3>
+              <div class="events-list-grid" id="events-past-list" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
           </div>
         </div>
 
@@ -379,7 +413,71 @@
             <!-- Timeline elements dynamically loaded -->
           </div>
         </div>
+
+        <!-- Tab 5: Community -->
+        <div class="profile-tab-panel" id="panel-community">
+          <h2>Community Members</h2>
+          <p style="color: var(--text-muted); margin-bottom: 30px;">
+            Verified teachers, faculty, alumni, staff, and students associated with this institution.
+          </p>
+
+          <!-- Teachers & Faculty Section -->
+          <div class="cm-section" id="cm-section-faculty" style="margin-bottom: 32px; display: none;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>👨‍🏫</span> Teachers & Faculty
+            </h3>
+            <div class="cm-member-grid" id="cm-grid-faculty">
+              <!-- Dynamic member cards -->
+            </div>
+          </div>
+
+          <!-- Alumni Section -->
+          <div class="cm-section" id="cm-section-alumni" style="margin-bottom: 32px; display: none;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>🎓</span> Alumni
+            </h3>
+            <div class="cm-member-grid" id="cm-grid-alumni">
+              <!-- Dynamic member cards -->
+            </div>
+          </div>
+
+          <!-- Staff Section -->
+          <div class="cm-section" id="cm-section-staff" style="margin-bottom: 32px; display: none;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>🏅</span> Staff
+            </h3>
+            <div class="cm-member-grid" id="cm-grid-staff">
+              <!-- Dynamic member cards -->
+            </div>
+          </div>
+
+          <!-- Students Section -->
+          <div class="cm-section" id="cm-section-students" style="margin-bottom: 32px; display: none;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>📚</span> Students
+            </h3>
+            <div class="cm-member-grid" id="cm-grid-students">
+              <!-- Dynamic member cards -->
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div id="cm-empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+            <p style="font-size: 1.1rem; margin-bottom: 4px;">No community members yet.</p>
+            <p style="font-size: 0.88rem;">This school has not assigned any verified members.</p>
+          </div>
+        </div>
       </main>
+    </div>
+  </div>
+
+  <!-- --- Activity Section --- -->
+  <div class="container" id="section-activity" style="margin-top: 24px; margin-bottom: 24px;">
+    <div class="profile-section" style="background-color: var(--white); border-radius: var(--radius-md); padding: 36px; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+      <h2 class="section-title" style="font-size: 1.5rem; font-weight: 800; color: var(--dark-bg); margin-bottom: 20px;">Activity</h2>
+      <div id="school-activity-posts" class="activity-posts-list">
+        <p class="empty-section-msg" style="color: var(--text-muted); font-size: 0.95rem;">Loading updates...</p>
+      </div>
     </div>
   </div>
 
@@ -408,7 +506,6 @@
             <a href="#" class="footer-social-icon" aria-label="Instagram">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0h.003zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233 0-2.136.008-2.388.046-3.231.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045v.002zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92zm-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217zm0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334z"/>
-              </svg>
             </a>
           </div>
         </div>
@@ -770,6 +867,22 @@
           Send Message Request
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- --- Followers Modal --- -->
+  <div class="modal-overlay" id="followers-modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px; border-radius: var(--radius-lg); background-color: var(--white); box-shadow: var(--shadow-lg); padding: 24px; position: relative; display: flex; flex-direction: column; max-height: 80vh;">
+      <button class="modal-close-btn" id="followers-modal-close" aria-label="Close modal" style="font-size: 1.75rem; border: none; background: transparent; cursor: pointer; position: absolute; right: 20px; top: 15px; color: var(--text-muted);">&times;</button>
+      
+      <div class="modal-title" style="margin-bottom: 16px; text-align: center; flex-shrink: 0;">
+        <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--dark-bg); margin-bottom: 4px;">Followers</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);" id="followers-modal-subtitle">People who follow this school</p>
+      </div>
+
+      <div id="followers-list-container" style="overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 12px; padding-right: 4px;">
+        <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 20px 0;">No followers yet.</p>
+      </div>
     </div>
   </div>
 

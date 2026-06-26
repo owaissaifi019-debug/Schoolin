@@ -9,7 +9,7 @@
   <meta name="author" content="CampusLink Network">
   
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=1.4">
+  <link rel="stylesheet" href="style.css?v=2.0">
 </head>
 <body>
 
@@ -563,7 +563,7 @@
   <script src="mobile-nav.js"></script>
 
   <!-- Page JS Script -->
-  <script src="app.js?v=1.4"></script>
+  <script src="app.js?v=2.0"></script>
 
   <!-- Mobile UX Interaction Script (Toggles and Filters) -->
   <script>
@@ -668,6 +668,233 @@
         });
       }
     });
+  </script>
+  <script>
+  /* ── Standalone @Mentions for Post Editor ────────────────────────────────────
+     Completely independent. Uses window.CampusLink.supabase directly.
+     Activated by MutationObserver watching the post modal's class attribute.
+  ──────────────────────────────────────────────────────────────────────────── */
+  (function(){
+    console.log('[MentionEngine v3] Script loaded ✅');
+    function sb(){ return window.CampusLink && window.CampusLink.supabase; }
+    function ini(n){ return n?(n.split(' ').map(function(x){return x[0]||'';}).slice(0,2).join('').toUpperCase()):'?'; }
+
+    /* Approximate pixel position of caret inside element (viewport coords) */
+    function caretXY(el, pos){
+      var d=document.createElement('div'), s=window.getComputedStyle(el);
+      ['fontFamily','fontSize','fontWeight','lineHeight','letterSpacing',
+       'paddingTop','paddingRight','paddingBottom','paddingLeft',
+       'borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth',
+       'boxSizing','width'].forEach(function(p){d.style[p]=s[p];});
+      d.style.position='absolute'; d.style.visibility='hidden';
+      d.style.top='0'; d.style.left='0';
+      d.style.whiteSpace='pre-wrap'; d.style.wordWrap='break-word'; d.style.overflow='hidden';
+      d.textContent=el.value.substring(0,pos);
+      var sp=document.createElement('span');
+      sp.textContent=el.value.substring(pos)||'.';
+      d.appendChild(sp); document.body.appendChild(d);
+      var er=el.getBoundingClientRect(), dr=d.getBoundingClientRect(), sr=sp.getBoundingClientRect();
+      document.body.removeChild(d);
+      return {x:er.left+(sr.left-dr.left), y:er.top+(sr.top-dr.top)};
+    }
+
+    /* ── MentionEngine ───────────────────────────────────────────────────────── */
+    function MentionEngine(ta, onPick){
+      this.ta=ta; this.onPick=onPick;
+      this.on=false; this.tri=-1; this.dd=null; this.res=[]; this.si=0; this.tmr=null;
+      var self=this;
+      this._inp=function(){ self.inp(); };
+      this._kd =function(e){ self.kd(e); };
+      this._dc =function(e){ if(self.dd&&!self.dd.contains(e.target)&&e.target!==self.ta)self.close(); };
+      ta.addEventListener('input',  this._inp);
+      ta.addEventListener('keydown',this._kd);
+      document.addEventListener('click',this._dc,true);
+      console.log('[MentionEngine] Bound to #'+(ta.id||'textarea'));
+    }
+    MentionEngine.prototype.inp=function(){
+      var v=this.ta.value, c=this.ta.selectionStart, b=v.substring(0,c);
+      if(!this.on){
+        var la=b.lastIndexOf('@');
+        if(la!==-1&&(la===0||/[\s\n]/.test(b.charAt(la-1)))){
+          this.on=true; this.tri=la; console.log('[MentionEngine] @ detected');
+        }
+      }
+      if(this.on){
+        if(c<=this.tri){this.close();return;}
+        var q=v.substring(this.tri+1,c);
+        if(q.indexOf('\n')!==-1||q.indexOf(' ')!==-1){this.close();return;}
+        clearTimeout(this.tmr); var self=this;
+        this.tmr=setTimeout(function(){self.srch(q);},200);
+      }
+    };
+    MentionEngine.prototype.srch=function(q){
+      var self=this;
+      if(!this.on) return;
+      console.log('[MentionEngine] Searching "'+q+'"');
+      var s=sb();
+      if(!s){ console.error('[MentionEngine] supabase unavailable'); return; }
+      Promise.all([
+        s.from('profiles').select('id,full_name,avatar_url,user_type,platform_role,is_verified').or('user_type.eq.student,user_type.eq.school_representative,platform_role.eq.super_admin').ilike('full_name','%'+q+'%').limit(6),
+        s.from('schools').select('id,name,logo_url,logo_letter,color_class,verification_badge').ilike('name','%'+q+'%').limit(6)
+      ]).then(function(r){
+        if(!self.on) return;
+        var m=[];
+        (r[0].data||[]).forEach(function(p){
+          m.push({id:p.id,name:p.full_name,av:p.avatar_url,type:'user',
+            lbl:p.platform_role==='super_admin'?'Super Admin':p.user_type==='school_representative'?'School Rep':'Student',
+            vf:!!p.is_verified,badge:null,ll:null,cc:null});
+        });
+        (r[1].data||[]).forEach(function(s2){
+          m.push({id:s2.id,name:s2.name,av:s2.logo_url,type:'school',lbl:'School',
+            vf:!!(s2.verification_badge&&s2.verification_badge!=='none'),badge:s2.verification_badge,
+            ll:s2.logo_letter,cc:s2.color_class||'bg-gradient-1'});
+        });
+        var ql=q.toLowerCase();
+        m.sort(function(a,b){
+          var as=a.name.toLowerCase().startsWith(ql), bs=b.name.toLowerCase().startsWith(ql);
+          return as&&!bs?-1:!as&&bs?1:a.name.localeCompare(b.name);
+        });
+        self.res=m.slice(0,8); self.si=0;
+        console.log('[MentionEngine] Results:',self.res.length);
+        if(self.res.length>0) self.draw(); else self.closedd();
+      }).catch(function(e){ console.error('[MentionEngine] Query error:',e); });
+    };
+    MentionEngine.prototype.draw=function(){
+      if(!this.dd){
+        this.dd=document.createElement('div');
+        this.dd.className='mention-dropdown';
+        /* position:fixed ensures it's never clipped by overflow:hidden ancestors */
+        this.dd.style.cssText='position:fixed;z-index:2147483647;background:#fff;'+
+          'border:1.5px solid #cbd5e1;border-radius:12px;'+
+          'box-shadow:0 10px 32px rgba(0,0,0,0.24);'+
+          'width:290px;max-height:280px;overflow-y:auto;padding:6px 0;';
+        document.body.appendChild(this.dd);
+      }
+      var xy=caretXY(this.ta,this.tri), t=xy.y+26, l=xy.x;
+      var vw=window.innerWidth, vh=window.innerHeight;
+      if(l+290>vw-8) l=vw-298; if(l<8) l=8;
+      if(t+280>vh-8) t=xy.y-284; if(t<8) t=8;
+      this.dd.style.top=t+'px'; this.dd.style.left=l+'px';
+      this.dd.innerHTML='';
+      var self=this;
+      this.res.forEach(function(item,idx){
+        var el=document.createElement('div');
+        el.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;'+
+          'background:'+(idx===self.si?'#eff6ff':'transparent')+';transition:background 0.1s;';
+        /* Avatar */
+        var av;
+        if(item.type==='school'){
+          av=item.av?'<img src="'+item.av+'" style="width:36px;height:36px;border-radius:7px;object-fit:cover;flex-shrink:0">'
+            :'<div class="'+(item.cc||'')+'" style="width:36px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0">'+(item.ll||item.name.charAt(0))+'</div>';
+        } else {
+          av=item.av?'<img src="'+item.av+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+            :'<div style="width:36px;height:36px;border-radius:50%;background:#0066c8;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0">'+ini(item.name)+'</div>';
+        }
+        /* Badge */
+        var bdg='';
+        if(item.vf){
+          var bc=item.badge==='gold'?'#d4af37':'#0066c8';
+          bdg='<svg viewBox="0 0 22 22" fill="'+bc+'" width="13" height="13" style="flex-shrink:0;margin-left:3px;vertical-align:middle"><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z"/><path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#fff"/></svg>';
+        }
+        el.innerHTML=av+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="display:flex;align-items:center;font-weight:700;font-size:13.5px;color:#1e293b">'+
+              '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">'+item.name+'</span>'+bdg+
+            '</div>'+
+            '<div style="font-size:11.5px;color:#64748b;margin-top:1px">'+item.lbl+'</div>'+
+          '</div>';
+        el.addEventListener('mouseenter',function(){self.si=idx;self.hl();});
+        el.addEventListener('mousedown',function(ev){ev.preventDefault();self.pick(item);});
+        self.dd.appendChild(el);
+      });
+    };
+    MentionEngine.prototype.hl=function(){
+      if(!this.dd) return;
+      var self=this;
+      Array.from(this.dd.children).forEach(function(c,i){c.style.background=i===self.si?'#eff6ff':'transparent';});
+    };
+    MentionEngine.prototype.pick=function(item){
+      var v=this.ta.value, c=this.ta.selectionStart;
+      var b=v.substring(0,this.tri), a=v.substring(c), t='@'+item.name+' ';
+      this.ta.value=b+t+a;
+      var nc=b.length+t.length;
+      this.ta.setSelectionRange(nc,nc);
+      this.ta.focus();
+      if(this.onPick) this.onPick(item);
+      this.ta.selectedMentions=this.ta.selectedMentions||[];
+      this.ta.selectedMentions.push(item);
+      console.log('[MentionEngine] Inserted @'+item.name);
+      this.close();
+    };
+    MentionEngine.prototype.kd=function(e){
+      if(!this.on||!this.dd||!this.res.length) return;
+      if(e.key==='ArrowDown'){e.preventDefault();this.si=(this.si+1)%this.res.length;this.hl();}
+      else if(e.key==='ArrowUp'){e.preventDefault();this.si=(this.si-1+this.res.length)%this.res.length;this.hl();}
+      else if(e.key==='Enter'){e.preventDefault();this.pick(this.res[this.si]);}
+      else if(e.key==='Escape'){this.close();}
+    };
+    MentionEngine.prototype.closedd=function(){if(this.dd){this.dd.remove();this.dd=null;}};
+    MentionEngine.prototype.close=function(){
+      this.on=false; this.tri=-1; this.res=[]; this.si=0;
+      clearTimeout(this.tmr); this.closedd();
+    };
+    MentionEngine.prototype.destroy=function(){
+      this.ta.removeEventListener('input',this._inp);
+      this.ta.removeEventListener('keydown',this._kd);
+      document.removeEventListener('click',this._dc,true);
+      this.close();
+    };
+
+    /* ── Bind to post textarea ─────────────────────────────────────────────── */
+    function bindPost(){
+      var ta=document.getElementById('post-content-textarea');
+      if(!ta){ console.warn('[MentionEngine] no textarea'); return; }
+      /* Destroy previous instance if exists */
+      if(ta._me){ ta._me.destroy(); ta._me=null; }
+      ta._me = new MentionEngine(ta, null);
+    }
+
+    /* DOM is already ready when this inline script executes (bottom of body).
+       Run init() immediately — do NOT wait for DOMContentLoaded again. */
+    (function init(){
+      var modal=document.getElementById('create-post-modal');
+      if(!modal){ console.warn('[MentionEngine] no modal'); return; }
+      new MutationObserver(function(muts){
+        muts.forEach(function(mu){
+          if(mu.attributeName==='class' && modal.classList.contains('active')){
+            /* 150ms delay lets cloneNode/replaceChild in app.js settle first */
+            setTimeout(bindPost, 150);
+          }
+        });
+      }).observe(modal,{attributes:true});
+      console.log('[MentionEngine] Ready - watching modal');
+    })();
+
+    /* ── Ultimate failsafe: bind on textarea focus OR input ──────────────────
+       Works on both desktop and mobile, regardless of open path.             */
+    document.addEventListener('focus', function(e){
+      if (e.target && e.target.id === 'post-content-textarea') {
+        var ta = e.target;
+        if (!ta._me) {
+          ta._me = new MentionEngine(ta, null);
+          console.log('[MentionEngine] Focus-bound ✅');
+        }
+      }
+    }, true);
+
+    document.addEventListener('input', function(e){
+      if (e.target && e.target.id === 'post-content-textarea') {
+        var ta = e.target;
+        if (!ta._me) {
+          ta._me = new MentionEngine(ta, null);
+          console.log('[MentionEngine] Input-bound ✅');
+          // Manually trigger mention detection since we just bound
+          ta._me.inp();
+        }
+      }
+    }, true);
+
+  })();
   </script>
 </body>
 </html>

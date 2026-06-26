@@ -41,7 +41,399 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3500);
   }
 
-  
+  // --- Caret Position Helper for Autocomplete Placement ---
+  function getCaretCoordinates(element, position) {
+    const isTextarea = element.tagName === 'TEXTAREA';
+    const div = document.createElement('div');
+    const style = window.getComputedStyle(element);
+    
+    const properties = [
+      'direction', 'boxSizing', 'width', 'height', 'overflowX', 'overflowY',
+      'borderWidth', 'borderStyle', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+      'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontVariant', 'lineHeight',
+      'textTransform', 'wordSpacing', 'letterSpacing', 'textIndent', 'textRendering'
+    ];
+    
+    properties.forEach(prop => {
+      div.style[prop] = style[prop];
+    });
+    
+    div.style.position = 'absolute';
+    div.style.visibility = 'hidden';
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.wordWrap = 'break-word';
+    div.style.width = element.offsetWidth + 'px';
+    
+    const text = element.value.substring(0, position);
+    div.textContent = text;
+    
+    if (!isTextarea) {
+      div.style.whiteSpace = 'pre';
+    }
+    
+    const span = document.createElement('span');
+    span.textContent = element.value.substring(position) || '.';
+    div.appendChild(span);
+    
+    document.body.appendChild(div);
+    
+    const rect = element.getBoundingClientRect();
+    const spanOffset = span.getBoundingClientRect();
+    const divOffset = div.getBoundingClientRect();
+    
+    document.body.removeChild(div);
+    
+    return {
+      top: rect.top + window.scrollY + (spanOffset.top - divOffset.top),
+      left: rect.left + window.scrollX + (spanOffset.left - divOffset.left)
+    };
+  }
+
+  // --- MentionAutocomplete Class ---
+  class MentionAutocomplete {
+    constructor(inputElement, onSelect) {
+      this.element = inputElement;
+      this.onSelect = onSelect;
+      this.active = false;
+      this.triggerIndex = -1;
+      this.dropdown = null;
+      this.results = [];
+      this.selectedIndex = 0;
+      this.debounceTimeout = null;
+      
+      this.element.addEventListener('input', this.handleInput.bind(this));
+      this.element.addEventListener('keydown', this.handleKeyDown.bind(this));
+      this.element.addEventListener('click', this.handleClick.bind(this));
+      
+      document.addEventListener('click', (e) => {
+        if (this.dropdown && !this.dropdown.contains(e.target) && e.target !== this.element) {
+          this.close();
+        }
+      });
+      console.log('[Mentions] Initialized');
+    }
+
+    handleInput(e) {
+      const value = this.element.value;
+      const caretPos = this.element.selectionStart;
+      
+      if (!this.active) {
+        const textBeforeCaret = value.substring(0, caretPos);
+        const lastAt = textBeforeCaret.lastIndexOf('@');
+        if (lastAt !== -1 && (lastAt === 0 || /\s/.test(textBeforeCaret.charAt(lastAt - 1)))) {
+          this.active = true;
+          this.triggerIndex = lastAt;
+          console.log('[Mentions] @ detected');
+        }
+      }
+
+      if (this.active) {
+        const query = value.substring(this.triggerIndex + 1, caretPos);
+        if (caretPos <= this.triggerIndex || query.includes('\n') || query.includes(' ')) {
+          this.close();
+          return;
+        }
+        this.debounceSearch(query);
+      }
+    }
+
+    debounceSearch(query) {
+      clearTimeout(this.debounceTimeout);
+      this.debounceTimeout = setTimeout(() => {
+        this.search(query);
+      }, 200);
+    }
+
+    async search(query) {
+      if (!this.active) return;
+      console.log('[Mentions] Query:', query);
+      
+      try {
+        const { data: profiles, error: pErr } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, user_type, platform_role, is_verified')
+          .or('user_type.eq.student,user_type.eq.school_representative,platform_role.eq.super_admin')
+          .ilike('full_name', `%${query}%`)
+          .limit(8);
+
+        const { data: schools, error: sErr } = await supabase
+          .from('schools')
+          .select('id, name, logo_url, logo_letter, color_class, verification_badge')
+          .ilike('name', `%${query}%`)
+          .limit(8);
+
+        if (pErr) console.warn('Profiles query error:', pErr);
+        if (sErr) console.warn('Schools query error:', sErr);
+
+        let merged = [];
+        
+        if (profiles) {
+          profiles.forEach(p => {
+            let typeLabel = 'Student';
+            if (p.user_type === 'school_representative') typeLabel = 'School Rep';
+            if (p.platform_role === 'super_admin') typeLabel = 'Super Admin';
+            
+            merged.push({
+              id: p.id,
+              name: p.full_name,
+              avatar_url: p.avatar_url,
+              type: 'user',
+              typeLabel: typeLabel,
+              is_verified: p.is_verified
+            });
+          });
+        }
+
+        if (schools) {
+          schools.forEach(s => {
+            merged.push({
+              id: s.id,
+              name: s.name,
+              avatar_url: s.logo_url,
+              logo_letter: s.logo_letter,
+              color_class: s.color_class,
+              type: 'school',
+              typeLabel: 'School',
+              is_verified: s.verification_badge !== 'none',
+              verification_badge: s.verification_badge
+            });
+          });
+        }
+
+        const q = query.toLowerCase();
+        merged.sort((a, b) => {
+          const aName = a.name.toLowerCase();
+          const bName = b.name.toLowerCase();
+          const aStarts = aName.startsWith(q);
+          const bStarts = bName.startsWith(q);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+          return aName.localeCompare(bName);
+        });
+
+        this.results = merged.slice(0, 8);
+        this.selectedIndex = 0;
+        console.log('[Mentions] Results:', this.results.length);
+
+        if (this.results.length > 0) {
+          this.showDropdown();
+        } else {
+          this.closeDropdownOnly();
+        }
+      } catch (err) {
+        console.error('Mention search error:', err);
+      }
+    }
+
+    showDropdown() {
+      if (!this.dropdown) {
+        this.dropdown = document.createElement('div');
+        this.dropdown.className = 'mention-dropdown';
+        Object.assign(this.dropdown.style, {
+          position: 'absolute',
+          zIndex: '10000',
+          backgroundColor: '#ffffff',
+          border: '1px solid var(--border-color, #e0e0e0)',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          width: '260px',
+          maxHeight: '240px',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          boxSizing: 'border-box'
+        });
+        document.body.appendChild(this.dropdown);
+      }
+
+      const caretPos = getCaretCoordinates(this.element, this.triggerIndex);
+      
+      let dropdownTop = caretPos.top + 20;
+      let dropdownLeft = caretPos.left;
+
+      const dropdownHeight = 240;
+      const dropdownWidth = 260;
+      
+      const viewportHeight = window.innerHeight;
+      const scrollY = window.scrollY;
+      
+      if (dropdownTop + dropdownHeight > viewportHeight + scrollY && caretPos.top - scrollY > dropdownHeight + 20) {
+        dropdownTop = caretPos.top - dropdownHeight - 5;
+      }
+
+      if (dropdownLeft + dropdownWidth > window.innerWidth) {
+        dropdownLeft = Math.max(10, window.innerWidth - dropdownWidth - 20);
+      }
+      
+      this.dropdown.style.top = `${dropdownTop}px`;
+      this.dropdown.style.left = `${dropdownLeft}px`;
+
+      this.dropdown.innerHTML = '';
+      this.results.forEach((item, index) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'mention-dropdown-item';
+        
+        Object.assign(itemEl.style, {
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '8px 12px',
+          cursor: 'pointer',
+          borderBottom: index === this.results.length - 1 ? 'none' : '1px solid #f0f0f0',
+          backgroundColor: index === this.selectedIndex ? '#e8effe' : 'transparent',
+          transition: 'background-color 0.15s ease'
+        });
+
+        itemEl.addEventListener('mouseenter', () => {
+          this.setSelectedIndex(index);
+        });
+
+        itemEl.addEventListener('click', () => {
+          this.selectItem(item);
+        });
+
+        let avatarHtml = '';
+        if (item.type === 'school') {
+          const initials = item.logo_letter || item.name.charAt(0).toUpperCase();
+          avatarHtml = item.avatar_url
+            ? `<img src="${item.avatar_url}" style="width: 32px; height: 32px; border-radius: 4px; object-fit: cover;">`
+            : `<div class="${item.color_class || 'bg-gradient-1'}" style="width: 32px; height: 32px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem;">${initials}</div>`;
+        } else {
+          const initials = getInitials(item.name);
+          avatarHtml = item.avatar_url
+            ? `<img src="${item.avatar_url}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">`
+            : `<div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: #0066c8; color: white; font-weight: 700; font-size: 0.85rem;">${initials}</div>`;
+        }
+
+        let badgeHtml = '';
+        if (item.is_verified) {
+          const color = item.verification_badge === 'gold' ? '#d4af37' : '#0066c8';
+          badgeHtml = `
+            <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px; color: ${color}; fill: currentColor; margin-left: 4px; display: inline-block; vertical-align: middle;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>
+          `;
+        }
+
+        itemEl.innerHTML = `
+          ${avatarHtml}
+          <div style="display: flex; flex-direction: column; flex-grow: 1; min-width: 0;">
+            <div style="font-weight: 700; font-size: 0.85rem; color: #333; display: flex; align-items: center;">
+              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${item.name}</span>
+              ${badgeHtml}
+            </div>
+            <div style="font-size: 0.72rem; color: #777;">${item.typeLabel}</div>
+          </div>
+        `;
+        this.dropdown.appendChild(itemEl);
+      });
+    }
+
+    setSelectedIndex(index) {
+      this.selectedIndex = index;
+      if (this.dropdown) {
+        Array.from(this.dropdown.children).forEach((child, idx) => {
+          child.style.backgroundColor = idx === index ? '#e8effe' : 'transparent';
+        });
+      }
+    }
+
+    selectItem(item) {
+      console.log(`[Mentions] Selected: ${item.name} (${item.id})`);
+      const value = this.element.value;
+      const caretPos = this.element.selectionStart;
+      
+      const before = value.substring(0, this.triggerIndex);
+      const after = value.substring(caretPos);
+      const mentionText = `@${item.name} `;
+      
+      this.element.value = before + mentionText + after;
+      
+      const newCaret = before.length + mentionText.length;
+      this.element.setSelectionRange(newCaret, newCaret);
+      
+      this.element.focus();
+      
+      this.onSelect(item);
+      this.close();
+    }
+
+    handleKeyDown(e) {
+      if (!this.active || !this.dropdown || this.results.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.setSelectedIndex((this.selectedIndex + 1) % this.results.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.setSelectedIndex((this.selectedIndex - 1 + this.results.length) % this.results.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        this.selectItem(this.results[this.selectedIndex]);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.close();
+      }
+    }
+
+    handleClick() {
+      if (this.active) {
+        const caretPos = this.element.selectionStart;
+        if (caretPos <= this.triggerIndex || caretPos > this.element.value.length) {
+          this.close();
+        }
+      }
+    }
+
+    closeDropdownOnly() {
+      if (this.dropdown) {
+        this.dropdown.remove();
+        this.dropdown = null;
+      }
+    }
+
+    close() {
+      this.active = false;
+      this.triggerIndex = -1;
+      this.closeDropdownOnly();
+      this.results = [];
+      this.selectedIndex = 0;
+    }
+  }
+
+  // Expose so external scripts (e.g. mobile-nav.js) can also bind mention autocomplete
+  window.MentionAutocomplete = MentionAutocomplete;
+
+  // --- Format Content with Clickable Mention Links ---
+  function formatContentWithMentions(content, mentions) {
+    if (!content) return '';
+    let formatted = content;
+    if (!mentions || mentions.length === 0) return formatted;
+
+    const sortedMentions = [...mentions].sort((a, b) => {
+      const nameA = a.profiles?.full_name || a.schools?.name || '';
+      const nameB = b.profiles?.full_name || b.schools?.name || '';
+      return nameB.length - nameA.length;
+    });
+
+    sortedMentions.forEach(mention => {
+      const name = mention.profiles?.full_name || mention.schools?.name;
+      if (!name) return;
+
+      const mentionText = `@${name}`;
+      const url = mention.mentioned_user_id 
+        ? `profile.html?id=${mention.mentioned_user_id}` 
+        : `school-profile.html?id=${mention.mentioned_school_id}`;
+
+      const escapedMentionText = mentionText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(escapedMentionText, 'g');
+      formatted = formatted.replace(regex, `<a href="${url}" class="mention-link" style="color: #0066c8; font-weight: 700; text-decoration: none;">@${name}</a>`);
+    });
+
+    return formatted;
+  }
+
   /* --- Sticky Header Logic --- */
   const header = document.querySelector('header');
   window.addEventListener('scroll', () => {
@@ -990,7 +1382,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const createPostModal = document.getElementById('create-post-modal');
   const createPostForm = document.getElementById('create-post-form');
   const postTopicSelect = document.getElementById('post-topic-select');
-  const postContentTextarea = document.getElementById('post-content-textarea');
+  // NOTE: declared as 'let' so initCreatePostForm() can update the reference after cloneNode()
+  let postContentTextarea = document.getElementById('post-content-textarea');
 
   function openCreatePostModal(topic = 'achievement') {
     if (!createPostModal) return;
@@ -1060,6 +1453,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     createPostModal.classList.add('active');
     document.body.style.overflow = 'hidden';
+
+
   }
 
   function closeCreatePostModal() {
@@ -1280,9 +1675,15 @@ document.addEventListener('DOMContentLoaded', () => {
   function initCreatePostForm() {
     if (!createPostForm) return;
 
-    // Remove any existing listeners
+    // Remove any existing listeners by replacing with a clone
     const newForm = createPostForm.cloneNode(true);
     createPostForm.parentNode.replaceChild(newForm, createPostForm);
+
+    // Update the outer reference so openCreatePostModal/.value resets still work
+    const clonedTextarea = newForm.querySelector('#post-content-textarea');
+    if (clonedTextarea) {
+      postContentTextarea = clonedTextarea;
+    }
 
     // Re-bind cancel button listener on cloned form
     const cancelBtn = newForm.querySelector('#post-modal-cancel');
@@ -1365,11 +1766,64 @@ document.addEventListener('DOMContentLoaded', () => {
           insertData.school_id = currentUserProfile.school_id;
         }
 
-        const { error } = await supabase
+        const { data: newPost, error } = await supabase
           .from('posts')
-          .insert(insertData);
+          .insert(insertData)
+          .select('id')
+          .single();
 
         if (error) throw error;
+
+        // Save mentions
+        const textarea = newForm.querySelector('#post-content-textarea');
+        const finalMentions = (textarea.selectedMentions || []).filter(m => {
+          return content.includes(`@${m.name}`);
+        });
+
+        for (const mention of finalMentions) {
+          const mentionData = {
+            post_id: newPost.id,
+            mentioned_by: currentUser.id
+          };
+          if (mention.type === 'school') {
+            mentionData.mentioned_school_id = mention.id;
+          } else {
+            mentionData.mentioned_user_id = mention.id;
+          }
+
+          const { error: mentionErr } = await supabase
+            .from('mentions')
+            .insert(mentionData);
+          if (mentionErr) console.warn('Error saving mention:', mentionErr);
+
+          try {
+            let recipientId = mention.id;
+            if (mention.type === 'school') {
+              const { data: schoolAdmin } = await supabase
+                .from('schools')
+                .select('admin_user_id')
+                .eq('id', mention.id)
+                .single();
+              recipientId = schoolAdmin?.admin_user_id;
+            }
+
+            if (recipientId && recipientId !== currentUser.id) {
+              const actorName = currentUserProfile?.full_name || 'Someone';
+              await window.CampusLink.notifications.createNotification(
+                recipientId,
+                'mention',
+                `${actorName} mentioned you in a post`,
+                content.substring(0, 50) + '...',
+                `index.html?post=${newPost.id}`,
+                currentUser.id
+              );
+            }
+          } catch (notifErr) {
+            console.warn('Error sending mention notification:', notifErr);
+          }
+        }
+        
+        textarea.selectedMentions = [];
 
         closeCreatePostModal();
         loadFeed();
@@ -1409,6 +1863,13 @@ document.addEventListener('DOMContentLoaded', () => {
         .from('posts')
         .select(`
           *,
+          schools (
+            name,
+            verification_badge,
+            logo_url,
+            logo_letter,
+            color_class
+          ),
           profiles:profiles!posts_user_id_fkey (
             full_name,
             user_type,
@@ -1427,6 +1888,22 @@ document.addEventListener('DOMContentLoaded', () => {
           post_likes (
             user_id
           ),
+          mentions (
+            id,
+            post_id,
+            comment_id,
+            mentioned_user_id,
+            mentioned_school_id,
+            mentioned_by,
+            profiles:profiles!mentions_mentioned_user_id_fkey (
+              id,
+              full_name
+            ),
+            schools:schools!mentions_mentioned_school_id_fkey (
+              id,
+              name
+            )
+          ),
           comments (
             id,
             content,
@@ -1444,6 +1921,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 logo_url,
                 logo_letter,
                 color_class
+              )
+            ),
+            mentions (
+              id,
+              post_id,
+              comment_id,
+              mentioned_user_id,
+              mentioned_school_id,
+              mentioned_by,
+              profiles:profiles!mentions_mentioned_user_id_fkey (
+                id,
+                full_name
+              ),
+              schools:schools!mentions_mentioned_school_id_fkey (
+                id,
+                name
               )
             )
           )
@@ -1489,6 +1982,13 @@ document.addEventListener('DOMContentLoaded', () => {
               .from('posts')
               .select(`
                 *,
+                schools (
+                  name,
+                  verification_badge,
+                  logo_url,
+                  logo_letter,
+                  color_class
+                ),
                 profiles:profiles!posts_user_id_fkey (
                   full_name,
                   user_type,
@@ -1507,6 +2007,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 post_likes (
                   user_id
                 ),
+                mentions (
+                  id,
+                  post_id,
+                  comment_id,
+                  mentioned_user_id,
+                  mentioned_school_id,
+                  mentioned_by,
+                  profiles:profiles!mentions_mentioned_user_id_fkey (
+                    id,
+                    full_name
+                  ),
+                  schools:schools!mentions_mentioned_school_id_fkey (
+                    id,
+                    name
+                  )
+                ),
                 comments (
                   id,
                   content,
@@ -1524,6 +2040,22 @@ document.addEventListener('DOMContentLoaded', () => {
                       logo_url,
                       logo_letter,
                       color_class
+                    )
+                  ),
+                  mentions (
+                    id,
+                    post_id,
+                    comment_id,
+                    mentioned_user_id,
+                    mentioned_school_id,
+                    mentioned_by,
+                    profiles:profiles!mentions_mentioned_user_id_fkey (
+                      id,
+                      full_name
+                    ),
+                    schools:schools!mentions_mentioned_school_id_fkey (
+                      id,
+                      name
                     )
                   )
                 )
@@ -1602,37 +2134,100 @@ document.addEventListener('DOMContentLoaded', () => {
 
     posts.forEach(post => {
       const p = post.profiles || {};
-      let authorName = p.full_name || 'Anonymous User';
-      let authorInitials = getInitials(authorName);
-      let authorAvatar = p.avatar_url
-        ? `<img src="${p.avatar_url}" alt="${authorName}" class="post-avatar-img">`
-        : `<div class="post-avatar-placeholder">${authorInitials}</div>`;
+      const s = post.schools || p.schools || {};
 
-      // Profile url
-      let profileUrl = `profile.html?id=${post.user_id}`;
+      let authorName = '';
+      let authorInitials = '';
+      let authorAvatar = '';
+      let profileUrl = '';
+      let badgeHtml = '';
+      let roleBadgeHtml = '';
+      let headlineText = '';
 
-      if (post.post_type === 'school' && p.schools) {
-        const s = p.schools;
-        authorName = s.name || 'Official School';
+      if (post.post_type === 'school') {
+        authorName = s.name || p.full_name || 'Anonymous School';
         authorInitials = s.logo_letter || authorName.charAt(0).toUpperCase();
         authorAvatar = s.logo_url
           ? `<img src="${s.logo_url}" alt="${authorName}" class="post-avatar-img">`
           : `<div class="post-avatar-placeholder ${s.color_class || 'bg-gradient-1'}">${authorInitials}</div>`;
-        profileUrl = `school-profile.html?id=${post.school_id || p.school_id}`;
+        profileUrl = `school-profile.html?id=${post.school_id || p.school_id || s.id}`;
+
+        if (s.verification_badge === 'gold') {
+          badgeHtml = `
+            <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>`;
+        } else if (s.verification_badge === 'blue') {
+          badgeHtml = `
+            <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>`;
+        }
+
+        roleBadgeHtml = '';
+        headlineText = 'Official School Account';
+
+      } else if (post.post_type === 'representative') {
+        authorName = p.full_name || s.name || 'Anonymous Representative';
+        authorInitials = getInitials(authorName);
+        authorAvatar = p.avatar_url
+          ? `<img src="${p.avatar_url}" alt="${authorName}" class="post-avatar-img">`
+          : `<div class="post-avatar-placeholder">${authorInitials}</div>`;
+        profileUrl = `profile.html?id=${post.user_id}`;
+
+        if (p.is_verified) {
+          badgeHtml = `
+            <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>`;
+        }
+
+        roleBadgeHtml = `
+          <span class="feed-badge school-rep-badge">
+            👤 School Representative
+          </span>
+        `;
+        headlineText = `School Rep at ${s.name || 'our partner school'}`;
+
       } else {
+        authorName = p.full_name || 'Anonymous User';
+        authorInitials = getInitials(authorName);
+        authorAvatar = p.avatar_url
+          ? `<img src="${p.avatar_url}" alt="${authorName}" class="post-avatar-img">`
+          : `<div class="post-avatar-placeholder">${authorInitials}</div>`;
+        profileUrl = `profile.html?id=${post.user_id}`;
+
         if ((p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id) {
           profileUrl = `school-profile.html?id=${p.school_id}`;
         }
-      }
 
-      // Headline construction
-      let headlineText = auth.getUserTypeLabel(p.user_type);
-      const schoolName = p.schools?.name;
-      if (p.user_type === 'student' && p.class) {
-        headlineText += ` • Class ${p.class}`;
-      }
-      if (schoolName) {
-        headlineText += ` at ${schoolName}`;
+        if (p.is_verified) {
+          badgeHtml = `
+            <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>`;
+        }
+
+        if (p.user_type === 'school_representative') {
+          roleBadgeHtml = `
+            <span class="feed-badge school-rep-badge">
+              👤 School Representative
+            </span>
+          `;
+        }
+
+        headlineText = auth.getUserTypeLabel(p.user_type);
+        const schoolName = s.name;
+        if (p.user_type === 'student' && p.class) {
+          headlineText += ` • Class ${p.class}`;
+        }
+        if (schoolName) {
+          headlineText += ` at ${schoolName}`;
+        }
       }
 
       // Topic badge row
@@ -1656,32 +2251,25 @@ document.addEventListener('DOMContentLoaded', () => {
       const comments = post.comments || [];
       const sortedComments = [...comments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-      const isAuthorSchool = (p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id;
+      const isAuthorSchool = post.post_type === 'school' || ((p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id);
       
       // Standard blue/gold verification badge
-      let badgeHtml = '';
-      if (isAuthorSchool && p.schools?.verification_badge === 'gold') {
-        badgeHtml = `
-          <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
-            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
-            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
-          </svg>`;
-      } else if ((isAuthorSchool && p.schools?.verification_badge === 'blue') || (!isAuthorSchool && p.is_verified)) {
-        badgeHtml = `
-          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="${isAuthorSchool ? 'Verified School' : 'Verified Profile'}" style="display:inline-block; vertical-align:middle; margin-left:4px;">
-            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
-            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
-          </svg>`;
-      }
-
-      // Add Official School Post or School Representative badges
-      let roleBadgeHtml = '';
-      if (post.post_type === 'personal' && p.user_type === 'school_representative') {
-        roleBadgeHtml = `
-          <span class="feed-badge school-rep-badge">
-            👤 School Representative
-          </span>
-        `;
+      if (post.post_type !== 'school') {
+        let badgeHtmlTemp = '';
+        if (isAuthorSchool && p.schools?.verification_badge === 'gold') {
+          badgeHtmlTemp = `
+            <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>`;
+        } else if ((isAuthorSchool && p.schools?.verification_badge === 'blue') || (!isAuthorSchool && p.is_verified)) {
+          badgeHtmlTemp = `
+            <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="${isAuthorSchool ? 'Verified School' : 'Verified Profile'}" style="display:inline-block; vertical-align:middle; margin-left:4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>`;
+        }
+        badgeHtml = badgeHtmlTemp;
       }
 
       const card = document.createElement('article');
@@ -1760,7 +2348,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${topicBadgeHtml}
 
         <div class="post-body">
-          <p class="post-text-content">${post.content}</p>
+          <p class="post-text-content">${formatContentWithMentions(post.content, post.mentions)}</p>
           ${mediaHtml}
         </div>
 
@@ -1874,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', () => {
                       </div>
                       <span class="comment-item-time">${formatRelativeTime(c.created_at)}</span>
                     </div>
-                    <p class="comment-item-text">${c.content}</p>
+                    <p class="comment-item-text">${formatContentWithMentions(c.content, c.mentions)}</p>
                   </div>
                 </div>
               `;
@@ -1909,12 +2497,19 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Bind Comment submits
+    // Bind Comment submits & Autocomplete
     feedContainer.querySelectorAll('.post-comment-form').forEach(form => {
+      const inputField = form.querySelector('.comment-input-field');
+      if (inputField && !inputField.hasMentionAutocomplete) {
+        inputField.hasMentionAutocomplete = true;
+        new MentionAutocomplete(inputField, (item) => {
+          inputField.selectedMentions = inputField.selectedMentions || [];
+          inputField.selectedMentions.push(item);
+        });
+      }
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const postId = e.currentTarget.getAttribute('data-post-id');
-        const inputField = e.currentTarget.querySelector('.comment-input-field');
         const content = inputField.value.trim();
         if (!content) return;
 
@@ -2239,15 +2834,68 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       if (submitBtn) submitBtn.disabled = true;
 
-      const { error } = await supabase
+      const { data: newComment, error } = await supabase
         .from('comments')
         .insert({
           post_id: postId,
           user_id: currentUser.id,
           content: content
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Save mentions
+      const finalMentions = (inputField.selectedMentions || []).filter(m => {
+        return content.includes(`@${m.name}`);
+      });
+
+      for (const mention of finalMentions) {
+        const mentionData = {
+          post_id: postId,
+          comment_id: newComment.id,
+          mentioned_by: currentUser.id
+        };
+        if (mention.type === 'school') {
+          mentionData.mentioned_school_id = mention.id;
+        } else {
+          mentionData.mentioned_user_id = mention.id;
+        }
+
+        const { error: mentionErr } = await supabase
+          .from('mentions')
+          .insert(mentionData);
+        if (mentionErr) console.warn('Error saving comment mention:', mentionErr);
+
+        try {
+          let recipientId = mention.id;
+          if (mention.type === 'school') {
+            const { data: schoolAdmin } = await supabase
+              .from('schools')
+              .select('admin_user_id')
+              .eq('id', mention.id)
+              .single();
+            recipientId = schoolAdmin?.admin_user_id;
+          }
+
+          if (recipientId && recipientId !== currentUser.id) {
+            const actorName = currentUserProfile?.full_name || 'Someone';
+            await window.CampusLink.notifications.createNotification(
+              recipientId,
+              'mention',
+              `${actorName} mentioned you in a comment`,
+              content.substring(0, 50) + '...',
+              `index.html?post=${postId}`,
+              currentUser.id
+            );
+          }
+        } catch (notifErr) {
+          console.warn('Error sending comment mention notification:', notifErr);
+        }
+      }
+
+      inputField.selectedMentions = [];
 
       // Trigger notification
       if (window.CampusLink && window.CampusLink.notifications) {

@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loader) loader.style.display = 'flex';
   }
 
+  // Hide loading overlay
   function hideLoading() {
     const loader = document.getElementById('loader-container');
     if (loader) {
@@ -405,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const userRole = await auth.getUserRole();
             isSuperAdmin = userRole === 'super_admin';
             
-            if (isSchoolAdmin || isSuperAdmin) {
+            if (isSchoolAdmin) {
               const editBtn = document.getElementById('btn-edit-school');
               if (editBtn) {
                 editBtn.style.display = 'inline-flex';
@@ -441,14 +442,17 @@ document.addEventListener('DOMContentLoaded', () => {
             opportunities.length = 0;
             dbEvents.forEach(e => {
               opportunities.push({
+                id: e.id,
                 school: dbSchool.name,
                 title: e.title,
                 category: e.category || 'competitions',
                 date: e.event_date || '',
+                venue: e.venue || '',
                 tag: e.tag || 'Opportunity',
                 registrations: e.registrations || '0 Registered',
                 location: dbSchool.city || 'India',
-                logoLetter: e.logo_letter || '🎉'
+                logoLetter: e.logo_letter || '🎉',
+                bannerUrl: e.banner_url || ''
               });
             });
           }
@@ -754,6 +758,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (followersEl) {
       followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
     }
+    const followersStatVal = document.getElementById('profile-followers-count-stat');
+    if (followersStatVal) {
+      followersStatVal.textContent = followersCount;
+    }
 
     // Determine if current user is an owner or super admin
     const isOwnerOrAdmin = isSchoolAdmin || isSuperAdmin;
@@ -776,6 +784,9 @@ document.addEventListener('DOMContentLoaded', () => {
             followersCount += isFollowing ? 1 : -1;
             if (followersEl) {
               followersEl.textContent = `${followersCount} follower${followersCount !== 1 ? 's' : ''}`;
+            }
+            if (followersStatVal) {
+              followersStatVal.textContent = followersCount;
             }
             showToast(isFollowing ? 'Mock followed successfully!' : 'Mock unfollowed successfully!');
           };
@@ -863,6 +874,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Populate dynamic elements
   loadSchoolProfile().then(() => {
     checkJoinState();
+    loadSchoolMembers();
+    loadAndRenderSchoolPosts();
+    loadAndRenderSchoolEvents();
+    setupStatsClickHandlers();
   });
 
   /* --- Tab Navigation Logic --- */
@@ -984,7 +999,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const profile = await auth.getProfile(session.user.id);
-      if (profile && profile.school_id === currentProfile.id) {
+      const isJoined = profile && profile.school_id === currentProfile.id;
+
+      if (isJoined) {
         styleJoinedState();
       } else {
         styleNotJoinedState();
@@ -1079,9 +1096,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       // Ensure loading overlay is shown when loading profile data
-showLoading();
+      showLoading();
 
-if (isValid && currentStep < formSteps.length - 1) {
+      if (isValid && currentStep < formSteps.length - 1) {
         showStep(currentStep + 1);
       }
     });
@@ -1146,19 +1163,19 @@ if (isValid && currentStep < formSteps.length - 1) {
 
   // --- School Profile Edit Features ---
   function showLoading() {
-  const overlay = document.getElementById('loader-overlay');
-  if (overlay) overlay.classList.remove('hidden');
-}
+    const overlay = document.getElementById('loader-overlay');
+    if (overlay) overlay.classList.remove('hidden');
+  }
 
-function hideLoading() {
-  const overlay = document.getElementById('loader-overlay');
-  if (overlay) overlay.classList.add('hidden');
-}
+  function hideLoading() {
+    const overlay = document.getElementById('loader-overlay');
+    if (overlay) overlay.classList.add('hidden');
+  }
 
-function showToast(message, type = 'success') {
+  function showToast(message, type = 'success') {
     let activeContainer = document.getElementById('toast-container');
-  // Ensure loading overlay is hidden after any toast (optional)
-  hideLoading();
+    // Ensure loading overlay is hidden after any toast (optional)
+    hideLoading();
     if (!activeContainer) {
       activeContainer = document.createElement('div');
       activeContainer.id = 'toast-container';
@@ -1216,7 +1233,7 @@ function showToast(message, type = 'success') {
       const userRole = await auth.getUserRole();
       const isSuperAdmin = userRole === 'super_admin';
       const isSchoolOwner = session.user.id === dbSchool.admin_user_id;
-      if (!isSuperAdmin && !isSchoolOwner) {
+      if (!isSchoolOwner) {
         editBtn.style.display = 'none';
         return;
       }
@@ -1846,6 +1863,10 @@ function showToast(message, type = 'success') {
         if (followersEl) {
           followersEl.textContent = `${count} follower${count !== 1 ? 's' : ''}`;
         }
+        const followersStatVal = document.getElementById('profile-followers-count-stat');
+        if (followersStatVal) {
+          followersStatVal.textContent = count;
+        }
       } catch (err) {
         console.error('Follow school toggle failed:', err);
         showToast(err.message || 'Failed to update follow state', 'error');
@@ -1917,12 +1938,25 @@ function showToast(message, type = 'success') {
         }
 
         const sb = window.CampusLink.supabase;
+        const auth = window.CampusLink.auth;
+        
+        let conversationStatus = 'pending';
+        if (auth && currentUser) {
+          try {
+            const profile = await auth.getProfile(currentUser.id);
+            if (profile && profile.school_id === dbSchool.id) {
+              conversationStatus = 'accepted';
+            }
+          } catch (profileErr) {
+            console.warn('Error verifying school membership for inquiry:', profileErr);
+          }
+        }
         
         // 1. Create a conversation
         const { data: conv, error: convError } = await sb
           .from('conversations')
           .insert({
-            status: 'accepted',
+            status: conversationStatus,
             initiator_id: currentUser.id,
             school_id: dbSchool.id,
             inquiry_type: inquiryType
@@ -2002,4 +2036,825 @@ function showToast(message, type = 'success') {
       }
     });
   }
+
+  // --- Load and Render School Community Members ---
+  async function loadSchoolMembers() {
+    const supabase = window.CampusLink && window.CampusLink.supabase;
+    if (!supabase || !currentProfile || !currentProfile.id) return;
+
+    const cmGridFaculty = document.getElementById('cm-grid-faculty');
+    const cmGridAlumni = document.getElementById('cm-grid-alumni');
+    const cmGridStaff = document.getElementById('cm-grid-staff');
+    const cmGridStudents = document.getElementById('cm-grid-students');
+    
+    const cmSecFaculty = document.getElementById('cm-section-faculty');
+    const cmSecAlumni = document.getElementById('cm-section-alumni');
+    const cmSecStaff = document.getElementById('cm-section-staff');
+    const cmSecStudents = document.getElementById('cm-section-students');
+    const cmEmptyState = document.getElementById('cm-empty-state');
+
+    // Prevent querying for non-UUID mock school IDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(currentProfile.id)) {
+      if (cmEmptyState) cmEmptyState.style.display = 'block';
+      if (cmSecFaculty) cmSecFaculty.style.display = 'none';
+      if (cmSecAlumni) cmSecAlumni.style.display = 'none';
+      if (cmSecStaff) cmSecStaff.style.display = 'none';
+      if (cmSecStudents) cmSecStudents.style.display = 'none';
+      return;
+    }
+
+    try {
+      const { data: members, error } = await supabase
+        .from('school_members')
+        .select(`
+          id, role, assigned_at,
+          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified)
+        `)
+        .eq('school_id', currentProfile.id)
+        .order('assigned_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Group by roles
+      const facultyList = [];
+      const alumniList = [];
+      const staffList = [];
+      const studentList = [];
+
+      (members || []).forEach(m => {
+        if (['teacher', 'faculty', 'counselor'].includes(m.role)) {
+          facultyList.push(m);
+        } else if (m.role === 'alumni') {
+          alumniList.push(m);
+        } else if (m.role === 'staff') {
+          staffList.push(m);
+        } else if (m.role === 'student') {
+          studentList.push(m);
+        }
+      });
+
+      const totalMembers = (members || []).length;
+
+      // Render function
+      const renderGrid = (gridEl, sectionEl, list) => {
+        if (!gridEl) return;
+        gridEl.innerHTML = '';
+        if (list.length > 0) {
+          if (sectionEl) sectionEl.style.display = 'block';
+          list.forEach(m => {
+            const u = m.user || {};
+            const name = u.full_name || 'Unknown';
+            const initial = name.charAt(0).toUpperCase();
+            
+            const avatarHtml = u.avatar_url
+              ? `<div class="cm-member-avatar" style="background-image: url(${u.avatar_url});"></div>`
+              : `<div class="cm-member-avatar-placeholder">${initial}</div>`;
+            
+            const verifiedBadgeHtml = u.is_verified ? `
+              <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile" style="width: 14px; height: 14px; color: var(--primary); display: inline-block; vertical-align: middle; margin-left: 4px;">
+                <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239C1.266.296 1.903.164 1.903.164c.636-.132 1.22-.447 1.68-.907c.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246c.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+                <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+              </svg>
+            ` : '';
+
+            let subtext = '';
+            if (m.role === 'student') {
+              subtext = u.class ? `Class ${u.class}` : 'Student';
+            } else if (m.role === 'alumni') {
+              subtext = u.class ? `Graduated Class of ${u.class}` : 'Alumni';
+            } else {
+              subtext = m.role;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'cm-member-card';
+            card.innerHTML = `
+              ${avatarHtml}
+              <div class="cm-member-name">
+                <span>${name}</span>
+                ${verifiedBadgeHtml}
+              </div>
+              <div class="cm-member-title">${subtext}</div>
+              <a href="profile.html?id=${u.id}" class="cm-member-btn">View Profile</a>
+            `;
+            gridEl.appendChild(card);
+          });
+        } else {
+          if (sectionEl) sectionEl.style.display = 'none';
+        }
+      };
+
+      renderGrid(cmGridFaculty, cmSecFaculty, facultyList);
+      renderGrid(cmGridAlumni, cmSecAlumni, alumniList);
+      renderGrid(cmGridStaff, cmSecStaff, staffList);
+      renderGrid(cmGridStudents, cmSecStudents, studentList);
+
+      if (totalMembers > 0) {
+        if (cmEmptyState) cmEmptyState.style.display = 'none';
+      } else {
+        if (cmEmptyState) cmEmptyState.style.display = 'block';
+      }
+    } catch (err) {
+      console.error('Failed to load school members:', err);
+      if (cmEmptyState) {
+        cmEmptyState.style.display = 'block';
+        cmEmptyState.innerHTML = `
+          <p style="font-size: 1.1rem; color: #EF4444;">Error loading community members.</p>
+          <p style="font-size: 0.88rem;">${err.message || 'Please try again later.'}</p>
+        `;
+      }
+    }
+  }
+
+  // --- Start of School Profile Redesign Additions ---
+
+  const mockPosts = [
+    {
+      id: "mock-post-1",
+      school_id: "1",
+      content: "Delhi Public School, RK Puram is proud to announce its 100% board results. Special congratulations to our toppers who scored a perfect 99.8% in Science and Commerce streams! #AcademicExcellence",
+      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days ago
+    },
+    {
+      id: "mock-post-2",
+      school_id: "1",
+      content: "Register now for the National Science & Robotics Fest 2026! Over 50 schools across the country have already registered. Exciting cash prizes and internship opportunities await the winners.",
+      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() // 5 days ago
+    },
+    {
+      id: "mock-post-3",
+      school_id: "2",
+      content: "Our St. Xavier's High School Football Team (U-17 Boys) has won the Mumbai Inter-School Football League! Congratulations to the team and their coach for the stellar performance. Go Xavierites!",
+      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: "mock-post-4",
+      school_id: "3",
+      content: "Bishop Cotton School is hosting its annual Inter-School Debate Championship this weekend in Shimla. Wishing all our speakers the best of luck!",
+      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ];
+
+  const mockFollowersList = [
+    {
+      id: "mock-follower-1",
+      follower_id: "m-user-1",
+      profiles: {
+        id: "m-user-1",
+        full_name: "Aarav Sharma",
+        avatar_url: null,
+        user_type: "student",
+        is_verified: false
+      }
+    },
+    {
+      id: "mock-follower-2",
+      follower_id: "m-user-2",
+      profiles: {
+        id: "m-user-2",
+        full_name: "Priya Patel",
+        avatar_url: null,
+        user_type: "parent",
+        is_verified: false
+      }
+    },
+    {
+      id: "mock-follower-3",
+      follower_id: "m-user-3",
+      profiles: {
+        id: "m-user-3",
+        full_name: "Rajesh Kumar",
+        avatar_url: null,
+        user_type: "teacher",
+        is_verified: true
+      }
+    },
+    {
+      id: "mock-follower-4",
+      follower_id: "m-user-4",
+      profiles: {
+        id: "m-user-4",
+        full_name: "Sneha Reddy",
+        avatar_url: null,
+        user_type: "student",
+        is_verified: false
+      }
+    }
+  ];
+
+  function classifyEventDate(dateStr) {
+    if (!dateStr) return 'upcoming';
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    let parsedDate = null;
+    let endDate = null;
+
+    const rangeRegex = /([A-Za-z]+)\s+(\d+)\s*-\s*(\d+),\s*(\d{4})/;
+    const singleRegex = /([A-Za-z]+)\s+(\d+),\s*(\d{4})/;
+    const isoRegex = /(\d{4})-(\d{2})-(\d{2})/;
+
+    let match;
+    if ((match = dateStr.match(rangeRegex))) {
+      const month = match[1];
+      const startDay = parseInt(match[2], 10);
+      const endDay = parseInt(match[3], 10);
+      const year = match[4];
+      parsedDate = new Date(`${month} ${startDay}, ${year}`);
+      endDate = new Date(`${month} ${endDay}, ${year}`);
+    } else if ((match = dateStr.match(singleRegex))) {
+      const month = match[1];
+      const day = match[2];
+      const year = match[3];
+      parsedDate = new Date(`${month} ${day}, ${year}`);
+      endDate = parsedDate;
+    } else if ((match = dateStr.match(isoRegex))) {
+      parsedDate = new Date(dateStr);
+      endDate = parsedDate;
+    } else {
+      parsedDate = new Date(dateStr);
+      endDate = parsedDate;
+    }
+
+    if (isNaN(parsedDate.getTime())) {
+      const beforeMatch = dateStr.match(/before\s+([A-Za-z]+\s+\d+,\s*\d{4})/i);
+      if (beforeMatch) {
+        const d = new Date(beforeMatch[1]);
+        if (!isNaN(d.getTime())) {
+          return d < now ? 'past' : 'upcoming';
+        }
+      }
+      return 'upcoming';
+    }
+
+    endDate.setHours(23, 59, 59, 999);
+    parsedDate.setHours(0, 0, 0, 0);
+
+    if (now > endDate) {
+      return 'past';
+    } else if (now < parsedDate) {
+      return 'upcoming';
+    } else {
+      return 'ongoing';
+    }
+  }
+
+  async function loadAndRenderSchoolPosts() {
+    const postsListContainer = document.getElementById('school-activity-posts');
+    if (!postsListContainer) return;
+
+    postsListContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted); font-size: 0.95rem; padding: 20px 0;">Loading updates...</p>';
+
+    const supabase = window.CampusLink && window.CampusLink.supabase;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let posts = [];
+
+    if (supabase && uuidRegex.test(currentProfile.id)) {
+      try {
+        const { data, error } = await supabase
+          .from('posts')
+          .select(`
+            id,
+            content,
+            created_at,
+            user_id,
+            post_type,
+            topic,
+            mentions (
+              id,
+              post_id,
+              comment_id,
+              mentioned_user_id,
+              mentioned_school_id,
+              mentioned_by,
+              profiles:profiles!mentions_mentioned_user_id_fkey (
+                id,
+                full_name
+              ),
+              schools:schools!mentions_mentioned_school_id_fkey (
+                id,
+                name
+              )
+            )
+          `)
+          .eq('school_id', currentProfile.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        posts = data || [];
+      } catch (err) {
+        console.warn('Error fetching school posts from database:', err);
+      }
+    }
+
+    if (posts.length === 0) {
+      posts = mockPosts.filter(p => p.school_id === currentProfile.id);
+      if (posts.length === 0) {
+        posts = [
+          {
+            id: `mock-generic-1`,
+            content: `Welcome to the official CampusLink profile page of ${currentProfile.name}. We look forward to connecting with students, alumni, and parents!`,
+            created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            id: `mock-generic-2`,
+            content: `Stay tuned for official updates, event announcements, and admissions information from our administration.`,
+            created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        ];
+      }
+    }
+
+    postsListContainer.innerHTML = '';
+    
+    const postsCountEl = document.getElementById('profile-posts-count');
+    if (postsCountEl) {
+      postsCountEl.textContent = posts.length;
+    }
+
+    posts.forEach(post => {
+      const card = document.createElement('div');
+      card.className = 'feed-post-card';
+      card.style.cssText = `
+        background-color: var(--white);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      `;
+      
+      const name = currentProfile.name;
+      const initial = currentProfile.logoLetter || name.charAt(0).toUpperCase();
+      
+      const avatarHtml = currentProfile.logoUrl
+        ? `<div style="width: 48px; height: 48px; border-radius: 50%; background-image: url('${currentProfile.logoUrl}'); background-size: cover; background-position: center; border: 1px solid var(--border-color);"></div>`
+        : `<div style="width: 48px; height: 48px; border-radius: 50%; background-color: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; border: 1px solid var(--border-color);">${initial}</div>`;
+      
+      let badgeHtml = '';
+      if (currentProfile.verificationBadge === 'blue') {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Partner School" style="width: 14px; height: 14px; color: var(--primary); display: inline-block; vertical-align: middle; margin-left: 4px;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239C1.266.296 1.903.164 1.903.164c.636-.132 1.22-.447 1.68-.907c.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246c.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>`;
+      } else if (currentProfile.verificationBadge === 'gold') {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-sm gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="width: 14px; height: 14px; color: var(--primary); display: inline-block; vertical-align: middle; margin-left: 4px;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239C1.266.296 1.903.164 1.903.164c.636-.132 1.22-.447 1.68-.907c.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246c.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>`;
+      }
+
+      const relativeTime = formatRelativeTime(post.created_at);
+
+      card.innerHTML = `
+        <div style="display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px;">
+          ${avatarHtml}
+          <div>
+            <div style="font-weight: 700; color: var(--dark-bg); font-size: 0.95rem; display: flex; align-items: center; gap: 4px;">
+              <span>${name}</span>
+              ${badgeHtml}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+              <span>Official Update</span> • <span>${relativeTime}</span>
+            </div>
+          </div>
+        </div>
+        <div class="post-text-content" style="font-size: 0.95rem; color: var(--text-main); line-height: 1.5; white-space: pre-wrap; word-break: break-word;">${formatContentWithMentions(post.content, post.mentions)}</div>
+      `;
+
+      postsListContainer.appendChild(card);
+    });
+  }
+
+  // --- Format Content with Clickable Mention Links ---
+  function formatContentWithMentions(content, mentions) {
+    if (!content) return '';
+    let formatted = content;
+    if (!mentions || mentions.length === 0) return formatted;
+
+    const sortedMentions = [...mentions].sort((a, b) => {
+      const nameA = a.profiles?.full_name || a.schools?.name || '';
+      const nameB = b.profiles?.full_name || b.schools?.name || '';
+      return nameB.length - nameA.length;
+    });
+
+    sortedMentions.forEach(mention => {
+      const name = mention.profiles?.full_name || mention.schools?.name;
+      if (!name) return;
+
+      const mentionText = `@${name}`;
+      const url = mention.mentioned_user_id 
+        ? `profile.html?id=${mention.mentioned_user_id}` 
+        : `school-profile.html?id=${mention.mentioned_school_id}`;
+
+      const escapedMentionText = mentionText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(escapedMentionText, 'g');
+      formatted = formatted.replace(regex, `<a href="${url}" class="mention-link" style="color: #0066c8; font-weight: 700; text-decoration: none;">@${name}</a>`);
+    });
+
+    return formatted;
+  }
+
+  function formatRelativeTime(dateStr) {
+    if (!dateStr) return 'Just now';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHr < 24) return `${diffHr}h ago`;
+    if (diffDay < 30) return `${diffDay}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function loadAndRenderSchoolEvents() {
+    const upcomingList = document.getElementById('events-upcoming-list');
+    const ongoingList = document.getElementById('events-ongoing-list');
+    const pastList = document.getElementById('events-past-list');
+
+    const upcomingGroup = document.getElementById('events-upcoming-group');
+    const ongoingGroup = document.getElementById('events-ongoing-group');
+    const pastGroup = document.getElementById('events-past-group');
+
+    if (!upcomingList || !ongoingList || !pastList) return;
+
+    upcomingList.innerHTML = '';
+    ongoingList.innerHTML = '';
+    pastList.innerHTML = '';
+
+    const schoolEvents = opportunities.filter(op => 
+      op.school.toLowerCase().includes(currentProfile.name.toLowerCase()) || 
+      currentProfile.name.toLowerCase().includes(op.school.toLowerCase())
+    );
+
+    const eventsCountEl = document.getElementById('profile-events-count');
+    if (eventsCountEl) {
+      eventsCountEl.textContent = schoolEvents.length;
+    }
+
+    if (schoolEvents.length === 0) {
+      upcomingList.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; background-color: var(--light-bg); border-radius: var(--radius-md); width: 100%;">
+          <p style="color: var(--text-muted);">No active events are currently scheduled at this school. Check back later.</p>
+        </div>
+      `;
+      if (upcomingGroup) upcomingGroup.style.display = 'block';
+      if (ongoingGroup) ongoingGroup.style.display = 'none';
+      if (pastGroup) pastGroup.style.display = 'none';
+      return;
+    }
+
+    let upcomingCount = 0;
+    let ongoingCount = 0;
+    let pastCount = 0;
+
+    schoolEvents.forEach(item => {
+      const status = classifyEventDate(item.date);
+      
+      const card = document.createElement('div');
+      card.className = 'event-card-modern';
+      card.innerHTML = `
+        <div class="event-image-container" style="${item.bannerUrl ? `background-image: url('${item.bannerUrl}'); background-size: cover; background-position: center;` : ''}">
+          ${!item.bannerUrl ? `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:2rem; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color:white;">${item.logoLetter}</div>` : ''}
+        </div>
+        <div class="event-details">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:8px;">
+            <div>
+              <span class="status-badge ${status}">${status}</span>
+              <h3 class="event-card-grid-title" style="margin-top:6px; font-size:1.1rem; font-weight:700; margin-bottom:0;">
+                <a href="event-detail.html?id=${item.id || ''}" style="color:var(--dark-bg); text-decoration:none;">${item.title}</a>
+              </h3>
+            </div>
+            <span class="badge badge-primary" style="margin:0; font-size:0.75rem;">${item.tag}</span>
+          </div>
+          <div style="display:flex; gap:16px; margin: 10px 0; font-size:0.85rem; color:var(--text-muted); flex-wrap:wrap;">
+            <span style="display:flex; align-items:center; gap:4px;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <path d="M9 1v2h6V1h2v2h4a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4V1h2zm11 9H4v10h16V10zm-2-5H4v3h16V5zm-6 7.5h5v5h-5v-5z"/>
+              </svg>
+              <span>${item.date}</span>
+            </span>
+            ${item.venue ? `
+            <span style="display:flex; align-items:center; gap:4px;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+              </svg>
+              <span>${item.venue}</span>
+            </span>` : ''}
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; width:100%; border-top:1px solid var(--border-color); padding-top:10px; margin-top:8px;">
+            <div class="event-card-registrations">
+              <span class="registrations-count" style="font-weight:700; color:var(--dark-bg); font-size:0.95rem;">${item.registrations}</span>
+              <span class="registrations-label" style="font-size:0.8rem; color:var(--text-muted);">Registrations</span>
+            </div>
+            <button class="btn btn-secondary btn-register-action" style="padding: 6px 14px; font-size: 0.8rem;" data-title="${item.title}">Register</button>
+          </div>
+        </div>
+      `;
+
+      if (status === 'upcoming') {
+        upcomingList.appendChild(card);
+        upcomingCount++;
+      } else if (status === 'ongoing') {
+        ongoingList.appendChild(card);
+        ongoingCount++;
+      } else {
+        pastList.appendChild(card);
+        pastCount++;
+      }
+    });
+
+    if (upcomingGroup) upcomingGroup.style.display = upcomingCount > 0 ? 'block' : 'none';
+    if (ongoingGroup) ongoingGroup.style.display = ongoingCount > 0 ? 'block' : 'none';
+    if (pastGroup) pastGroup.style.display = pastCount > 0 ? 'block' : 'none';
+
+    if (upcomingCount === 0 && ongoingCount === 0 && pastCount === 0) {
+      if (upcomingGroup) {
+        upcomingGroup.style.display = 'block';
+        upcomingList.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; background-color: var(--light-bg); border-radius: var(--radius-md); width:100%;">
+            <p style="color: var(--text-muted);">No active events are currently scheduled at this school. Check back later.</p>
+          </div>
+        `;
+      }
+    }
+
+    document.querySelectorAll('.btn-register-action').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const title = e.currentTarget.getAttribute('data-title');
+        openRegistrationModal(`Register for: ${title}`);
+      });
+    });
+  }
+
+  const followersModal = document.getElementById('followers-modal');
+  const followersModalClose = document.getElementById('followers-modal-close');
+  const followersListContainer = document.getElementById('followers-list-container');
+
+  if (followersModalClose && followersModal) {
+    followersModalClose.addEventListener('click', () => {
+      followersModal.style.display = 'none';
+    });
+    followersModal.addEventListener('click', (e) => {
+      if (e.target === followersModal) {
+        followersModal.style.display = 'none';
+      }
+    });
+  }
+
+  async function openFollowersModal() {
+    console.log('[DEBUG] openFollowersModal called, followersModal:', !!followersModal);
+    if (followersModal) {
+      followersModal.style.display = 'flex';
+      await loadFollowersModal();
+    }
+  }
+
+  async function loadFollowersModal() {
+    if (!followersListContainer) return;
+    followersListContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted); font-size: 0.95rem; padding: 20px 0;">Loading followers...</p>';
+
+    const supabase = window.CampusLink && window.CampusLink.supabase;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let followers = [];
+
+    if (supabase && uuidRegex.test(currentProfile.id)) {
+      try {
+        const { data, error } = await supabase
+          .from('follows')
+          .select(`
+            id,
+            follower_id,
+            profiles:profiles!follower_id (
+              id,
+              full_name,
+              avatar_url,
+              user_type,
+              is_verified
+            )
+          `)
+          .eq('following_school_id', currentProfile.id)
+          .eq('follow_type', 'school');
+
+        if (error) throw error;
+        followers = data || [];
+      } catch (err) {
+        console.warn('Error fetching followers list:', err);
+      }
+    }
+
+    if (followers.length === 0) {
+      followers = mockFollowersList;
+    }
+
+    const subtitleEl = document.getElementById('followers-modal-subtitle');
+    if (subtitleEl) {
+      subtitleEl.textContent = `${followers.length} people follow this school`;
+    }
+
+    const followedUserIds = new Set();
+    if (currentUser && supabase && followers.length > 0) {
+      try {
+        const followerIds = followers.map(f => f.profiles?.id).filter(Boolean);
+        if (followerIds.length > 0) {
+          const { data: followData } = await supabase
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', currentUser.id)
+            .in('following_id', followerIds);
+          if (followData) {
+            followData.forEach(f => followedUserIds.add(f.following_id));
+          }
+        }
+      } catch (err) {
+        console.warn('Error checking user follows:', err);
+      }
+    }
+
+    followersListContainer.innerHTML = '';
+    
+    followers.forEach(f => {
+      const u = f.profiles || {};
+      if (!u.id) return;
+
+      const name = u.full_name || 'Anonymous User';
+      const userType = u.user_type || 'Student';
+      const initial = name.charAt(0).toUpperCase();
+
+      const avatarHtml = u.avatar_url
+        ? `<div style="width: 40px; height: 40px; border-radius: 50%; background-image: url('${u.avatar_url}'); background-size: cover; background-position: center; border: 1px solid var(--border-color); flex-shrink: 0;"></div>`
+        : `<div style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--light-bg); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; border: 1px solid var(--border-color); flex-shrink: 0;">${initial}</div>`;
+
+      let badgeHtml = '';
+      if (u.is_verified) {
+        badgeHtml = `
+          <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile" style="width: 12px; height: 12px; color: var(--primary); display: inline-block; vertical-align: middle; margin-left: 2px;">
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239C1.266.296 1.903.164 1.903.164c.636-.132 1.22-.447 1.68-.907c.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246c.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+          </svg>`;
+      }
+
+      const item = document.createElement('div');
+      item.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        border-radius: var(--radius-md);
+        background-color: var(--light-bg);
+        border: 1px solid var(--border-color);
+        gap: 12px;
+      `;
+
+      const isFollowingUser = followedUserIds.has(u.id);
+      const isSelf = currentUser && currentUser.id === u.id;
+      let followBtnHtml = '';
+      if (!isSelf) {
+        followBtnHtml = `
+          <button class="btn btn-sm btn-follow-user-toggle ${isFollowingUser ? 'following' : ''}" 
+                  data-id="${u.id}" 
+                  style="padding: 6px 12px; font-size: 0.8rem; min-width: 90px; height: 32px; border-radius: var(--radius-sm); border: none; font-weight: 600; cursor: pointer; transition: all 0.2s;
+                         background-color: ${isFollowingUser ? '#E8EFFE' : 'var(--primary)'};
+                         color: ${isFollowingUser ? 'var(--primary)' : 'var(--white)'};">
+            ${isFollowingUser ? 'Following' : 'Follow'}
+          </button>
+        `;
+      }
+
+      item.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+          ${avatarHtml}
+          <div style="min-width: 0;">
+            <div style="font-weight: 700; color: var(--dark-bg); font-size: 0.9rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <a href="profile.html?id=${u.id}" style="color: inherit; text-decoration: none;">${name}</a>
+              ${badgeHtml}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: capitalize; margin-top: 2px;">${userType}</div>
+          </div>
+        </div>
+        ${followBtnHtml}
+      `;
+
+      followersListContainer.appendChild(item);
+    });
+
+    followersListContainer.querySelectorAll('.btn-follow-user-toggle').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        if (!currentUser) {
+          window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href);
+          return;
+        }
+
+        const button = e.currentTarget;
+        const targetUserId = button.getAttribute('data-id');
+        button.disabled = true;
+
+        const isFollowingUser = button.classList.contains('following');
+
+        if (supabase && uuidRegex.test(targetUserId)) {
+          try {
+            if (isFollowingUser) {
+              const { error } = await supabase
+                .from('follows')
+                .delete()
+                .eq('follower_id', currentUser.id)
+                .eq('following_id', targetUserId);
+              if (error) throw error;
+              
+              button.classList.remove('following');
+              button.style.backgroundColor = 'var(--primary)';
+              button.style.color = 'var(--white)';
+              button.textContent = 'Follow';
+              showToast('Unfollowed user');
+            } else {
+              const { error } = await supabase
+                .from('follows')
+                .insert({
+                  follower_id: currentUser.id,
+                  following_id: targetUserId,
+                  follow_type: 'user'
+                });
+              if (error) throw error;
+
+              button.classList.add('following');
+              button.style.backgroundColor = '#E8EFFE';
+              button.style.color = 'var(--primary)';
+              button.textContent = 'Following';
+              showToast('Following user');
+            }
+          } catch (err) {
+            console.error('Error toggling user follow:', err);
+            showToast('Failed to update follow status: ' + err.message, 'error');
+          } finally {
+            button.disabled = false;
+          }
+        } else {
+          const newFollowing = !isFollowingUser;
+          if (newFollowing) {
+            button.classList.add('following');
+            button.style.backgroundColor = '#E8EFFE';
+            button.style.color = 'var(--primary)';
+            button.textContent = 'Following';
+            showToast('Following user (mock)');
+          } else {
+            button.classList.remove('following');
+            button.style.backgroundColor = 'var(--primary)';
+            button.style.color = 'var(--white)';
+            button.textContent = 'Follow';
+            showToast('Unfollowed user (mock)');
+          }
+          button.disabled = false;
+        }
+      });
+    });
+  }
+
+  function setupStatsClickHandlers() {
+    console.log('[DEBUG] setupStatsClickHandlers called');
+    const postsStat = document.getElementById('stat-posts');
+    const eventsStat = document.getElementById('stat-events');
+    const followersStat = document.getElementById('stat-followers');
+    console.log('[DEBUG] stats elements:', { postsStat: !!postsStat, eventsStat: !!eventsStat, followersStat: !!followersStat });
+
+    if (postsStat) {
+      postsStat.addEventListener('click', () => {
+        console.log('[DEBUG] postsStat clicked');
+        const sectionActivity = document.getElementById('section-activity');
+        if (sectionActivity) {
+          sectionActivity.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    }
+
+    if (eventsStat) {
+      eventsStat.addEventListener('click', () => {
+        console.log('[DEBUG] eventsStat clicked');
+        const btnEvents = document.querySelector('.profile-tab-btn[data-tab="events"]');
+        if (btnEvents) {
+          btnEvents.click();
+        }
+        const panelEvents = document.getElementById('panel-events');
+        if (panelEvents) {
+          panelEvents.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    }
+
+    if (followersStat) {
+      followersStat.addEventListener('click', () => {
+        console.log('[DEBUG] followersStat clicked');
+        openFollowersModal();
+      });
+    }
+  }
+
+  // --- End of School Profile Redesign Additions ---
 });
