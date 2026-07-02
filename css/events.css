@@ -1,0 +1,488 @@
+/* ============================================================
+   EVENTS PAGE STYLES
+   ============================================================ */
+
+/* --- Events Page Styles --- */
+.event-card-grid-item {
+  background-color: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-smooth);
+  display: flex;
+  flex-direction: column;
+}
+
+.event-card-grid-item:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(0, 102, 200, 0.15);
+}
+
+.event-card-banner-img {
+  height: 140px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: var(--white);
+}
+
+.event-card-banner-img.category-sports { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.event-card-banner-img.category-science { background: linear-gradient(135deg, #06B6D4, #0891B2); }
+.event-card-banner-img.category-debate { background: linear-gradient(135deg, #6366F1, #4F46E5); }
+.event-card-banner-img.category-cultural { background: linear-gradient(135deg, #EC4899, #DB2777); }
+.event-card-banner-img.category-workshop { background: linear-gradient(135deg, #10B981, #059669); }
+
+.event-card-banner-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: var(--dark-bg);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: var(--shadow-sm);
+}
+
+.event-card-grid-content {
+  padding: 24px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.event-card-grid-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--dark-bg);
+  margin-bottom: 8px;
+  line-height: 1.35;
+  height: 2.7rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.event-card-grid-title a, .event-card-title a {
+  color: inherit;
+  transition: var(--transition-fast);
+}
+
+.event-card-grid-title a:hover, .event-card-title a:hover {
+  color: var(--primary);
+}
+
+.event-card-host {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.event-card-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+  margin-top: auto;
+}
+
+.event-card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.event-card-meta-item svg {
+  fill: currentColor;
+}
+
+
+/* Event modern card and status badge styling */
+.event-card-modern {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.event-card-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.event-image-container {
+  width: 120px;
+  height: 80px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-light);
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.event-details {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.status-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.upcoming {
+  background-color: #E0F2FE;
+  color: #0369A1;
+}
+
+.status-badge.ongoing {
+  background-color: #DCFCE7;
+  color: #15803D;
+}
+
+.status-badge.past {
+  background-color: #F1F5F9;
+  color: #475569;
+}
+
+
+/* --- Baseline overrides from events.css --- */
+.event-card-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+}
+
+.event-card-regs-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.event-card-regs-number {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--dark-bg);
+}
+
+.event-card-regs-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.btn-register-action {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
+
+
+/* --- Mobile-only layout optimization (<768px) --- */
+@media (max-width: 768px) {
+  #nav-messaging-link span {
+    display: none !important;
+  }
+
+  body {
+    padding-bottom: 90px !important;
+  }
+
+  .section {
+    padding: 20px 0 !important;
+  }
+
+  .schools-hero {
+    padding: 24px 0 16px 0 !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
+  }
+
+  .schools-filter-section {
+    padding: 8px 0 !important;
+  }
+
+  .schools-grid-section {
+    padding: 10px 0 !important;
+  }
+
+  .schools-hero h1 {
+    font-size: 1.4rem !important;
+    letter-spacing: -0.01em !important;
+    margin-bottom: 6px !important;
+  }
+
+  .schools-hero p {
+    font-size: 0.8rem !important;
+    max-width: 85% !important;
+    margin: 0 auto !important;
+    line-height: 1.4 !important;
+  }
+
+  .schools-hero .badge {
+    font-size: 0.65rem !important;
+    padding: 3px 8px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .filter-bar {
+    gap: 12px !important;
+  }
+
+  .filter-input-wrapper {
+    max-width: 100% !important;
+    height: 38px !important;
+  }
+
+  .filter-input-wrapper input {
+    height: 100% !important;
+    padding: 6px 10px 6px 32px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .filter-input-wrapper svg {
+    left: 10px !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .btn-clear-filters {
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 0.8rem !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  .schools-count-label {
+    font-size: 0.72rem !important;
+  }
+
+  /* Hide Clear button permanently on mobile */
+  .btn-clear-filters {
+    display: none !important;
+  }
+
+  /* Hide count label by default; show only when filters are active */
+  .schools-count-label {
+    display: none !important;
+  }
+
+  .filters-active .schools-count-label {
+    display: inline-flex !important;
+  }
+
+  /* Filter category tabs - Horizontally scrollable row */
+  .showcase-tabs {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 8px !important;
+    padding: 6px 12px !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    scrollbar-width: none !important;
+  }
+
+  .showcase-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .showcase-tabs .tab-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: max-content !important;
+    height: 32px !important;
+    padding: 0 14px !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    border-radius: 16px !important;
+    border: 1px solid var(--border-color) !important;
+    background-color: var(--white) !important;
+    color: var(--text-muted) !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .showcase-tabs .tab-btn.active {
+    background-color: var(--primary-light) !important;
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+  }
+
+  /* 2-Column Compact Grid */
+  .schools-cards-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    padding: 0 !important;
+  }
+
+  /* Compact Card Styles (LinkedIn-Style) */
+  .event-card-grid-item {
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--white) !important;
+    cursor: pointer !important;
+  }
+
+  /* Active press feedback state for mobile touch screens */
+  .event-card-grid-item:active {
+    transform: scale(0.97) !important;
+    background-color: var(--light-bg) !important;
+    box-shadow: none !important;
+  }
+
+  .event-card-banner-img {
+    height: 80px !important;
+    font-size: 1.6rem !important;
+  }
+
+  .event-card-banner-badge {
+    font-size: 0.6rem !important;
+    padding: 2px 6px !important;
+    top: 6px !important;
+    right: 6px !important;
+  }
+
+  .event-card-grid-content {
+    padding: 10px !important;
+    flex-grow: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .event-card-grid-content .badge-primary {
+    font-size: 0.65rem !important;
+    padding: 2px 6px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .event-card-grid-title {
+    font-size: 0.82rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 6px !important;
+    height: 32px !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .event-card-grid-title a {
+    color: var(--dark-bg) !important;
+  }
+
+  .event-card-host {
+    font-size: 0.72rem !important;
+    margin-bottom: 6px !important;
+    gap: 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .event-card-meta-row {
+    flex-direction: column !important;
+    gap: 4px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .event-card-meta-item {
+    font-size: 0.7rem !important;
+    gap: 4px !important;
+  }
+
+  .event-card-meta-item svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  /* Card Footer Row — vertical stack: registration count above register button */
+  .event-card-footer-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    border-top: 1px solid var(--border-color) !important;
+    padding-top: 10px !important;
+    margin-top: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .event-card-regs-info {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 1px !important;
+  }
+
+  .event-card-regs-number {
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    color: var(--dark-bg) !important;
+    line-height: 1.2 !important;
+  }
+
+  .event-card-regs-label {
+    font-size: 0.58rem !important;
+    color: var(--text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.02em !important;
+  }
+
+  .btn-register-action {
+    width: 100% !important;
+    padding: 6px 10px !important;
+    font-size: 0.75rem !important;
+    height: 30px !important;
+    border-radius: var(--radius-sm) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+  }
+}

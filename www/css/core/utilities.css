@@ -1,0 +1,8 @@
+/* --- Utilities --- */
+.text-accent {
+  color: var(--accent);
+}
+
+.text-primary {
+  color: var(--primary);
+}

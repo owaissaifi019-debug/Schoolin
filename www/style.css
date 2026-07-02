@@ -1,117 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+/* Resets and Variables moved to css/core/ */
 
-/* --- Design Variables --- */
-:root {
-  --primary: #0066C8;
-  --primary-rgb: 0, 102, 200;
-  --primary-hover: #0050A0;
-  --primary-light: #EBF5FF;
-  
-  --accent: #00D2C4;
-  --accent-rgb: 0, 210, 196;
-  --accent-hover: #00B3A7;
-  --accent-light: #E0FAF8;
-  
-  --dark-bg: #0F172A;
-  --dark-surface: #1E293B;
-  --light-bg: #F8FAFC;
-  --white: #FFFFFF;
-  
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --text-white: #FFFFFF;
-  
-  --border-color: rgba(15, 23, 42, 0.08);
-  --border-focus: rgba(0, 102, 200, 0.4);
-  
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-full: 9999px;
-  
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 12px 24px -6px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 20px 40px -12px rgba(15, 23, 42, 0.12);
-  --shadow-glow: 0 0 20px rgba(0, 210, 196, 0.25);
-  
-  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-fast: all 0.15s ease;
-}
-
-/* --- Base Resets --- */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-html {
-  scroll-behavior: smooth;
-  color: var(--text-main);
-  background-color: var(--white);
-  overflow-x: hidden;
-}
-
-body {
-  font-size: 16px;
-  line-height: 1.6;
-  overflow-x: hidden;
-  padding-top: 52px; /* offset for fixed header */
-}
-
-@media (max-width: 768px) {
-  body {
-    padding-top: 60px !important; /* offset for mobile fixed header */
-  }
-}
-
-/* --- Typography --- */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--dark-bg);
-}
-
-h1 {
-  font-size: clamp(2.5rem, 5vw, 3.75rem);
-  letter-spacing: -0.02em;
-}
-
-h2 {
-  font-size: clamp(2rem, 3.5vw, 2.5rem);
-  letter-spacing: -0.01em;
-  margin-bottom: 1rem;
-}
-
-h3 {
-  font-size: 1.5rem;
-}
-
-p {
-  color: var(--text-muted);
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
-  transition: var(--transition-fast);
-}
-
-/* --- Scrollbar --- */
-::-webkit-scrollbar {
-  width: 10px;
-}
-::-webkit-scrollbar-track {
-  background: var(--light-bg);
-}
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 5px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
-}
+/* Typography and Scrollbar moved to css/core/ */
 
 /* --- Layout Containers --- */
 .container {
@@ -147,14 +36,7 @@ a {
 .section-header p {
   font-size: 1.1rem;
 }
-
-.text-accent {
-  color: var(--accent);
-}
-
-.text-primary {
-  color: var(--primary);
-}
+/* Utilities moved to css/core/utilities.css */
 
 /* --- Buttons --- */
 .btn-group {
@@ -2064,18 +1946,8 @@ footer {
   }
 }
 
-/* --- Animations --- */
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
-}
+/* Animations moved to css/core/animations.css */
 
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(0, 210, 196, 0.4); }
-  70% { box-shadow: 0 0 0 15px rgba(0, 210, 196, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 210, 196, 0); }
-}
 
 /* --- Media Queries (Mobile Responsiveness) --- */
 @media (max-width: 1024px) {

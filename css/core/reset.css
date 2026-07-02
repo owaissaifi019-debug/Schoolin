@@ -1,0 +1,42 @@
+/* --- Base Resets --- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  color: var(--text-main);
+  background-color: var(--white);
+  overflow-x: hidden;
+}
+
+body {
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  padding-top: 52px; /* offset for fixed header */
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-top: 60px !important; /* offset for mobile fixed header */
+  }
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--light-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
