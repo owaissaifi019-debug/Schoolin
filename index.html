@@ -625,10 +625,9 @@
             const cards = document.querySelectorAll('.feed-post-card');
             cards.forEach(card => {
               if (filter === 'schools') {
-                const isSchool = card.querySelector('.profile-card-badge.school_representative') || 
-                                 card.querySelector('.post-author-role.school_representative') || 
-                                 card.querySelector('.post-author-headline')?.textContent.includes('Affiliated') ||
-                                 card.querySelector('.post-author-role.school_admin');
+                const isSchool = card.querySelector('.school-rep-badge') || 
+                                 card.querySelector('.post-author-headline')?.textContent.includes('Official School Account') ||
+                                 card.querySelector('.post-author-headline')?.textContent.includes('School Rep');
                 card.style.display = isSchool ? 'block' : 'none';
               } else if (filter === 'events') {
                 const isEvent = card.querySelector('.post-type-badge')?.classList.contains('type-event') || 
@@ -647,24 +646,6 @@
               }
             });
           }, 300); // Small timeout to ensure app.js reload finishes first
-        });
-      }
-
-      // 3. Post button Modal trigger
-      const mobilePostBtn = document.getElementById('mobile-nav-post');
-      if (mobilePostBtn) {
-        mobilePostBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          const modal = document.getElementById('create-post-modal');
-          if (modal) {
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-            
-            // Focus textarea if exists
-            setTimeout(() => {
-              document.getElementById('post-content-textarea')?.focus();
-            }, 100);
-          }
         });
       }
     });

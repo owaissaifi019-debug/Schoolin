@@ -14,17 +14,20 @@
 
   /* --- Mobile Navigation Menu --- */
   const mobileToggle = document.querySelector('.mobile-toggle');
-  const navLinks = document.querySelector('.nav-links');
+  const navLinks = document.querySelector('.nav-links') || document.querySelector('.header-nav');
   const body = document.body;
 
-  mobileToggle.addEventListener('click', () => {
-    navLinks.classList.toggle('active');
-    body.classList.toggle('mobile-nav-active');
-  });
+  if (mobileToggle && navLinks) {
+    mobileToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+      body.classList.toggle('mobile-nav-active');
+    });
+  }
 
-  document.querySelectorAll('.nav-links a').forEach(anchor => {
+  const navAnchors = document.querySelectorAll('.nav-links a, .header-nav a');
+  navAnchors.forEach(anchor => {
     anchor.addEventListener('click', () => {
-      navLinks.classList.remove('active');
+      if (navLinks) navLinks.classList.remove('active');
       body.classList.remove('mobile-nav-active');
     });
   });

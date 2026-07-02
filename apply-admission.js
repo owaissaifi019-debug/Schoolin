@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async () => {
+async function initApplyAdmission() {
   'use strict';
 
   // Update navigation based on auth state
@@ -14,10 +14,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   /* --- Mobile Navigation Menu --- */
   const mobileToggle = document.querySelector('.mobile-toggle');
-  const navLinks = document.querySelector('.nav-links');
+  const navLinks = document.querySelector('.nav-links') || document.querySelector('.header-nav');
   const body = document.body;
 
-  if (mobileToggle) {
+  if (mobileToggle && navLinks) {
     mobileToggle.addEventListener('click', () => {
       navLinks.classList.toggle('active');
       body.classList.toggle('mobile-nav-active');
@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let schoolName = 'Partner School';
   let schoolBoard = 'CBSE';
   let schoolCity = 'India';
+  let verificationBadge = 'none';
 
   // Mock Database mapping if using mock IDs
   const schoolProfiles = {
@@ -68,12 +69,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     10: { name: "The Shri Ram School", board: "IB", city: "New Delhi" }
   };
 
+  const getBadgeByName = (name) => {
+    if (!name) return 'none';
+    const clean = name.toLowerCase();
+    if (clean.includes('rk puram') || clean.includes('delhi public')) return 'blue';
+    if (clean.includes('xavier')) return 'blue';
+    if (clean.includes('bishop cotton')) return 'gold';
+    if (clean.includes('stephen')) return 'none';
+    if (clean.includes('heritage')) return 'gold';
+    if (clean.includes('cathedral')) return 'blue';
+    if (clean.includes('doon')) return 'gold';
+    if (clean.includes('martiniere')) return 'blue';
+    if (clean.includes('greenwood')) return 'gold';
+    if (clean.includes('shri ram')) return 'blue';
+    return 'none';
+  };
+
   if (schoolId.length > 8 && supabase) {
     // DB Fetch
     try {
       const { data, error } = await supabase
         .from('schools')
-        .select('name, board, city')
+        .select('name, board, city, verification_badge')
         .eq('id', schoolId)
         .maybeSingle();
 
@@ -81,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         schoolName = data.name;
         schoolBoard = data.board || 'CBSE';
         schoolCity = data.city || 'India';
+        verificationBadge = data.verification_badge || 'none';
       }
     } catch (err) {
       console.warn('Failed to load school details from Supabase:', err);
@@ -92,12 +110,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     schoolName = mockSchool.name;
     schoolBoard = mockSchool.board;
     schoolCity = mockSchool.city;
+    verificationBadge = getBadgeByName(schoolName);
   }
 
   // Update UI Header
   const titleEl = document.getElementById('apply-school-title');
   const metaEl = document.getElementById('apply-school-meta');
-  if (titleEl) titleEl.textContent = `Apply for Admission: ${schoolName}`;
+  if (titleEl) {
+    let badgeHtml = '';
+    if (verificationBadge === 'blue') {
+      badgeHtml = `
+        <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="margin-left:8px; display:inline-block; vertical-align:middle;">
+          <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+          <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+        </svg>`;
+    } else if (verificationBadge === 'gold') {
+      badgeHtml = `
+        <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="margin-left:8px; display:inline-block; vertical-align:middle;">
+          <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+          <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+        </svg>`;
+    }
+    titleEl.innerHTML = `Apply for Admission: ${schoolName}${badgeHtml}`;
+  }
   if (metaEl) metaEl.textContent = `${schoolBoard} Board Affiliated • ${schoolCity}`;
 
   /* --- Multi-step Form Navigation Logic --- */
@@ -283,4 +318,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       setTimeout(() => toast.remove(), 400);
     }, 3500);
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApplyAdmission);
+} else {
+  initApplyAdmission();
+}

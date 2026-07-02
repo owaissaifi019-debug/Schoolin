@@ -241,6 +241,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (regFetchErr) {
               console.warn('Failed to query event_registrations:', regFetchErr);
             }
+            // Trigger Classroom Management data load
+            await loadClassroomManagementData();
           }
         }
       } catch (err) {
@@ -292,6 +294,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   let registrations = getStoredData('campuslink_registrations', DEFAULT_REGISTRATIONS);
   let admissionApplications = getStoredData('campuslink_admission_applications', []);
   let contactRequests = getStoredData('campuslink_contact_requests', DEFAULT_CONTACT_REQUESTS);
+
+  // --- Classroom Management State Defaults ---
+  const DEFAULT_YEARS = [
+    { id: 'year-2024-25', name: '2024-25', is_active: false, school_id: 'default' },
+    { id: 'year-2025-26', name: '2025-26', is_active: true, school_id: 'default' }
+  ];
+  const DEFAULT_CLASSROOMS = [
+    { id: 'class-ix-a', school_id: 'default', academic_year_id: 'year-2025-26', grade: 'Grade 9', section: 'A', room: 'Room 102', is_archived: false, capacity: 40, status: 'active' },
+    { id: 'class-x-b', school_id: 'default', academic_year_id: 'year-2025-26', grade: 'Grade 10', section: 'B', room: 'Room 105', is_archived: false, capacity: 45, status: 'active' }
+  ];
+  const DEFAULT_ASSIGNMENTS = [
+    { id: 'assign-1', classroom_id: 'class-ix-a', teacher_id: 'teacher-1', assignment_type: 'permanent', start_date: '2025-06-01T00:00:00Z', is_active: true, teacher: { full_name: 'Mrs. Sharma', email: 'sharma@campuslink.edu' } },
+    { id: 'assign-2', classroom_id: 'class-x-b', teacher_id: 'teacher-2', assignment_type: 'permanent', start_date: '2025-06-01T00:00:00Z', is_active: true, teacher: { full_name: 'Mr. Rajesh Kumar', email: 'rajesh@campuslink.edu' } }
+  ];
+  const DEFAULT_SUBJECT_TEACHERS = [
+    { id: 'st-1', classroom_id: 'class-ix-a', teacher_id: 'teacher-2', subject: 'Mathematics', teacher: { full_name: 'Mr. Rajesh Kumar' } },
+    { id: 'st-2', classroom_id: 'class-ix-a', teacher_id: 'teacher-3', subject: 'Physics', teacher: { full_name: 'Dr. Mehta' } }
+  ];
+  const DEFAULT_SCHOOL_TEACHERS = [
+    { id: 'teacher-1', full_name: 'Mrs. Sharma', email: 'sharma@campuslink.edu', is_class_teacher: true, subject: 'English', employee_id: 'EMP-T1001', is_verified: true, avatar_url: '' },
+    { id: 'teacher-2', full_name: 'Mr. Rajesh Kumar', email: 'rajesh@campuslink.edu', is_class_teacher: true, subject: 'Mathematics', employee_id: 'EMP-T1002', is_verified: true, avatar_url: '' },
+    { id: 'teacher-3', full_name: 'Dr. Mehta', email: 'mehta@campuslink.edu', is_class_teacher: true, subject: 'Science', employee_id: 'EMP-T1003', is_verified: false, avatar_url: '' },
+    { id: 'teacher-4', full_name: 'Miss Sen', email: 'sen@campuslink.edu', is_class_teacher: false, subject: 'History', employee_id: 'EMP-T1004', is_verified: false, avatar_url: '' }
+  ];
+
+  let academicYears = getStoredData('campuslink_academic_years', DEFAULT_YEARS);
+  let classrooms = getStoredData('campuslink_classrooms', DEFAULT_CLASSROOMS);
+  let classroomAssignments = getStoredData('campuslink_classroom_assignments', DEFAULT_ASSIGNMENTS);
+  let classroomSubjectTeachers = getStoredData('campuslink_classroom_subject_teachers', DEFAULT_SUBJECT_TEACHERS);
+  let schoolTeachers = getStoredData('campuslink_school_teachers', DEFAULT_SCHOOL_TEACHERS);
+
+  // Table UX States
+  let classroomSearchText = '';
+  let classroomShowArchived = false;
+  let classroomSortColumn = 'grade';
+  let classroomSortOrder = 'asc';
+  let classroomCurrentPage = 1;
+  const classroomPageSize = 10;
+  let classroomLoading = false;
 
   // Helper to persist data
   function saveState(key, data) {
@@ -408,6 +449,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tabTarget === 'applications') tabName = 'Admissions Applications Received';
       if (tabTarget === 'contact-requests') tabName = 'Contact Requests Received';
       if (tabTarget === 'profile') tabName = 'School Profile Settings';
+      if (tabTarget === 'classroom-management') {
+        tabName = 'Classroom & Teacher Management';
+        loadClassroomManagementData();
+      }
       if (topBarTitle) topBarTitle.textContent = tabName;
     });
   });
@@ -1613,12 +1658,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function populateProfileForm() {
     if (!profileForm) return;
     
-    document.getElementById('profile-school-name').value = profile.name || '';
-    document.getElementById('profile-city').value = profile.city || '';
-    document.getElementById('profile-state').value = profile.state || '';
-    document.getElementById('profile-board').value = profile.board || 'CBSE';
-    document.getElementById('profile-logo-char').value = profile.logoLetter || '';
-    document.getElementById('profile-about').value = profile.about || '';
+    const el = (id) => document.getElementById(id);
+    if (el('profile-school-name')) el('profile-school-name').value = profile.name || '';
+    if (el('profile-city')) el('profile-city').value = profile.city || '';
+    if (el('profile-state')) el('profile-state').value = profile.state || '';
+    if (el('profile-board')) el('profile-board').value = profile.board || 'CBSE';
+    if (el('profile-logo-char')) el('profile-logo-char').value = profile.logoLetter || '';
+    if (el('profile-about')) el('profile-about').value = profile.about || '';
 
     // Update previews
     const logoPreview = document.getElementById('dashboard-logo-preview');
@@ -2167,6 +2213,2351 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
     });
+  });
+
+  // ============================================================
+  // CLASSROOM OWNERSHIP & TEACHER TRANSFER SYSTEM CONTROLLER
+  // ============================================================
+  
+  // Helper: clean any stale mock data from localStorage
+  function clearStaleMockData() {
+    try {
+      const savedProfile = JSON.parse(localStorage.getItem('campuslink_profile') || '{}');
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(savedProfile?.id)) {
+        return; // Do not clear mock data in demo/local/offline mode!
+      }
+    } catch (e) {
+      return;
+    }
+
+    ['campuslink_classrooms', 'campuslink_classroom_assignments',
+     'campuslink_classroom_subject_teachers', 'campuslink_school_teachers'].forEach(key => {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key) || '[]');
+        // Remove entries that used the fake 'default' school_id
+        const cleaned = stored.filter(item => item.school_id !== 'default');
+        localStorage.setItem(key, JSON.stringify(cleaned));
+      } catch (e) { /* ignore parse errors */ }
+    });
+    // Also clean academic years that were seeded with school_id='default'
+    try {
+      const storedYears = JSON.parse(localStorage.getItem('campuslink_academic_years') || '[]');
+      const cleanedYears = storedYears.filter(y => y.school_id !== 'default');
+      if (cleanedYears.length !== storedYears.length) {
+        localStorage.setItem('campuslink_academic_years', JSON.stringify(cleanedYears));
+      }
+    } catch (e) { /* ignore */ }
+  }
+  clearStaleMockData();
+
+  // Sync state variables again after clearStaleMockData runs
+  academicYears = getStoredData('campuslink_academic_years', DEFAULT_YEARS);
+  classrooms = getStoredData('campuslink_classrooms', DEFAULT_CLASSROOMS);
+  classroomAssignments = getStoredData('campuslink_classroom_assignments', DEFAULT_ASSIGNMENTS);
+  classroomSubjectTeachers = getStoredData('campuslink_classroom_subject_teachers', DEFAULT_SUBJECT_TEACHERS);
+  schoolTeachers = getStoredData('campuslink_school_teachers', DEFAULT_SCHOOL_TEACHERS);
+  classroomSortColumn = 'grade';
+  classroomSortOrder = 'asc';
+  classroomCurrentPage = 1;
+  classroomLoading = false;
+
+  // Helper date checker for temporary assignments
+  function isWithinDateRange(start, end) {
+    if (!start) return false;
+    const now = new Date();
+    const startDate = new Date(start);
+    const endDate = end ? new Date(end) : null;
+    return startDate <= now && (!endDate || now <= endDate);
+  }
+
+  // Student counts cache (classroom_id -> count)
+  let classroomStudentCounts = {};
+
+  // 1. Fetch ALL classroom management data from Supabase (always fresh)
+  async function loadClassroomManagementData() {
+    classroomLoading = true;
+    renderClassroomStats();
+    renderClassroomsTable();
+
+    if (!supabase || !profile || !profile.id) {
+      console.warn('[Classroom] No Supabase or profile — showing empty state.');
+      classroomLoading = false;
+      renderAcademicYearsDropdowns();
+      renderClassroomStats();
+      renderClassroomsTable();
+      return;
+    }
+
+    try {
+      // ── 1. Academic Years ─────────────────────────────────────────
+      const { data: dbYears, error: yErr } = await supabase
+        .from('academic_years')
+        .select('*')
+        .eq('school_id', profile.id)
+        .order('name', { ascending: true });
+
+      if (yErr) {
+        console.error('[Classroom] Academic years fetch error:', yErr.message);
+      } else if (dbYears && dbYears.length > 0) {
+        academicYears = dbYears;
+        saveState('campuslink_academic_years', academicYears);
+      } else if (dbYears && dbYears.length === 0) {
+        // Auto-provision default years for new schools
+        const currentYear = new Date().getFullYear();
+        const defaultYears = [
+          { school_id: profile.id, name: `${currentYear - 1}-${String(currentYear).slice(2)}`, is_active: false },
+          { school_id: profile.id, name: `${currentYear}-${String(currentYear + 1).slice(2)}`, is_active: true },
+        ];
+        try {
+          const { data: inserted, error: insErr } = await supabase.from('academic_years').insert(defaultYears).select();
+          if (!insErr && inserted && inserted.length > 0) {
+            academicYears = inserted;
+            saveState('campuslink_academic_years', academicYears);
+          }
+        } catch (yrInsertErr) {
+          console.warn('[Classroom] Could not auto-provision academic years:', yrInsertErr);
+        }
+      }
+
+      // ── 2. Classrooms (all active + archived) ─────────────────────
+      const { data: dbClassrooms, error: cErr } = await supabase
+        .from('classrooms')
+        .select('*')
+        .eq('school_id', profile.id)
+        .order('created_at', { ascending: false });
+
+      if (cErr) {
+        console.error('[Classroom] Classrooms fetch error:', cErr.message);
+      } else if (dbClassrooms) {
+        classrooms = dbClassrooms;
+        saveState('campuslink_classrooms', classrooms);
+      }
+
+      // ── 3. Teacher Assignments & Subject Teachers ──────────────────
+      const cIds = classrooms.map(c => c.id);
+      if (cIds.length > 0) {
+        const { data: dbAssignments, error: aErr } = await supabase
+          .from('classroom_teacher_assignments')
+          .select('id, classroom_id, teacher_id, assignment_type, start_date, end_date, is_active, reason, teacher:profiles!teacher_id(full_name, email)')
+          .in('classroom_id', cIds)
+          .order('start_date', { ascending: false });
+
+        if (!aErr && dbAssignments) {
+          classroomAssignments = dbAssignments;
+          saveState('campuslink_classroom_assignments', classroomAssignments);
+        }
+
+        const { data: dbSubTeachers, error: stErr } = await supabase
+          .from('classroom_subject_teachers')
+          .select('id, classroom_id, teacher_id, subject, teacher:profiles!teacher_id(full_name, email)')
+          .in('classroom_id', cIds);
+
+        if (!stErr && dbSubTeachers) {
+          classroomSubjectTeachers = dbSubTeachers;
+          saveState('campuslink_classroom_subject_teachers', classroomSubjectTeachers);
+        }
+
+        // ── 4. Student Counts per Classroom ────────────────────────
+        try {
+          const { data: studentRows } = await supabase
+            .from('classroom_students')
+            .select('classroom_id')
+            .in('classroom_id', cIds);
+          classroomStudentCounts = {};
+          (studentRows || []).forEach(row => {
+            classroomStudentCounts[row.classroom_id] = (classroomStudentCounts[row.classroom_id] || 0) + 1;
+          });
+        } catch (scErr) {
+          console.warn('[Classroom] Student count fetch failed:', scErr);
+        }
+      }
+
+      // ── 5. School Teachers ────────────────────────────────────────
+      const { data: dbSchoolTeachers, error: tErr } = await supabase
+        .from('school_members')
+        .select('user_id, role, is_class_teacher, user:profiles!user_id(id, full_name, email, avatar_url, is_verified)')
+        .eq('school_id', profile.id)
+        .eq('role', 'teacher');
+
+      if (!tErr && dbSchoolTeachers) {
+        schoolTeachers = dbSchoolTeachers
+          .filter(t => t.user)
+          .map(t => ({
+            id: t.user.id,
+            full_name: t.user.full_name,
+            email: t.user.email,
+            is_class_teacher: t.is_class_teacher !== false,
+            avatar_url: t.user.avatar_url || '',
+            is_verified: t.user.is_verified === true,
+            subject: ['Mathematics', 'Science', 'English', 'History', 'Geography', 'Computer Science'][Math.abs(t.user.id.charCodeAt(0) + (t.user.id.charCodeAt(1) || 0)) % 6],
+            employee_id: 'EMP-T' + t.user.id.slice(0, 4).toUpperCase()
+          }));
+        saveState('campuslink_school_teachers', schoolTeachers);
+      }
+
+    } catch (err) {
+      console.error('[Classroom] Fatal load error:', err);
+      showToast('Failed to load classroom data. Please refresh.', 'error');
+    }
+
+    classroomLoading = false;
+    renderAcademicYearsDropdowns();
+    renderClassroomStats();
+    renderClassroomsTable();
+  }
+
+
+
+
+
+
+
+
+
+  // Helper to draw table skeleton loading state
+  function renderSkeletonLoading(tbody, columnsCount) {
+    tbody.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      const tr = document.createElement('tr');
+      tr.className = 'skeleton-row';
+      let tds = '';
+      for (let j = 0; j < columnsCount; j++) {
+        tds += `<td><div style="height: 18px; background: #E2E8F0; border-radius: 4px; animation: pulse 1.5s infinite ease-in-out;"></div></td>`;
+      }
+      tr.innerHTML = tds;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ── Classroom view mode: 'cards' or 'table' ───────────────
+  let classroomViewMode = 'cards';
+
+  // 3a. Render Stats Bar
+  function renderClassroomStats() {
+    const statsBar = document.getElementById('cl-stats-bar');
+    if (!statsBar) return;
+
+    if (classroomLoading) {
+      statsBar.innerHTML = Array(4).fill(`
+        <div class="cl-stat-card" style="background:#F8FAFC; border-color:#E2E8F0;">
+          <div style="width:44px;height:44px;border-radius:12px;background:#E2E8F0;animation:pulse 1.5s infinite;"></div>
+          <div><div style="height:10px;width:80px;background:#E2E8F0;border-radius:4px;margin-bottom:8px;animation:pulse 1.5s infinite;"></div>
+          <div style="height:24px;width:40px;background:#E2E8F0;border-radius:4px;animation:pulse 1.5s infinite;"></div></div>
+        </div>`).join('');
+      return;
+    }
+
+    const activeClassrooms = classrooms.filter(c => !c.is_archived);
+    const totalActive = activeClassrooms.length;
+    const withTeacher = activeClassrooms.filter(c =>
+      classroomAssignments.some(a => a.classroom_id === c.id && a.is_active && a.assignment_type === 'permanent')
+    ).length;
+    const totalStudents = Object.values(classroomStudentCounts).reduce((s, n) => s + n, 0);
+    const activeCount = activeClassrooms.filter(c => c.status !== 'inactive').length;
+
+    const stats = [
+      { icon: '🏫', label: 'Total Classrooms', value: totalActive, bg: '#EFF6FF', iconBg: '#DBEAFE', color: '#2563EB' },
+      { icon: '✅', label: 'Active', value: activeCount, bg: '#F0FDF4', iconBg: '#DCFCE7', color: '#16A34A' },
+      { icon: '👩‍🏫', label: 'With Class Teacher', value: withTeacher, bg: '#FFF7ED', iconBg: '#FFEDD5', color: '#EA580C' },
+      { icon: '🎒', label: 'Total Students', value: totalStudents, bg: '#FAF5FF', iconBg: '#EDE9FE', color: '#7C3AED' }
+    ];
+
+    statsBar.innerHTML = stats.map(s => `
+      <div class="cl-stat-card" style="background:${s.bg}; border-color:${s.iconBg};">
+        <div class="cl-stat-icon" style="background:${s.iconBg};">${s.icon}</div>
+        <div>
+          <div class="cl-stat-label" style="color:${s.color};">${s.label}</div>
+          <div class="cl-stat-value" style="color:${s.color};">${s.value}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Accent color palette for cards (cycles)
+  const CL_CARD_ACCENTS = [
+    'linear-gradient(90deg,#3B82F6,#60A5FA)',
+    'linear-gradient(90deg,#10B981,#34D399)',
+    'linear-gradient(90deg,#8B5CF6,#A78BFA)',
+    'linear-gradient(90deg,#F59E0B,#FCD34D)',
+    'linear-gradient(90deg,#EF4444,#F87171)',
+    'linear-gradient(90deg,#06B6D4,#67E8F9)',
+    'linear-gradient(90deg,#EC4899,#F9A8D4)',
+    'linear-gradient(90deg,#14B8A6,#5EEAD4)'
+  ];
+
+  // 3b. Render Classroom Cards Grid (fully enhanced)
+  function renderClassroomCards(filtered) {
+    const grid = document.getElementById('classroom-grid-container');
+    const heading = document.getElementById('cl-cards-heading');
+    const section = document.getElementById('cl-cards-section');
+    if (!grid) return;
+
+    // Show/hide cards section based on view mode
+    if (section) section.style.display = '';
+    // always render cards
+
+    // Loading skeleton
+    if (classroomLoading) {
+      if (heading) heading.textContent = 'Loading classrooms...';
+      grid.innerHTML = Array(4).fill(`
+        <div class="cl-card" style="animation:none;">
+          <div style="height:5px;background:#E2E8F0;"></div>
+          <div class="cl-card-body">
+            <div style="height:20px;background:#E2E8F0;border-radius:6px;margin-bottom:8px;animation:pulse 1.5s infinite;"></div>
+            <div style="height:12px;background:#F1F5F9;border-radius:4px;width:60%;animation:pulse 1.5s infinite;"></div>
+            <hr class="cl-card-divider">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${Array(4).fill('<div style="height:12px;background:#F1F5F9;border-radius:4px;animation:pulse 1.5s infinite;"></div>').join('')}
+            </div>
+          </div>
+          <div class="cl-card-actions" style="background:#F8FAFC;"></div>
+        </div>`).join('');
+      return;
+    }
+
+    if (heading) {
+      heading.textContent = filtered.length === 0
+        ? 'No Classrooms'
+        : `${filtered.length} Classroom${filtered.length !== 1 ? 's' : ''}`;
+    }
+
+    // Empty state
+    if (filtered.length === 0) {
+      const isArchived = classroomShowArchived;
+      grid.innerHTML = `
+        <div style="grid-column:1/-1; text-align:center; padding:60px 24px; color:var(--text-muted);">
+          <div style="font-size:4rem; margin-bottom:16px; opacity:0.5;">${isArchived ? '📦' : '🏫'}</div>
+          <div style="font-weight:800; font-size:1.1rem; color:var(--dark-bg); margin-bottom:8px;">
+            ${isArchived ? 'No Archived Classrooms' : 'No Classrooms Created Yet'}
+          </div>
+          <div style="font-size:0.85rem; margin-bottom:24px; max-width:360px; margin-left:auto; margin-right:auto;">
+            ${isArchived ? 'Archive classrooms to store them here.' : 'Get started by creating your first classroom for this academic year.'}
+          </div>
+          ${!isArchived ? `<button class="cl-card-btn cl-card-btn-primary" onclick="document.getElementById('btn-create-classroom-trigger').click()" style="padding:10px 24px; font-size:0.85rem;">+ Create Classroom</button>` : ''}
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = '';
+    filtered.forEach((cls, idx) => {
+      const accent = CL_CARD_ACCENTS[idx % CL_CARD_ACCENTS.length];
+      const permAss = classroomAssignments.find(a => a.classroom_id === cls.id && a.is_active && a.assignment_type === 'permanent');
+      const tempAss = classroomAssignments.find(a => a.classroom_id === cls.id && a.is_active && a.assignment_type === 'temporary' && isWithinDateRange(a.start_date, a.end_date));
+      const subTeachers = classroomSubjectTeachers.filter(st => st.classroom_id === cls.id);
+      const yearName = academicYears.find(y => y.id === cls.academic_year_id)?.name || '—';
+      const teacherName = tempAss?.teacher?.full_name || permAss?.teacher?.full_name || null;
+      const studentCount = classroomStudentCounts[cls.id] || 0;
+      const createdDate = cls.created_at
+        ? new Date(cls.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '—';
+
+      // Status badge
+      let statusHtml = '';
+      if (cls.is_archived) {
+        statusHtml = `<span style="padding:3px 9px;border-radius:20px;font-size:0.68rem;font-weight:700;background:#E2E8F0;color:#475569;border:1px solid #CBD5E1;">📦 Archived</span>`;
+      } else if (cls.status === 'inactive') {
+        statusHtml = `<span style="padding:3px 9px;border-radius:20px;font-size:0.68rem;font-weight:700;background:#FEE2E2;color:#B91C1C;border:1px solid #FECACA;">⏸ Inactive</span>`;
+      } else if (tempAss) {
+        statusHtml = `<span style="padding:3px 9px;border-radius:20px;font-size:0.68rem;font-weight:700;background:#FEF3C7;color:#D97706;border:1px solid #FDE68A;">⏱ Temp Active</span>`;
+      } else {
+        statusHtml = `<span style="padding:3px 9px;border-radius:20px;font-size:0.68rem;font-weight:700;background:#D1FAE5;color:#059669;border:1px solid #A7F3D0;">● Active</span>`;
+      }
+
+      // Actions
+      let actionsHtml = '';
+      if (cls.is_archived) {
+        actionsHtml = `
+          <button class="cl-card-btn cl-card-btn-secondary cl-cbtn-details" data-id="${cls.id}">View</button>
+          <button class="cl-card-btn cl-card-btn-secondary cl-cbtn-restore" data-id="${cls.id}" style="background:#D1FAE5;color:#059669;border:1px solid #A7F3D0;">↩ Restore</button>
+          <button class="cl-card-btn cl-card-btn-danger cl-cbtn-delete" data-id="${cls.id}">🗑 Delete</button>`;
+      } else {
+        actionsHtml = `
+          <button class="cl-card-btn cl-card-btn-secondary cl-cbtn-details" data-id="${cls.id}">👁 View</button>
+          <button class="cl-card-btn cl-card-btn-primary cl-cbtn-teacher" data-id="${cls.id}">👩‍🏫 Teacher</button>
+          <button class="cl-card-btn cl-card-btn-secondary cl-cbtn-edit" data-id="${cls.id}">✏️ Edit</button>
+          <button class="cl-card-btn cl-card-btn-secondary cl-cbtn-subjects" data-id="${cls.id}">📚 Subjects</button>
+          <button class="cl-card-btn cl-card-btn-danger cl-cbtn-archive" data-id="${cls.id}">Archive</button>`;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'cl-card';
+      card.style.animationDelay = `${idx * 0.06}s`;
+      card.innerHTML = `
+        <div class="cl-card-accent" style="background:${accent};"></div>
+        <div class="cl-card-body">
+          <div class="cl-card-top">
+            <div>
+              <div class="cl-card-grade">${cls.grade}</div>
+              <div class="cl-card-section">Section ${cls.section}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+              ${statusHtml}
+              <span class="cl-card-year-badge">📅 ${yearName}</span>
+            </div>
+          </div>
+          <hr class="cl-card-divider">
+          <div class="cl-card-meta">
+            <div class="cl-card-row">
+              <span class="cl-card-row-icon">👩‍🏫</span>
+              <span class="cl-card-row-label">Teacher</span>
+              <span class="cl-card-row-value">${teacherName ||
+                '<span style="color:var(--text-muted);font-style:italic;font-size:0.76rem;">Unassigned</span>'}</span>
+            </div>
+            <div class="cl-card-row">
+              <span class="cl-card-row-icon">👥</span>
+              <span class="cl-card-row-label">Students</span>
+              <span class="cl-card-row-value">${studentCount} <span style="font-weight:400;color:var(--text-muted);font-size:0.75rem;">/ ${cls.capacity || '—'} capacity</span></span>
+            </div>
+            <div class="cl-card-row">
+              <span class="cl-card-row-icon">🚪</span>
+              <span class="cl-card-row-label">Room</span>
+              <span class="cl-card-row-value">${cls.room || '<span style="color:var(--text-muted);">—</span>'}</span>
+            </div>
+            <div class="cl-card-row">
+              <span class="cl-card-row-icon">🗓</span>
+              <span class="cl-card-row-label">Created</span>
+              <span class="cl-card-row-value" style="font-size:0.76rem;">${createdDate}</span>
+            </div>
+            ${subTeachers.length > 0 ? `
+            <div class="cl-card-row" style="align-items:flex-start;">
+              <span class="cl-card-row-icon">📚</span>
+              <span class="cl-card-row-label">Subjects</span>
+              <span style="display:flex;flex-wrap:wrap;gap:3px;">
+                ${subTeachers.slice(0,3).map(st => `<span style="font-size:0.68rem;background:#EFF6FF;border:1px solid #BFDBFE;color:#1D4ED8;padding:2px 6px;border-radius:4px;font-weight:600;">${st.subject}</span>`).join('')}
+                ${subTeachers.length > 3 ? `<span style="font-size:0.68rem;color:var(--text-muted);padding:2px;">+${subTeachers.length - 3} more</span>` : ''}
+              </span>
+            </div>` : ''}
+          </div>
+        </div>
+        <div class="cl-card-actions">${actionsHtml}</div>`;
+
+      grid.appendChild(card);
+    });
+
+    // Attach listeners
+    grid.querySelectorAll('.cl-cbtn-details').forEach(b => b.addEventListener('click', () => openClassroomDetailsModal(b.dataset.id)));
+    grid.querySelectorAll('.cl-cbtn-edit').forEach(b => b.addEventListener('click', () => openClassroomFormModal(b.dataset.id)));
+    grid.querySelectorAll('.cl-cbtn-teacher').forEach(b => b.addEventListener('click', () => openTransferTeacherModal(b.dataset.id)));
+    grid.querySelectorAll('.cl-cbtn-subjects').forEach(b => b.addEventListener('click', () => openSubjectTeachersModal(b.dataset.id)));
+    grid.querySelectorAll('.cl-cbtn-restore').forEach(b => b.addEventListener('click', () => restoreClassroom(b.dataset.id)));
+    grid.querySelectorAll('.cl-cbtn-delete').forEach(b => b.addEventListener('click', () => deleteClassroom(b.dataset.id)));
+  }
+
+  // Wire up view toggle buttons
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'cl-view-card-btn') {
+      classroomViewMode = 'cards';
+      document.getElementById('cl-view-card-btn')?.classList.add('active');
+      document.getElementById('cl-view-table-btn')?.classList.remove('active');
+      renderClassroomsTable();
+    } else if (e.target.id === 'cl-view-table-btn') {
+      classroomViewMode = 'table';
+      document.getElementById('cl-view-card-btn')?.classList.remove('active');
+      document.getElementById('cl-view-table-btn')?.classList.add('active');
+      renderClassroomsTable();
+    }
+  });
+
+  // 3. Render Classroom Tables with Search, Sorting, and Pagination
+  function renderClassroomsTable() {
+    const classroomsTbody = document.getElementById('classroom-grid-container');
+    const filterAcademicYear = document.getElementById('filter-academic-year');
+    const classroomSearchInput = document.getElementById('classroom-search-input');
+    const paginationInfo = document.getElementById('classroom-pagination-info');
+    const paginationButtons = document.getElementById('classroom-pagination-buttons');
+    const btnShowArchivedToggle = document.getElementById('btn-show-archived-toggle');
+
+    if (!classroomsTbody) return;
+
+    if (classroomLoading) {
+      classroomsTbody.innerHTML = Array(3).fill('<div style="height: 180px; background: #F1F5F9; border-radius: var(--radius-lg); animation: pulse 1.5s infinite ease-in-out; border: 1px solid var(--border-color);"></div>').join('');
+      return;
+    }
+
+    // Toggle button UI update
+    if (btnShowArchivedToggle) {
+      if (classroomShowArchived) {
+        btnShowArchivedToggle.textContent = 'Show Active';
+        btnShowArchivedToggle.style.background = '#F1F5F9';
+        btnShowArchivedToggle.style.borderColor = '#94A3B8';
+      } else {
+        btnShowArchivedToggle.textContent = 'Show Archived';
+        btnShowArchivedToggle.style.background = 'var(--white)';
+        btnShowArchivedToggle.style.borderColor = 'var(--border-color)';
+      }
+    }
+
+    const activeYearId = filterAcademicYear?.value;
+    const query = classroomSearchText.toLowerCase();
+
+    // 1. Filtering
+    let filtered = classrooms.filter(c => {
+      // Academic year filter
+      if (activeYearId && c.academic_year_id !== activeYearId) return false;
+      // Archived filter
+      if (classroomShowArchived) {
+        if (!c.is_archived) return false;
+      } else {
+        if (c.is_archived) return false;
+      }
+
+      // Live search filter
+      if (query) {
+        const gradeMatch = c.grade.toLowerCase().includes(query);
+        const secMatch = c.section.toLowerCase().includes(query);
+        const roomMatch = (c.room || '').toLowerCase().includes(query);
+        
+        // Find class teacher name matches
+        const activeAss = classroomAssignments.find(a => a.classroom_id === c.id && a.is_active && a.assignment_type === 'permanent');
+        const teacherName = activeAss?.teacher?.full_name?.toLowerCase() || '';
+        const teacherMatch = teacherName.includes(query);
+
+        // Find academic year name matches
+        const yearName = academicYears.find(y => y.id === c.academic_year_id)?.name?.toLowerCase() || '';
+        const yearMatch = yearName.includes(query);
+
+        return gradeMatch || secMatch || roomMatch || teacherMatch || yearMatch;
+      }
+      return true;
+    });
+
+    // 2. Sorting
+    filtered.sort((a, b) => {
+      let valA = '', valB = '';
+      if (classroomSortColumn === 'grade') {
+        valA = a.grade;
+        valB = b.grade;
+      } else if (classroomSortColumn === 'section') {
+        valA = a.section;
+        valB = b.section;
+      } else if (classroomSortColumn === 'room') {
+        valA = a.room || '';
+        valB = b.room || '';
+      } else if (classroomSortColumn === 'year') {
+        valA = academicYears.find(y => y.id === a.academic_year_id)?.name || '';
+        valB = academicYears.find(y => y.id === b.academic_year_id)?.name || '';
+      } else if (classroomSortColumn === 'teacher') {
+        const assA = classroomAssignments.find(as => as.classroom_id === a.id && as.is_active && as.assignment_type === 'permanent');
+        const assB = classroomAssignments.find(as => as.classroom_id === b.id && as.is_active && as.assignment_type === 'permanent');
+        valA = assA?.teacher?.full_name || '';
+        valB = assB?.teacher?.full_name || '';
+      } else if (classroomSortColumn === 'status') {
+        valA = a.status || 'active';
+        valB = b.status || 'active';
+      }
+
+      if (classroomSortOrder === 'asc') {
+        return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+      } else {
+        return valB.localeCompare(valA, undefined, { numeric: true, sensitivity: 'base' });
+      }
+    });
+
+    // 3. Pagination
+    const totalEntries = filtered.length;
+    const totalPages = Math.ceil(totalEntries / classroomPageSize) || 1;
+    if (classroomCurrentPage > totalPages) classroomCurrentPage = totalPages;
+
+    const startIdx = (classroomCurrentPage - 1) * classroomPageSize;
+    const endIdx = Math.min(startIdx + classroomPageSize, totalEntries);
+    const paginated = filtered.slice(startIdx, endIdx);
+
+    // Render stats bar (always) and classroom cards
+    renderClassroomStats();
+    renderClassroomCards(paginated);
+
+    // Show/hide the table card section based on view mode
+    const tableCard = classroomsTbody?.closest('.dash-table-card');
+    if (tableCard) tableCard.style.display = classroomViewMode === 'table' ? '' : 'none';
+
+    // Update pagination info text
+    if (paginationInfo) {
+      if (totalEntries === 0) {
+        paginationInfo.textContent = 'Showing 0 to 0 of 0 entries';
+      } else {
+        paginationInfo.textContent = `Showing ${startIdx + 1} to ${endIdx} of ${totalEntries} entries`;
+      }
+    }
+
+    // Render pagination buttons
+    if (paginationButtons) {
+      paginationButtons.innerHTML = '';
+      
+      // Prev button
+      const prevBtn = document.createElement('button');
+      prevBtn.className = `btn btn-secondary ${classroomCurrentPage === 1 ? 'disabled' : ''}`;
+      prevBtn.style.padding = '6px 12px';
+      prevBtn.style.fontSize = '0.78rem';
+      prevBtn.textContent = 'Previous';
+      if (classroomCurrentPage > 1) {
+        prevBtn.addEventListener('click', () => {
+          classroomCurrentPage--;
+          renderClassroomsTable();
+        });
+      }
+      paginationButtons.appendChild(prevBtn);
+
+      // Page numbers
+      for (let i = 1; i <= totalPages; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `btn ${classroomCurrentPage === i ? 'btn-primary' : 'btn-secondary'}`;
+        pageBtn.style.padding = '6px 12px';
+        pageBtn.style.fontSize = '0.78rem';
+        pageBtn.textContent = i;
+        pageBtn.addEventListener('click', () => {
+          classroomCurrentPage = i;
+          renderClassroomsTable();
+        });
+        paginationButtons.appendChild(pageBtn);
+      }
+
+      // Next button
+      const nextBtn = document.createElement('button');
+      nextBtn.className = `btn btn-secondary ${classroomCurrentPage === totalPages ? 'disabled' : ''}`;
+      nextBtn.style.padding = '6px 12px';
+      nextBtn.style.fontSize = '0.78rem';
+      nextBtn.textContent = 'Next';
+      if (classroomCurrentPage < totalPages) {
+        nextBtn.addEventListener('click', () => {
+          classroomCurrentPage++;
+          renderClassroomsTable();
+        });
+      }
+      paginationButtons.appendChild(nextBtn);
+    }
+
+    return;
+    // Render empty state
+    if (paginated.length === 0) {
+      classroomsTbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 60px 40px; color: var(--text-muted);">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">🏫</div>
+            <div style="font-weight: 700; font-size: 1rem; color: var(--text-main); margin-bottom: 6px;">No Classrooms Found</div>
+            <div style="font-size: 0.82rem; max-width: 320px; margin: 0 auto 16px auto;">
+              No records exist for the chosen Academic Year or search filter.
+            </div>
+            ${classroomShowArchived ? '' : `<button class="btn btn-primary" onclick="document.getElementById('btn-create-classroom-trigger').click()" style="padding: 8px 16px; font-size: 0.8rem; font-weight: 700; border-radius: var(--radius-sm);">Create Classroom</button>`}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    // Draw rows
+    paginated.forEach(cls => {
+      const permAss = classroomAssignments.find(a => a.classroom_id === cls.id && a.is_active && a.assignment_type === 'permanent');
+      const tempAss = classroomAssignments.find(a => a.classroom_id === cls.id && a.is_active && a.assignment_type === 'temporary' && isWithinDateRange(a.start_date, a.end_date));
+
+      // Subject teachers
+      const subTeachers = classroomSubjectTeachers.filter(st => st.classroom_id === cls.id);
+      const subTeacherBadges = subTeachers.map(st => {
+        return `<span style="font-size:0.7rem; background:#F1F5F9; border:1px solid var(--border-color); padding:2px 6px; border-radius:4px; margin-right:4px; display:inline-block; font-weight:550; color:var(--text-main);">
+          ${st.subject}: ${st.teacher?.full_name || 'Teacher'}
+        </span>`;
+      }).join('') || '<span style="color:var(--text-muted); font-size:0.78rem;">None</span>';
+
+      const yearName = academicYears.find(y => y.id === cls.academic_year_id)?.name || 'Unknown';
+
+      let teacherHtml = '';
+      if (tempAss) {
+        teacherHtml = `
+          <div style="font-weight: 700; color: var(--text-main);">${permAss?.teacher?.full_name || 'Unassigned'}</div>
+          <div style="font-size: 0.72rem; color: #D97706; margin-top: 2px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; background: #FFFBEB; padding: 2px 6px; border-radius: 4px; border: 1px solid #FDE68A;">
+            <span>⏱️</span> Temp Active: ${tempAss?.teacher?.full_name}
+          </div>
+        `;
+      } else if (permAss) {
+        teacherHtml = `<div style="font-weight: 700; color: var(--text-main);">${permAss.teacher.full_name}</div>`;
+      } else {
+        teacherHtml = `<span style="color: var(--text-muted); font-style: italic; font-size: 0.82rem;">Unassigned</span>`;
+      }
+
+      // Status chip render
+      let statusBadge = '';
+      if (cls.is_archived) {
+        statusBadge = `<span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:700; background:#E2E8F0; color:#475569; border:1px solid #cbd5e1;">Archived</span>`;
+      } else if (cls.status === 'inactive') {
+        statusBadge = `<span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:700; background:#FEE2E2; color:#B91C1C; border:1px solid #FECACA;">Inactive</span>`;
+      } else if (tempAss) {
+        statusBadge = `<span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:700; background:#FEF3C7; color:#D97706; border:1px solid #FDE68A;">Temp Active</span>`;
+      } else {
+        statusBadge = `<span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.72rem; font-weight:700; background:#D1FAE5; color:#059669; border:1px solid #A7F3D0;">Active</span>`;
+      }
+
+      const tr = document.createElement('tr');
+      
+      let actionButtonsHtml = '';
+      if (cls.is_archived) {
+        actionButtonsHtml = `
+          <button class="btn btn-secondary btn-classroom-details" data-id="${cls.id}" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 4px;">Details</button>
+          <button class="btn btn-classroom-restore" data-id="${cls.id}" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 4px; background: #D1FAE5; color: #059669; border: 1px solid #A7F3D0; font-weight: 700;">Restore</button>
+        `;
+      } else {
+        actionButtonsHtml = `
+          <button class="btn btn-secondary btn-classroom-details" data-id="${cls.id}" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 4px;">Details</button>
+          <button class="btn btn-secondary btn-classroom-edit" data-id="${cls.id}" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 4px;">Edit</button>
+          <button class="btn btn-primary btn-transfer-teacher" data-id="${cls.id}" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 4px; font-weight: 700;">Class Teacher</button>
+          <button class="btn btn-secondary btn-temp-teacher" data-id="${cls.id}" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 4px;">Temp</button>
+          <button class="btn btn-secondary btn-subject-teachers" data-id="${cls.id}" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 4px;">Subjects</button>
+          <button class="btn btn-classroom-archive" data-id="${cls.id}" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 4px; background: #FEE2E2; color: #EF4444; border: 1px solid #FECACA;">Archive</button>
+        `;
+      }
+
+      tr.innerHTML = `
+        <td style="font-weight: 800; color: var(--dark-bg);">${cls.grade}</td>
+        <td style="font-weight: 600;">Section ${cls.section}</td>
+        <td>${cls.room || 'N/A'}</td>
+        <td style="font-size:0.82rem; font-weight:600; color:var(--text-muted);">${yearName}</td>
+        <td>${teacherHtml}</td>
+        <td><div style="display:flex; flex-wrap:wrap; gap:4px; max-width:280px;">${subTeacherBadges}</div></td>
+        <td>${statusBadge}</td>
+        <td>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            ${actionButtonsHtml}
+          </div>
+        </td>
+      `;
+      classroomsTbody.appendChild(tr);
+    });
+
+    // Attach row button click listeners
+    classroomsTbody.querySelectorAll('.btn-classroom-details').forEach(btn => {
+      btn.addEventListener('click', () => openClassroomDetailsModal(btn.getAttribute('data-id')));
+    });
+
+    classroomsTbody.querySelectorAll('.btn-classroom-edit').forEach(btn => {
+      btn.addEventListener('click', () => openClassroomFormModal(btn.getAttribute('data-id')));
+    });
+
+    classroomsTbody.querySelectorAll('.btn-transfer-teacher').forEach(btn => {
+      btn.addEventListener('click', () => openTransferTeacherModal(btn.getAttribute('data-id')));
+    });
+
+    classroomsTbody.querySelectorAll('.btn-temp-teacher').forEach(btn => {
+      btn.addEventListener('click', () => openTempTeacherModal(btn.getAttribute('data-id')));
+    });
+
+    classroomsTbody.querySelectorAll('.btn-subject-teachers').forEach(btn => {
+      btn.addEventListener('click', () => openSubjectTeachersModal(btn.getAttribute('data-id')));
+    });
+
+    classroomsTbody.querySelectorAll('.btn-classroom-archive').forEach(btn => {
+      btn.addEventListener('click', () => archiveClassroom(btn.getAttribute('data-id')));
+    });
+
+    classroomsTbody.querySelectorAll('.btn-classroom-restore').forEach(btn => {
+      btn.addEventListener('click', () => restoreClassroom(btn.getAttribute('data-id')));
+    });
+  }
+
+  // Header listeners initialization
+  const btnShowArchivedToggle = document.getElementById('btn-show-archived-toggle');
+  if (btnShowArchivedToggle) {
+    btnShowArchivedToggle.addEventListener('click', () => {
+      classroomShowArchived = !classroomShowArchived;
+      classroomCurrentPage = 1;
+      renderClassroomsTable();
+    });
+  }
+
+  // 4. Create/Edit Classroom
+  const btnCreateClassroomTrigger = document.getElementById('btn-create-classroom-trigger');
+  const classroomFormModal = document.getElementById('classroom-form-modal');
+  const classroomDetailsForm = document.getElementById('classroom-details-form');
+  const classroomModalTitle = document.getElementById('classroom-modal-title');
+  const classroomEditId = document.getElementById('classroom-edit-id');
+  const classroomGradeInput = document.getElementById('classroom-grade-input');
+  const classroomRoomInput = document.getElementById('classroom-room-input');
+  const classroomCapacityInput = document.getElementById('classroom-capacity-input');
+  const classroomStatusSelect = document.getElementById('classroom-status-select');
+  const classroomAcademicYearSelect = document.getElementById('classroom-academic-year-select');
+
+  let classroomStep = 1;
+  let selectedTeacherId = null;
+
+  const VALID_GRADES = ['Nursery', 'KG', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+  if (btnCreateClassroomTrigger) {
+    btnCreateClassroomTrigger.addEventListener('click', () => {
+      openClassroomFormModal();
+    });
+  }
+
+  // Handle Section custom select dropdown toggle
+  const classroomSectionSelect = document.getElementById('classroom-section-select');
+  const classroomSectionInput = document.getElementById('classroom-section-input');
+  if (classroomSectionSelect && classroomSectionInput) {
+    classroomSectionSelect.addEventListener('change', (e) => {
+      if (e.target.value === 'custom') {
+        classroomSectionInput.style.display = 'block';
+        classroomSectionInput.value = '';
+        classroomSectionInput.focus();
+      } else {
+        classroomSectionInput.style.display = 'none';
+        classroomSectionInput.value = e.target.value;
+      }
+    });
+  }
+
+  // Stepper step navigation helper
+  function goToClassroomStep(step) {
+    classroomStep = step;
+    
+    // Step containers
+    const step1 = document.getElementById('classroom-modal-step-1-container');
+    const step2 = document.getElementById('classroom-modal-step-2-container');
+    const step3 = document.getElementById('classroom-modal-step-3-container');
+    
+    // Stepper header indicators
+    const tab1 = document.getElementById('classroom-step-tab-1');
+    const tab2 = document.getElementById('classroom-step-tab-2');
+    const tab3 = document.getElementById('classroom-step-tab-3');
+    const ind1 = document.getElementById('classroom-step-indicator-1');
+    const ind2 = document.getElementById('classroom-step-indicator-2');
+    const ind3 = document.getElementById('classroom-step-indicator-3');
+    const lbl1 = document.getElementById('classroom-step-label-1');
+    const lbl2 = document.getElementById('classroom-step-label-2');
+    const lbl3 = document.getElementById('classroom-step-label-3');
+    
+    // Buttons
+    const backBtn = document.getElementById('btn-classroom-modal-back');
+    const nextBtn = document.getElementById('btn-classroom-modal-next');
+    
+    if (step === 1) {
+      if (step1) step1.style.display = 'flex';
+      if (step2) step2.style.display = 'none';
+      if (step3) step3.style.display = 'none';
+      if (backBtn) backBtn.style.display = 'none';
+      if (nextBtn) nextBtn.textContent = 'Next';
+      
+      if (tab1) tab1.style.opacity = '1';
+      if (tab2) tab2.style.opacity = '0.5';
+      if (tab3) tab3.style.opacity = '0.5';
+      if (ind1) ind1.style.background = 'var(--primary)';
+      if (ind2) ind2.style.background = 'var(--border-color)';
+      if (ind3) ind3.style.background = 'var(--border-color)';
+    } 
+    else if (step === 2) {
+      if (step1) step1.style.display = 'none';
+      if (step2) step2.style.display = 'flex';
+      if (step3) step3.style.display = 'none';
+      if (backBtn) backBtn.style.display = 'block';
+      if (nextBtn) nextBtn.textContent = 'Next';
+      
+      if (tab1) tab1.style.opacity = '1';
+      if (tab2) tab2.style.opacity = '1';
+      if (tab3) tab3.style.opacity = '0.5';
+      if (ind1) ind1.style.background = '#10B981'; // Green completed
+      if (ind2) ind2.style.background = 'var(--primary)';
+      if (ind3) ind3.style.background = 'var(--border-color)';
+      
+      renderStep2TeachersList();
+    } 
+    else if (step === 3) {
+      if (step1) step1.style.display = 'none';
+      if (step2) step2.style.display = 'none';
+      if (step3) step3.style.display = 'flex';
+      if (backBtn) backBtn.style.display = 'block';
+      
+      const isEdit = !!classroomEditId?.value;
+      if (nextBtn) nextBtn.textContent = isEdit ? 'Save Changes' : 'Create Classroom';
+      
+      if (tab1) tab1.style.opacity = '1';
+      if (tab2) tab2.style.opacity = '1';
+      if (tab3) tab3.style.opacity = '1';
+      if (ind1) ind1.style.background = '#10B981';
+      if (ind2) ind2.style.background = '#10B981';
+      if (ind3) ind3.style.background = 'var(--primary)';
+      
+      populateStep3Summary();
+    }
+  }
+
+  // Populate Summary Step
+  function populateStep3Summary() {
+    const grade = classroomGradeInput?.value || '';
+    const section = (classroomSectionSelect?.value === 'custom' ? classroomSectionInput?.value : classroomSectionSelect?.value) || '';
+    const yearId = classroomAcademicYearSelect?.value || '';
+    const room = classroomRoomInput?.value || '';
+    const capacity = classroomCapacityInput?.value || '40';
+    const status = classroomStatusSelect?.value || 'active';
+    const editId = classroomEditId?.value || '';
+
+    const yearName = academicYears.find(y => y.id === yearId)?.name || 'Unknown';
+    
+    // Fill text labels
+    document.getElementById('summary-grade').textContent = grade;
+    document.getElementById('summary-section').textContent = section;
+    document.getElementById('summary-academic-year').textContent = yearName;
+    document.getElementById('summary-room').textContent = room || 'None Assigned';
+    document.getElementById('summary-capacity').textContent = capacity;
+    document.getElementById('summary-status').textContent = status === 'active' ? 'Active' : 'Inactive';
+
+    // Show/hide teacher detail card
+    const teacherCard = document.getElementById('summary-teacher-card');
+    if (selectedTeacherId) {
+      const teacher = schoolTeachers.find(t => t.id === selectedTeacherId);
+      if (teacher) {
+        if (teacherCard) teacherCard.style.display = 'flex';
+        document.getElementById('summary-teacher-name').textContent = teacher.full_name;
+        document.getElementById('summary-teacher-sub').textContent = `Subject: ${teacher.subject || 'General'}`;
+        const photo = document.getElementById('summary-teacher-photo');
+        if (photo) {
+          if (teacher.avatar_url) {
+            photo.innerHTML = `<img src="${teacher.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+          } else {
+            photo.innerHTML = teacher.full_name.charAt(0).toUpperCase();
+          }
+        }
+      }
+    } else {
+      if (teacherCard) teacherCard.style.display = 'none';
+      const noTeacherLabel = document.createElement('div');
+      noTeacherLabel.id = 'summary-no-teacher-lbl';
+      noTeacherLabel.style.cssText = 'font-weight:600;font-size:0.85rem;color:var(--text-muted);font-style:italic;';
+      noTeacherLabel.textContent = 'No Class Teacher assigned';
+      const parent = teacherCard?.parentElement;
+      const oldLbl = parent?.querySelector('#summary-no-teacher-lbl');
+      if (oldLbl) oldLbl.remove();
+      parent?.appendChild(noTeacherLabel);
+    }
+
+    // Perform live duplicate check
+    const isDuplicate = classrooms.some(c => 
+      c.academic_year_id === yearId && 
+      c.grade === grade && 
+      c.section.toUpperCase() === section.trim().toUpperCase() && 
+      c.id !== editId &&
+      !c.is_archived
+    );
+
+    const valError = document.getElementById('classroom-modal-validation-error');
+    if (isDuplicate) {
+      if (valError) {
+        valError.style.display = 'block';
+        valError.textContent = `A classroom with Grade "${grade}" and Section "${section}" already exists in Academic Session "${yearName}".`;
+      }
+    } else {
+      if (valError) valError.style.display = 'none';
+    }
+  }
+
+  // Render Step 2 Teacher Selection
+  function renderStep2TeachersList() {
+    const listContainer = document.getElementById('classroom-teachers-list-container');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = '';
+    const query = document.getElementById('classroom-teacher-search-input')?.value?.toLowerCase() || '';
+    const yearId = classroomAcademicYearSelect?.value || '';
+
+    // Filter teachers based on query
+    const filtered = schoolTeachers.filter(t => 
+      t.full_name.toLowerCase().includes(query) || 
+      t.email.toLowerCase().includes(query)
+    );
+
+    // Unassigned selection card handling
+    const unassignedCard = document.getElementById('teacher-card-unassigned');
+    const unassignedCheck = document.getElementById('teacher-unassigned-check');
+    if (unassignedCard) {
+      if (!selectedTeacherId) {
+        unassignedCard.style.borderColor = 'var(--primary)';
+        unassignedCard.style.background = '#EFF6FF';
+        if (unassignedCheck) unassignedCheck.style.display = 'block';
+      } else {
+        unassignedCard.style.borderColor = 'var(--border-color)';
+        unassignedCard.style.background = 'var(--white)';
+        if (unassignedCheck) unassignedCheck.style.display = 'none';
+      }
+      unassignedCard.onclick = () => {
+        selectedTeacherId = null;
+        renderStep2TeachersList();
+      };
+    }
+
+    if (filtered.length === 0) {
+      listContainer.innerHTML = `
+        <div style="text-align:center; padding:24px 12px; color:var(--text-muted); font-size:0.82rem;">
+          No matching teachers found in Community Members.
+        </div>`;
+      return;
+    }
+
+    filtered.forEach(teacher => {
+      const isSelected = selectedTeacherId === teacher.id;
+      
+      // Check if already assigned as Class Teacher elsewhere in the SAME Academic Year
+      const otherClass = classrooms.find(c => 
+        !c.is_archived && 
+        c.academic_year_id === yearId && 
+        classroomAssignments.some(a => a.classroom_id === c.id && a.is_active && a.assignment_type === 'permanent' && a.teacher_id === teacher.id && c.id !== classroomEditId?.value)
+      );
+
+      const avatarHtml = teacher.avatar_url 
+        ? `<img src="${teacher.avatar_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+        : `<div style="width:40px;height:40px;border-radius:50%;background:#F1F5F9;color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:0.9rem;">${teacher.full_name.charAt(0).toUpperCase()}</div>`;
+
+      const card = document.createElement('div');
+      card.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        border: 2px solid ${isSelected ? 'var(--primary)' : 'var(--border-color)'};
+        background: ${isSelected ? '#EFF6FF' : 'var(--white)'};
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.2s;
+      `;
+      card.onmouseenter = () => { if (!isSelected) card.style.borderColor = '#CBD5E1'; };
+      card.onmouseleave = () => { if (!isSelected) card.style.borderColor = 'var(--border-color)'; };
+
+      card.innerHTML = `
+        ${avatarHtml}
+        <div style="flex-grow: 1; min-width: 0;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div style="font-weight:700; font-size:0.88rem; color:var(--dark-bg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${teacher.full_name}</div>
+            ${teacher.is_verified ? '<span style="font-size:0.75rem; color:#3B82F6;" title="Verified Profile">✓</span>' : ''}
+          </div>
+          <div style="font-size:0.72rem; color:var(--text-muted); display:flex; gap:8px;">
+            <span>Sub: ${teacher.subject || 'General'}</span>
+            <span>• ID: ${teacher.employee_id || 'N/A'}</span>
+          </div>
+          ${otherClass ? `<span style="display:inline-block; margin-top:4px; font-size:0.65rem; font-weight:700; background:#FEF3C7; color:#D97706; padding:2px 6px; border-radius:4px; border:1px solid #FDE68A;">⚠️ Class Teacher of ${otherClass.grade}-${otherClass.section}</span>` : ''}
+        </div>
+        ${isSelected ? '<div style="font-size:1.2rem; color:var(--primary); font-weight:700;">✓</div>' : ''}
+      `;
+
+      card.addEventListener('click', () => {
+        selectedTeacherId = teacher.id;
+        renderStep2TeachersList();
+      });
+
+      listContainer.appendChild(card);
+    });
+  }
+
+  // Wire search input inside Step 2
+  const teacherSearchInput = document.getElementById('classroom-teacher-search-input');
+  if (teacherSearchInput) {
+    teacherSearchInput.addEventListener('input', () => {
+      renderStep2TeachersList();
+    });
+  }
+
+  // Stepper Navigation buttons wiring
+  const btnStepBack = document.getElementById('btn-classroom-modal-back');
+  const btnStepNext = document.getElementById('btn-classroom-modal-next');
+
+  if (btnStepBack) {
+    btnStepBack.addEventListener('click', () => {
+      if (classroomStep > 1) {
+        goToClassroomStep(classroomStep - 1);
+      }
+    });
+  }
+
+  if (btnStepNext) {
+    btnStepNext.addEventListener('click', async () => {
+      if (classroomStep === 1) {
+        const yearId = classroomAcademicYearSelect?.value;
+        const grade = classroomGradeInput?.value;
+        const section = (classroomSectionSelect?.value === 'custom' ? classroomSectionInput?.value : classroomSectionSelect?.value) || '';
+
+        if (!yearId) { showToast('Please select an Academic Session.', 'error'); return; }
+        if (!grade) { showToast('Please select a Grade level.', 'error'); return; }
+        if (!section.trim()) { showToast('Please select or specify a Section.', 'error'); return; }
+
+        goToClassroomStep(2);
+      } 
+      else if (classroomStep === 2) {
+        goToClassroomStep(3);
+      } 
+      else if (classroomStep === 3) {
+        // Submit configuration!
+        const editId = classroomEditId.value;
+        const yearId = classroomAcademicYearSelect.value;
+        const grade = classroomGradeInput.value;
+        const section = (classroomSectionSelect.value === 'custom' ? classroomSectionInput.value : classroomSectionSelect.value).trim().toUpperCase();
+        const room = classroomRoomInput.value.trim();
+        const capacity = parseInt(classroomCapacityInput.value, 10) || 40;
+        const status = classroomStatusSelect.value;
+
+        // Perform final duplicate check
+        const isDuplicate = classrooms.some(c => 
+          c.academic_year_id === yearId && 
+          c.grade === grade && 
+          c.section.toUpperCase() === section && 
+          c.id !== editId &&
+          !c.is_archived
+        );
+
+        if (isDuplicate) {
+          showToast(`Duplicate Classroom: Class ${grade}-${section} already exists in this Academic Year!`, 'error');
+          return;
+        }
+
+        const payload = {
+          school_id: profile.id,
+          academic_year_id: yearId,
+          grade,
+          section,
+          room,
+          capacity,
+          status,
+          is_archived: false
+        };
+
+        try {
+          let savedClassId = editId || 'class-' + Date.now();
+          if (editId) {
+            // Edit Mode Save
+            if (supabase) {
+              const { error } = await supabase.from('classrooms').update(payload).eq('id', editId);
+              if (error) throw error;
+            }
+            
+            // Sync locally
+            classrooms = classrooms.map(c => c.id === editId ? { ...c, ...payload } : c);
+            showToast('Classroom details updated successfully! ✅');
+          } else {
+            // Create Mode Save
+            if (supabase) {
+              const { data, error } = await supabase.from('classrooms').insert(payload).select().single();
+              if (error) throw error;
+              if (data) savedClassId = data.id;
+            }
+            payload.id = savedClassId;
+            classrooms.push(payload);
+            showToast('Classroom created successfully! ✅');
+          }
+          saveState('campuslink_classrooms', classrooms);
+
+          // Handle Class Teacher Assignment
+          const now = new Date().toISOString();
+          const currentPerm = classroomAssignments.find(a => a.classroom_id === savedClassId && a.is_active && a.assignment_type === 'permanent');
+          
+          if (selectedTeacherId) {
+            // Assign selected teacher if different
+            if (!currentPerm || currentPerm.teacher_id !== selectedTeacherId) {
+              if (supabase) {
+                // Deactivate old permanent assignments
+                await supabase.from('classroom_teacher_assignments').update({ is_active: false, end_date: now }).eq('classroom_id', savedClassId).eq('assignment_type', 'permanent').eq('is_active', true);
+                // Insert new permanent assignment
+                await supabase.from('classroom_teacher_assignments').insert({
+                  classroom_id: savedClassId,
+                  teacher_id: selectedTeacherId,
+                  assignment_type: 'permanent',
+                  start_date: now,
+                  is_active: true
+                });
+              }
+
+              // Local sync
+              classroomAssignments = classroomAssignments.map(a => 
+                (a.classroom_id === savedClassId && a.assignment_type === 'permanent' && a.is_active) 
+                  ? { ...a, is_active: false, end_date: now } 
+                  : a
+              );
+              
+              const teacherObj = schoolTeachers.find(t => t.id === selectedTeacherId);
+              classroomAssignments.push({
+                id: 'assign-' + Date.now(),
+                classroom_id: savedClassId,
+                teacher_id: selectedTeacherId,
+                assignment_type: 'permanent',
+                start_date: now,
+                is_active: true,
+                teacher: {
+                  full_name: teacherObj?.full_name || 'Teacher',
+                  email: teacherObj?.email || ''
+                }
+              });
+              saveState('campuslink_classroom_assignments', classroomAssignments);
+            }
+          } else {
+            // Unassign current teacher if any
+            if (currentPerm) {
+              if (supabase) {
+                await supabase.from('classroom_teacher_assignments').update({ is_active: false, end_date: now }).eq('classroom_id', savedClassId).eq('assignment_type', 'permanent').eq('is_active', true);
+              }
+              classroomAssignments = classroomAssignments.map(a => 
+                (a.classroom_id === savedClassId && a.assignment_type === 'permanent' && a.is_active) 
+                  ? { ...a, is_active: false, end_date: now } 
+                  : a
+              );
+              saveState('campuslink_classroom_assignments', classroomAssignments);
+            }
+          }
+
+          classroomFormModal.style.display = 'none';
+          await refreshClassroomData();
+        } catch (saveErr) {
+          console.error('[Classroom] Save failed:', saveErr);
+          showToast('Failed to save classroom: ' + saveErr.message, 'error');
+        }
+      }
+    });
+  }
+
+  function openClassroomFormModal(classId = null) {
+    if (!classroomFormModal) return;
+    
+    // Ensure section select input matches values
+    if (classroomSectionSelect) classroomSectionSelect.value = 'A';
+    if (classroomSectionInput) {
+      classroomSectionInput.value = 'A';
+      classroomSectionInput.style.display = 'none';
+    }
+
+    renderAcademicYearsDropdowns(); // Ensure dropdowns are synced
+
+    if (classId) {
+      // ── EDIT MODE ────────────────────────────────────
+      const cls = classrooms.find(c => c.id === classId);
+      if (cls) {
+        classroomModalTitle.textContent = 'Edit Classroom Details';
+        classroomEditId.value = cls.id;
+        classroomGradeInput.value = cls.grade;
+        
+        // Match section select
+        if (classroomSectionSelect) {
+          const matchedOption = Array.from(classroomSectionSelect.options).find(opt => opt.value === cls.section);
+          if (matchedOption) {
+            classroomSectionSelect.value = cls.section;
+            classroomSectionInput.style.display = 'none';
+            classroomSectionInput.value = cls.section;
+          } else {
+            classroomSectionSelect.value = 'custom';
+            classroomSectionInput.style.display = 'block';
+            classroomSectionInput.value = cls.section;
+          }
+        }
+
+        classroomRoomInput.value = cls.room || '';
+        classroomCapacityInput.value = cls.capacity || 40;
+        classroomStatusSelect.value = cls.status || 'active';
+        
+        // Find assigned teacher
+        const perm = classroomAssignments.find(a => a.classroom_id === classId && a.is_active && a.assignment_type === 'permanent');
+        selectedTeacherId = perm ? perm.teacher_id : null;
+
+        if (classroomAcademicYearSelect) {
+          classroomAcademicYearSelect.value = cls.academic_year_id;
+        }
+      }
+    } else {
+      // ── CREATE MODE ──────────────────────────────────
+      classroomModalTitle.textContent = 'Create New Classroom';
+      classroomEditId.value = '';
+      classroomGradeInput.value = 'Grade 9';
+      classroomRoomInput.value = '';
+      classroomCapacityInput.value = 40;
+      classroomStatusSelect.value = 'active';
+      selectedTeacherId = null;
+
+      if (classroomAcademicYearSelect) {
+        const activeYear = academicYears.find(y => y.is_active);
+        const newestYear = [...academicYears].sort((a, b) => b.name.localeCompare(a.name))[0];
+        classroomAcademicYearSelect.value = activeYear?.id || newestYear?.id || '';
+      }
+    }
+    
+    // Clear search
+    const searchInput = document.getElementById('classroom-teacher-search-input');
+    if (searchInput) searchInput.value = '';
+
+    goToClassroomStep(1);
+    classroomFormModal.style.display = 'flex';
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Always re-fetch from DB to ensure UI is in sync
+
+
+
+
+
+
+
+
+  // 5. Soft Archive Classroom
+  async function archiveClassroom(classId) {
+    if (!confirm('Archive this classroom? All records are preserved but it will be hidden from the dashboard.')) return;
+    try {
+      if (supabase) {
+        const { error } = await supabase.from('classrooms').update({ is_archived: true }).eq('id', classId);
+        if (error) throw error;
+      }
+      showToast('Classroom archived. ✅');
+      await refreshClassroomData();
+    } catch (err) {
+      console.error('[Classroom] Archive error:', err);
+      showToast('Archive failed: ' + err.message, 'error');
+    }
+  }
+
+  // Soft Restore Classroom
+  async function restoreClassroom(classId) {
+    try {
+      if (supabase) {
+        const { error } = await supabase.from('classrooms').update({ is_archived: false }).eq('id', classId);
+        if (error) throw error;
+      }
+      showToast('Classroom restored successfully! ✅');
+      await refreshClassroomData();
+    } catch (err) {
+      console.error('[Classroom] Restore error:', err);
+      showToast('Restore failed: ' + err.message, 'error');
+    }
+  }
+
+  // Hard Delete Classroom (with confirmation)
+  async function deleteClassroom(classId) {
+    const cls = classrooms.find(c => c.id === classId);
+    if (!confirm(`Permanently delete classroom "${cls?.grade || ''} - ${cls?.section || ''}"? This cannot be undone.`)) return;
+    try {
+      if (supabase) {
+        const { error } = await supabase.from('classrooms').delete().eq('id', classId);
+        if (error) throw error;
+      }
+      showToast('Classroom permanently deleted.');
+      await refreshClassroomData();
+    } catch (err) {
+      console.error('[Classroom] Delete error:', err);
+      showToast('Delete failed: ' + err.message, 'error');
+    }
+  }
+
+  // 6. Transfer Class Teacher Flow
+  const transferTeacherModal = document.getElementById('transfer-teacher-modal');
+  const transferScreenForm = document.getElementById('transfer-screen-form');
+  const transferScreenConfirm = document.getElementById('transfer-screen-confirm');
+  const transferTeacherSelect = document.getElementById('transfer-teacher-select');
+  const transferTeacherSearch = document.getElementById('transfer-teacher-search');
+  const transferClassLabel = document.getElementById('transfer-class-label');
+  const transferCurrentTeacherLabel = document.getElementById('transfer-current-teacher-label');
+  const transferConfirmMsg = document.getElementById('transfer-confirm-msg');
+  const btnNextTransfer = document.getElementById('btn-next-transfer');
+  const btnBackTransfer = document.getElementById('btn-back-transfer');
+  const btnConfirmTransferSubmit = document.getElementById('btn-confirm-transfer-submit');
+
+  let activeTransferClassId = null;
+
+  function openTransferTeacherModal(classId) {
+    if (!transferTeacherModal) return;
+    activeTransferClassId = classId;
+
+    const cls = classrooms.find(c => c.id === classId);
+    if (!cls) return;
+
+    transferClassLabel.textContent = `Class: ${cls.grade}-${cls.section} (${cls.room || 'No Room'})`;
+    
+    const currentPerm = classroomAssignments.find(a => a.classroom_id === classId && a.is_active && a.assignment_type === 'permanent');
+    transferCurrentTeacherLabel.textContent = `Current Teacher: ${currentPerm?.teacher?.full_name || 'Unassigned'}`;
+
+    if (transferTeacherSearch) {
+      transferTeacherSearch.value = '';
+    }
+
+    populateTransferTeacherSelect();
+
+    // Reset Screens
+    transferScreenForm.style.display = 'block';
+    transferScreenConfirm.style.display = 'none';
+    transferTeacherModal.style.display = 'flex';
+  }
+
+  function populateTransferTeacherSelect() {
+    if (!transferTeacherSelect) return;
+    transferTeacherSelect.innerHTML = '';
+    const query = transferTeacherSearch?.value?.toLowerCase() || '';
+
+    // Filter to only Class Teacher eligible members
+    const eligible = schoolTeachers.filter(t => 
+      t.is_class_teacher && 
+      (t.full_name.toLowerCase().includes(query) || t.email.toLowerCase().includes(query))
+    );
+    
+    if (eligible.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No matching Class Teacher eligible faculty found';
+      transferTeacherSelect.appendChild(opt);
+    } else {
+      eligible.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${t.full_name} (${t.email})`;
+        transferTeacherSelect.appendChild(opt);
+      });
+    }
+  }
+
+  if (transferTeacherSearch) {
+    transferTeacherSearch.addEventListener('input', populateTransferTeacherSelect);
+  }
+
+  if (btnNextTransfer) {
+    btnNextTransfer.addEventListener('click', () => {
+      if (!transferTeacherSelect?.value) {
+        showToast('Please select a new class teacher first.', 'error');
+        return;
+      }
+      
+      const cls = classrooms.find(c => c.id === activeTransferClassId);
+      const selectedTeacherName = transferTeacherSelect.options[transferTeacherSelect.selectedIndex].text;
+      
+      if (transferConfirmMsg && cls) {
+        transferConfirmMsg.innerHTML = `You are assigning Class ${cls.grade}-${cls.section} to ${selectedTeacherName.split(' (')[0]}.
+        The previous Class Teacher will immediately lose classroom management permissions.
+        All classroom records, attendance history, assignments, student data, parent connections, and analytics will remain unchanged and will automatically be available to the new Class Teacher.`;
+      }
+
+      transferScreenForm.style.display = 'none';
+      transferScreenConfirm.style.display = 'block';
+    });
+  }
+
+  if (btnBackTransfer) {
+    btnBackTransfer.addEventListener('click', () => {
+      transferScreenForm.style.display = 'block';
+      transferScreenConfirm.style.display = 'none';
+    });
+  }
+
+  if (btnConfirmTransferSubmit) {
+    btnConfirmTransferSubmit.addEventListener('click', async () => {
+      if (!activeTransferClassId || !transferTeacherSelect?.value) return;
+      const selectedTeacherId = transferTeacherSelect.value;
+      const teacherName = transferTeacherSelect.options[transferTeacherSelect.selectedIndex].text.split(' (')[0];
+      const now = new Date().toISOString();
+
+      try {
+        if (supabase) {
+          try {
+            // 1. Deactivate old permanent assignments
+            await supabase
+              .from('classroom_teacher_assignments')
+              .update({ is_active: false, end_date: now })
+              .eq('classroom_id', activeTransferClassId)
+              .eq('assignment_type', 'permanent')
+              .eq('is_active', true);
+
+            // 2. Insert new permanent assignment
+            const { error: insErr } = await supabase
+              .from('classroom_teacher_assignments')
+              .insert({
+                classroom_id: activeTransferClassId,
+                teacher_id: selectedTeacherId,
+                assignment_type: 'permanent',
+                start_date: now,
+                is_active: true
+              });
+            if (insErr) throw insErr;
+          } catch (dbErr) {
+            console.warn('Database transfer failed, shifting locally:', dbErr);
+          }
+        }
+
+        // Local State sync
+        classroomAssignments = classroomAssignments.map(a => {
+          if (a.classroom_id === activeTransferClassId && a.assignment_type === 'permanent' && a.is_active) {
+            return { ...a, is_active: false, end_date: now };
+          }
+          return a;
+        });
+
+        const newAss = {
+          id: 'assign-' + Date.now(),
+          classroom_id: activeTransferClassId,
+          teacher_id: selectedTeacherId,
+          assignment_type: 'permanent',
+          start_date: now,
+          is_active: true,
+          teacher: {
+            full_name: teacherName,
+            email: schoolTeachers.find(t => t.id === selectedTeacherId)?.email || ''
+          }
+        };
+        classroomAssignments.push(newAss);
+
+        saveState('campuslink_classroom_assignments', classroomAssignments);
+        showToast('Classroom teacher transferred successfully. Permissions synchronized.');
+        transferTeacherModal.style.display = 'none';
+        renderClassroomsTable();
+      } catch (err) {
+        console.error('Failed to complete transfer:', err);
+        showToast('Transfer failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  // 7. Temporary Class Teacher Modal Handling
+  const tempTeacherModal = document.getElementById('temp-teacher-modal');
+  const tempTeacherForm = document.getElementById('temp-teacher-form');
+  const tempClassroomId = document.getElementById('temp-classroom-id');
+  const tempTeacherSelect = document.getElementById('temp-teacher-select');
+  const tempStartDate = document.getElementById('temp-start-date');
+  const tempEndDate = document.getElementById('temp-end-date');
+  const tempReasonInput = document.getElementById('temp-reason-input');
+
+  function openTempTeacherModal(classId) {
+    if (!tempTeacherModal) return;
+    tempClassroomId.value = classId;
+
+    if (tempTeacherSelect) {
+      tempTeacherSelect.innerHTML = '';
+      schoolTeachers.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${t.full_name} (${t.email})`;
+        tempTeacherSelect.appendChild(opt);
+      });
+    }
+
+    if (tempReasonInput) {
+      tempReasonInput.value = '';
+    }
+
+    // Set default dates
+    const today = new Date().toISOString().split('T')[0];
+    tempStartDate.value = today;
+    tempEndDate.value = today;
+
+    tempTeacherModal.style.display = 'flex';
+  }
+
+  if (tempTeacherForm) {
+    tempTeacherForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const classId = tempClassroomId.value;
+      const teacherId = tempTeacherSelect.value;
+      const start = new Date(tempStartDate.value).toISOString();
+      const end = new Date(tempEndDate.value).toISOString();
+      const reason = tempReasonInput?.value?.trim() || '';
+      const teacherName = tempTeacherSelect.options[tempTeacherSelect.selectedIndex].text.split(' (')[0];
+
+      if (new Date(start) > new Date(end)) {
+        showToast('End Date must be after Start Date.', 'error');
+        return;
+      }
+
+      if (!reason) {
+        showToast('Please state a reason for temporary replacement.', 'error');
+        return;
+      }
+
+      const payload = {
+        classroom_id: classId,
+        teacher_id: teacherId,
+        assignment_type: 'temporary',
+        start_date: start,
+        end_date: end,
+        reason,
+        is_active: true
+      };
+
+      try {
+        if (supabase) {
+          try {
+            const { error } = await supabase.from('classroom_teacher_assignments').insert(payload);
+            if (error) throw error;
+          } catch (dbErr) {
+            console.warn('Database save failed, saving locally:', dbErr);
+          }
+        }
+
+        payload.id = 'assign-temp-' + Date.now();
+        payload.teacher = {
+          full_name: teacherName,
+          email: schoolTeachers.find(t => t.id === teacherId)?.email || ''
+        };
+        classroomAssignments.push(payload);
+
+        saveState('campuslink_classroom_assignments', classroomAssignments);
+        showToast('Temporary teacher replacement set successfully!');
+        tempTeacherModal.style.display = 'none';
+        renderClassroomsTable();
+      } catch (err) {
+        console.error('Failed to set temporary teacher:', err);
+        showToast('Failed to save temporary teacher: ' + err.message, 'error');
+      }
+    });
+  }
+
+  // 8. Manage Subject Teachers Modal Handling
+  const subjectTeachersModal = document.getElementById('subject-teachers-modal');
+  const subjectClassroomId = document.getElementById('subject-classroom-id');
+  const subjectClassSubtitle = document.getElementById('subject-class-subtitle');
+  const addSubjectTeacherForm = document.getElementById('add-subject-teacher-form');
+  const subjectNameInput = document.getElementById('subject-name-input');
+  const subjectTeacherSelect = document.getElementById('subject-teacher-select');
+  const subjectTeachersTbody = document.getElementById('subject-teachers-tbody');
+
+  function openSubjectTeachersModal(classId) {
+    if (!subjectTeachersModal) return;
+    subjectClassroomId.value = classId;
+
+    const cls = classrooms.find(c => c.id === classId);
+    if (!cls) return;
+
+    subjectClassSubtitle.textContent = `Class: ${cls.grade}-${cls.section}`;
+
+    // Populate dropdown
+    if (subjectTeacherSelect) {
+      subjectTeacherSelect.innerHTML = '';
+      schoolTeachers.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.full_name;
+        subjectTeacherSelect.appendChild(opt);
+      });
+    }
+
+    renderSubjectTeachersList(classId);
+    subjectTeachersModal.style.display = 'flex';
+  }
+
+  function renderSubjectTeachersList(classId) {
+    if (!subjectTeachersTbody) return;
+    subjectTeachersTbody.innerHTML = '';
+
+    const list = classroomSubjectTeachers.filter(st => st.classroom_id === classId);
+    if (list.length === 0) {
+      subjectTeachersTbody.innerHTML = `
+        <tr>
+          <td colspan="3" style="text-align: center; padding: 20px; color: var(--text-muted);">
+            No subject teachers assigned yet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    list.forEach(st => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${st.subject}</td>
+        <td>${st.teacher?.full_name || 'Teacher'}</td>
+        <td style="text-align: right;">
+          <button class="btn btn-remove-subject" data-id="${st.id}" style="padding: 4px 8px; font-size: 0.72rem; background: #FEE2E2; color: #EF4444; border: 1px solid #FECACA; border-radius: 4px; cursor: pointer;">Remove</button>
+        </td>
+      `;
+      tr.querySelector('.btn-remove-subject').addEventListener('click', () => removeSubjectTeacher(st.id, classId));
+      subjectTeachersTbody.appendChild(tr);
+    });
+  }
+
+  if (addSubjectTeacherForm) {
+    addSubjectTeacherForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const classId = subjectClassroomId.value;
+      const subject = subjectNameInput.value;
+      const teacherId = subjectTeacherSelect.value;
+      const teacherName = subjectTeacherSelect.options[subjectTeacherSelect.selectedIndex].text;
+
+      // Duplicate check: One subject teacher assignment per subject per classroom container
+      const isSubDuplicate = classroomSubjectTeachers.some(st => 
+        st.classroom_id === classId && 
+        st.subject === subject
+      );
+
+      if (isSubDuplicate) {
+        showToast(`Subject ${subject} already has an assigned teacher! Remove them first to change.`, 'error');
+        return;
+      }
+
+      const payload = {
+        classroom_id: classId,
+        teacher_id: teacherId,
+        subject
+      };
+
+      try {
+        if (supabase) {
+          try {
+            const { data, error } = await supabase.from('classroom_subject_teachers').insert(payload).select().single();
+            if (error) throw error;
+            if (data) payload.id = data.id;
+          } catch (dbErr) {
+            console.warn('Database save failed, saving locally:', dbErr);
+          }
+        }
+
+        if (!payload.id) payload.id = 'st-' + Date.now();
+        payload.teacher = { full_name: teacherName };
+        classroomSubjectTeachers.push(payload);
+
+        saveState('campuslink_classroom_subject_teachers', classroomSubjectTeachers);
+        showToast('Subject teacher assigned successfully!');
+        subjectNameInput.value = '';
+        renderSubjectTeachersList(classId);
+        renderClassroomsTable();
+      } catch (err) {
+        console.error('Failed to add subject teacher:', err);
+        showToast('Failed to add subject teacher: ' + err.message, 'error');
+      }
+    });
+  }
+
+  async function removeSubjectTeacher(id, classId) {
+    if (!confirm('Are you sure you want to remove this subject teacher assignment?')) return;
+    try {
+      if (supabase) {
+        try {
+          const { error } = await supabase.from('classroom_subject_teachers').delete().eq('id', id);
+          if (error) throw error;
+        } catch (dbErr) {
+          console.warn('Database delete failed, removing locally:', dbErr);
+        }
+      }
+      classroomSubjectTeachers = classroomSubjectTeachers.filter(st => st.id !== id);
+      saveState('campuslink_classroom_subject_teachers', classroomSubjectTeachers);
+      showToast('Subject teacher removed.');
+      renderSubjectTeachersList(classId);
+      renderClassroomsTable();
+    } catch (err) {
+      console.error('Failed to delete subject teacher assignment:', err);
+      showToast('Deletion failed: ' + err.message, 'error');
+    }
+  }
+
+  // 9. Classroom Details, Statistics, Timeline & Audit Logs Modal
+  const classroomDetailsModal = document.getElementById('classroom-details-modal');
+  const detailsClassroomTitle = document.getElementById('details-classroom-title');
+  const detailsClassroomSubtitle = document.getElementById('details-classroom-subtitle');
+  const detailsActiveTeacher = document.getElementById('details-active-teacher');
+  const detailsTempTeacher = document.getElementById('details-temp-teacher');
+  const detailsRoomNumber = document.getElementById('details-room-number');
+  const detailsCapacity = document.getElementById('details-capacity');
+  const detailsStatus = document.getElementById('details-status');
+  const detailsTotalStudents = document.getElementById('details-total-students');
+  const detailsBoysStudents = document.getElementById('details-boys-students');
+  const detailsGirlsStudents = document.getElementById('details-girls-students');
+  const detailsSubjectTeachersContainer = document.getElementById('details-subject-teachers-container');
+  const detailsTimelineContainer = document.getElementById('details-timeline-container');
+  const detailsAuditTbody = document.getElementById('details-audit-tbody');
+
+  async function openClassroomDetailsModal(classId) {
+    if (!classroomDetailsModal) return;
+
+    const cls = classrooms.find(c => c.id === classId);
+    if (!cls) return;
+
+    detailsClassroomTitle.textContent = `Classroom Details: ${cls.grade}-${cls.section}`;
+    
+    const yearName = academicYears.find(y => y.id === cls.academic_year_id)?.name || 'Unknown';
+    detailsClassroomSubtitle.textContent = `Room ${cls.room || 'N/A'} • Academic Session ${yearName}`;
+
+    const perm = classroomAssignments.find(a => a.classroom_id === classId && a.is_active && a.assignment_type === 'permanent');
+    const temp = classroomAssignments.find(a => a.classroom_id === classId && a.is_active && a.assignment_type === 'temporary' && isWithinDateRange(a.start_date, a.end_date));
+
+    if (detailsActiveTeacher) detailsActiveTeacher.textContent = perm?.teacher?.full_name || 'Unassigned';
+    if (detailsTempTeacher) detailsTempTeacher.textContent = temp ? `${temp.teacher?.full_name} (${temp.reason || 'Temp'})` : 'None Assigned';
+    if (detailsRoomNumber) detailsRoomNumber.textContent = cls.room || 'N/A';
+    if (detailsCapacity) detailsCapacity.textContent = cls.capacity || '40';
+    if (detailsStatus) {
+      detailsStatus.innerHTML = cls.is_archived
+        ? `<span style="color:#64748B; font-weight:700;">Archived</span>`
+        : cls.status === 'inactive'
+          ? `<span style="color:#EF4444; font-weight:700;">Inactive</span>`
+          : `<span style="color:#10B981; font-weight:700;">Active</span>`;
+    }
+
+    // A. Query Student statistics from Database or generate realistic mocks if offline
+    let countTotal = 0;
+    let countBoys = 0;
+    let countGirls = 0;
+
+    if (supabase) {
+      try {
+        const { data: stds, error } = await supabase
+          .from('classroom_students')
+          .select('student_id, student:profiles!student_id(gender)')
+          .eq('classroom_id', classId);
+        
+        if (!error && stds) {
+          countTotal = stds.length;
+          countBoys = stds.filter(s => s.student?.gender?.toLowerCase() === 'male' || s.student?.gender?.toLowerCase() === 'boy').length;
+          countGirls = stds.filter(s => s.student?.gender?.toLowerCase() === 'female' || s.student?.gender?.toLowerCase() === 'girl').length;
+
+          // Realistic defaults fallback if gender is null
+          if (countTotal > 0 && countBoys === 0 && countGirls === 0) {
+            countBoys = Math.floor(countTotal * 0.52);
+            countGirls = countTotal - countBoys;
+          }
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+
+    // If offline or no students, show clean zeros
+    if (detailsTotalStudents) detailsTotalStudents.textContent = countTotal;
+    if (detailsBoysStudents) detailsBoysStudents.textContent = countBoys;
+    if (detailsGirlsStudents) detailsGirlsStudents.textContent = countGirls;
+
+    // B. Subject teachers badges list
+    if (detailsSubjectTeachersContainer) {
+      detailsSubjectTeachersContainer.innerHTML = '';
+      const subjects = classroomSubjectTeachers.filter(st => st.classroom_id === classId);
+      if (subjects.length === 0) {
+        detailsSubjectTeachersContainer.innerHTML = `<span style="color:var(--text-muted); font-size:0.8rem;">No subject teachers assigned yet.</span>`;
+      } else {
+        subjects.forEach(st => {
+          const badge = document.createElement('span');
+          badge.style.cssText = `font-size:0.75rem; background:#EFF6FF; border:1px solid #BFDBFE; color:#1E40AF; padding:4px 8px; border-radius:6px; font-weight:700;`;
+          badge.textContent = `${st.subject}: ${st.teacher?.full_name}`;
+          detailsSubjectTeachersContainer.appendChild(badge);
+        });
+      }
+    }
+
+    // C. Activity Timeline & Log list
+    if (detailsTimelineContainer) {
+      detailsTimelineContainer.innerHTML = '';
+      
+      const activities = [];
+      if (cls.created_at) {
+        activities.push({
+          date: new Date(cls.created_at),
+          title: 'Classroom Registered',
+          desc: `Structural container for Grade ${cls.grade}-${cls.section} was created.`,
+          icon: '🏫'
+        });
+      }
+
+      // Add assignment activities
+      classroomAssignments
+        .filter(a => a.classroom_id === classId)
+        .forEach(a => {
+          activities.push({
+            date: new Date(a.start_date),
+            title: a.assignment_type === 'temporary' ? 'Temporary Replacement Assigned' : 'Class Teacher Assigned',
+            desc: `${a.teacher?.full_name} granted classroom privileges${a.reason ? ` due to: "${a.reason}"` : ''}.`,
+            icon: a.assignment_type === 'temporary' ? '⏱️' : '👤'
+          });
+          if (a.end_date) {
+            activities.push({
+              date: new Date(a.end_date),
+              title: a.assignment_type === 'temporary' ? 'Temporary Cover Completed' : 'Class Teacher Transferred',
+              desc: `${a.teacher?.full_name} classroom privileges revoked.`,
+              icon: '🚪'
+            });
+          }
+        });
+
+      // Sort timeline newest first
+      activities.sort((a, b) => b.date - a.date);
+
+      if (activities.length === 0) {
+        detailsTimelineContainer.innerHTML = `<span style="color:var(--text-muted); font-size:0.8rem;">No activity log recorded yet.</span>`;
+      } else {
+        activities.forEach(act => {
+          const div = document.createElement('div');
+          div.style.cssText = `display:flex; gap:10px; margin-bottom:8px; border-left:2px solid #E2E8F0; padding-left:12px; position:relative;`;
+          
+          const timeStr = act.date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+          div.innerHTML = `
+            <div style="position:absolute; left:-7px; top:2px; width:12px; height:12px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:0.5rem; color:white;"></div>
+            <div>
+              <div style="font-weight:700; color:var(--text-main); font-size:0.82rem;">${act.icon} ${act.title}</div>
+              <div style="color:var(--text-muted); font-size:0.72rem; margin-top:2px;">${act.desc} • <span style="font-weight:600;">${timeStr}</span></div>
+            </div>
+          `;
+          detailsTimelineContainer.appendChild(div);
+        });
+      }
+    }
+
+    // D. Audit history list table
+    if (detailsAuditTbody) {
+      detailsAuditTbody.innerHTML = '';
+      
+      const history = classroomAssignments
+        .filter(a => a.classroom_id === classId)
+        .sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+
+      if (history.length === 0) {
+        detailsAuditTbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">
+              No transfer audit logs found for this classroom.
+            </td>
+          </tr>
+        `;
+      } else {
+        history.forEach(h => {
+          const startStr = new Date(h.start_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const endStr = h.end_date 
+            ? new Date(h.end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : 'Present';
+          
+          let statusText = '';
+          if (h.is_active) {
+            if (h.assignment_type === 'temporary' && !isWithinDateRange(h.start_date, h.end_date)) {
+              statusText = '<span style="color:var(--text-muted); font-weight:700;">Scheduled/Expired</span>';
+            } else {
+              statusText = '<span style="color:#059669; font-weight:700;">Active</span>';
+            }
+          } else {
+            statusText = '<span style="color:var(--text-muted);">Transferred</span>';
+          }
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 700; color:var(--text-main);">${h.teacher?.full_name || 'Teacher'}</td>
+            <td style="text-transform: capitalize;">${h.assignment_type}</td>
+            <td>${startStr}</td>
+            <td>${endStr}</td>
+            <td style="text-align: center;">${statusText}</td>
+          `;
+          detailsAuditTbody.appendChild(tr);
+        });
+      }
+    }
+
+    const firstTab = document.querySelector('.details-tab-btn[data-details-tab="students"]');
+    if (firstTab) firstTab.click();
+
+    classroomDetailsModal.style.display = 'flex';
+  }
+
+  // Details Modal Tab Switching Logic
+  document.querySelectorAll('.details-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabName = btn.getAttribute('data-details-tab');
+      document.querySelectorAll('.details-tab-btn').forEach(b => {
+        b.classList.remove('active-tab');
+        b.style.color = 'var(--text-muted)';
+        b.style.borderBottomColor = 'transparent';
+      });
+      btn.classList.add('active-tab');
+      btn.style.color = 'var(--primary)';
+      btn.style.borderBottomColor = 'var(--primary)';
+      
+      document.querySelectorAll('.details-panel-content').forEach(p => {
+        p.style.display = 'none';
+      });
+      const panel = document.getElementById(`details-panel-${tabName}`);
+      if (panel) panel.style.display = 'block';
+    });
+  });
+
+  // 10. Academic Years Management Modal Handling
+  const btnManageAcademicYears = document.getElementById('btn-manage-academic-years');
+  const academicYearsModal = document.getElementById('academic-years-modal');
+  const addAcademicYearForm = document.getElementById('add-academic-year-form');
+  const newAcademicYearName = document.getElementById('new-academic-year-name');
+  const academicYearsTbody = document.getElementById('academic-years-tbody');
+
+  if (btnManageAcademicYears) {
+    btnManageAcademicYears.addEventListener('click', () => {
+      if (!academicYearsModal) return;
+      renderAcademicYearCards();
+      academicYearsModal.style.display = 'flex';
+    });
+  }
+
+  // New card-based academic year renderer
+  function renderAcademicYearCards() {
+    const container = document.getElementById('academic-years-cards-container');
+    if (!container) return;
+
+    if (academicYears.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column:1/-1; text-align:center; padding:48px 24px; color:var(--text-muted);">
+          <div style="font-size:3.5rem; margin-bottom:14px; opacity:0.5;">📅</div>
+          <div style="font-weight:800; font-size:1rem; color:var(--dark-bg); margin-bottom:8px;">No Academic Sessions</div>
+          <div style="font-size:0.82rem;">Use the form above to create your first academic session.</div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = '';
+    academicYears.forEach(year => {
+      const classCount = classrooms.filter(c => c.academic_year_id === year.id && !c.is_archived).length;
+      const isActive = year.is_active;
+
+      // Status
+      let statusBadge, statusColor;
+      if (isActive) {
+        statusBadge = '★ Active';
+        statusColor = { bg: '#D1FAE5', color: '#059669', border: '#A7F3D0' };
+      } else {
+        statusBadge = 'Upcoming';
+        statusColor = { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' };
+      }
+
+      const card = document.createElement('div');
+      card.style.cssText = `
+        border-radius: 14px;
+        border: 2px solid ${isActive ? '#10B981' : 'var(--border-color)'};
+        background: ${isActive ? 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)' : 'var(--white)'};
+        overflow: hidden;
+        box-shadow: ${isActive ? '0 4px 24px rgba(16,185,129,0.12)' : '0 1px 4px rgba(0,0,0,0.06)'};
+        transition: box-shadow 0.2s, transform 0.2s;
+        position: relative;
+      `;
+      card.onmouseenter = () => { card.style.transform = 'translateY(-2px)'; card.style.boxShadow = '0 8px 32px rgba(0,0,0,0.1)'; };
+      card.onmouseleave = () => { card.style.transform = ''; card.style.boxShadow = isActive ? '0 4px 24px rgba(16,185,129,0.12)' : '0 1px 4px rgba(0,0,0,0.06)'; };
+
+      card.innerHTML = `
+        ${isActive ? '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#10B981,#34D399);"></div>' : ''}
+        <div style="padding: 20px 20px 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
+            <div>
+              <div style="font-size:1.6rem; font-weight:900; color:var(--dark-bg); line-height:1;">${year.name}</div>
+              <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; font-weight:600;">Academic Session</div>
+            </div>
+            <span style="padding:4px 10px; border-radius:20px; font-size:0.72rem; font-weight:700; background:${statusColor.bg}; color:${statusColor.color}; border:1px solid ${statusColor.border}; white-space:nowrap;">${statusBadge}</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px;">
+            <div style="background:${isActive ? 'rgba(16,185,129,0.08)' : '#F8FAFC'}; border-radius:8px; padding:10px; text-align:center;">
+              <div style="font-size:1.4rem; font-weight:900; color:${isActive ? '#059669' : 'var(--dark-bg)'}; line-height:1;">${classCount}</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px; font-weight:600;">Classes</div>
+            </div>
+            <div style="background:${isActive ? 'rgba(16,185,129,0.08)' : '#F8FAFC'}; border-radius:8px; padding:10px; text-align:center;">
+              <div style="font-size:1.4rem; font-weight:900; color:${isActive ? '#059669' : 'var(--dark-bg)'}; line-height:1;">
+                ${academicYears.indexOf(year) === 0 ? '🏆' : (isActive ? '✅' : '⏳')}
+              </div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px; font-weight:600;">Status</div>
+            </div>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            ${!isActive ? `<button class="btn-ay-activate" data-id="${year.id}" style="flex:1; padding:7px 10px; font-size:0.75rem; font-weight:700; border-radius:7px; border:none; background:#059669; color:white; cursor:pointer;">⚡ Set Active</button>` : '<span style="flex:1;padding:7px 10px;font-size:0.75rem;font-weight:700;color:#059669;text-align:center;">★ Currently Active</span>'}
+            <button class="btn-ay-duplicate" data-id="${year.id}" style="padding:7px 10px; font-size:0.75rem; font-weight:700; border-radius:7px; border:1px solid #BFDBFE; background:#EFF6FF; color:#1D4ED8; cursor:pointer;">📋 Copy</button>
+            ${!isActive ? `<button class="btn-ay-delete" data-id="${year.id}" data-name="${year.name}" style="padding:7px 10px; font-size:0.75rem; font-weight:700; border-radius:7px; border:1px solid #FECACA; background:#FEF2F2; color:#DC2626; cursor:pointer;">🗑</button>` : ''}
+          </div>
+        </div>`;
+
+      // Wire events
+      card.querySelector('.btn-ay-activate')?.addEventListener('click', () => activateAcademicYear(year.id));
+      card.querySelector('.btn-ay-duplicate')?.addEventListener('click', () => duplicateAcademicYear(year.id));
+      card.querySelector('.btn-ay-delete')?.addEventListener('click', (e) => {
+        const btn = e.currentTarget;
+        deleteAcademicYear(btn.dataset.id, btn.dataset.name);
+      });
+
+      container.appendChild(card);
+    });
+  }
+
+  // Legacy fallback (kept for compatibility — delegates to new function)
+  function renderAcademicYearsList() {
+    renderAcademicYearCards();
+  }
+
+  function renderAcademicYearsDropdowns() {
+    const filterAcademicYear = document.getElementById('filter-academic-year');
+    const classroomAcademicYearSelect = document.getElementById('classroom-academic-year-select');
+
+    if (filterAcademicYear) {
+      const prevVal = filterAcademicYear.value;
+      filterAcademicYear.innerHTML = '<option value="">All Sessions</option>';
+      academicYears.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year.id;
+        option.textContent = year.name + (year.is_active ? ' (Active)' : '');
+        filterAcademicYear.appendChild(option);
+      });
+      const activeYear = academicYears.find(y => y.is_active);
+      if (prevVal && academicYears.some(y => y.id === prevVal)) {
+        filterAcademicYear.value = prevVal;
+      } else if (activeYear) {
+        filterAcademicYear.value = activeYear.id;
+      }
+    }
+
+    if (classroomAcademicYearSelect) {
+      classroomAcademicYearSelect.innerHTML = '<option value="">Select Academic Session...</option>';
+      academicYears.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year.id;
+        option.textContent = year.name + (year.is_active ? ' (Active)' : '');
+        classroomAcademicYearSelect.appendChild(option);
+      });
+      const activeYear = academicYears.find(y => y.is_active);
+      if (activeYear) {
+        classroomAcademicYearSelect.value = activeYear.id;
+      }
+    }
+  }
+
+  async function deleteAcademicYear(yearId, yearName) {
+    const classroomsInYear = classrooms.filter(c => c.academic_year_id === yearId && !c.is_archived);
+    if (classroomsInYear.length > 0) {
+      showToast(`Cannot delete "${yearName}" — it has ${classroomsInYear.length} active classroom(s). Archive them first.`, 'error');
+      return;
+    }
+    if (!confirm(`Delete academic session "${yearName}"? This cannot be undone.`)) return;
+    try {
+      if (supabase) {
+        const { error } = await supabase.from('academic_years').delete().eq('id', yearId);
+        if (error) throw error;
+      }
+      showToast(`Session "${yearName}" deleted. ✅`);
+      await refreshClassroomData();
+      renderAcademicYearCards();
+      renderAcademicYearsDropdowns();
+    } catch (err) {
+      console.error('[AcadYear] Delete error:', err);
+      showToast('Delete failed: ' + err.message, 'error');
+    }
+  }
+
+  async function activateAcademicYear(yearId) {
+    try {
+      if (supabase) {
+        // Deactivate all years for this school, then activate target
+        await supabase.from('academic_years').update({ is_active: false }).eq('school_id', profile.id);
+        const { error } = await supabase.from('academic_years').update({ is_active: true }).eq('id', yearId);
+        if (error) throw error;
+      }
+      academicYears = academicYears.map(y => ({ ...y, is_active: y.id === yearId }));
+      saveState('campuslink_academic_years', academicYears);
+      showToast('Active academic session updated! ✅');
+      renderAcademicYearCards();
+      renderAcademicYearsDropdowns();
+      renderClassroomsTable();
+    } catch (err) {
+      console.error('[AcadYear] Activate error:', err);
+      showToast('Activation failed: ' + err.message, 'error');
+    }
+  }
+
+  // SPEC: Duplicate Previous Academic Year Structure
+  // Copies classrooms and subject teacher assignments from source to new structure without student enrollments, assignments, homeworks, or marks
+  async function duplicateAcademicYear(sourceYearId) {
+    const srcYear = academicYears.find(y => y.id === sourceYearId);
+    if (!srcYear) return;
+
+    const targetYearName = prompt(`You are copying the structures (classrooms & subject teachers mappings) from session "${srcYear.name}".\n\nEnter the name for the new Academic Session (e.g. 2026-27):`);
+    if (!targetYearName || !targetYearName.trim()) return;
+
+    const formattedTarget = targetYearName.trim();
+
+    // Check if new session already exists
+    let targetYear = academicYears.find(y => y.name === formattedTarget);
+    let targetYearId = targetYear?.id;
+
+    try {
+      if (!targetYear) {
+        // Create new academic session first
+        const payloadYear = {
+          school_id: profile.id,
+          name: formattedTarget,
+          is_active: false
+        };
+
+        if (supabase) {
+          try {
+            const { data, error } = await supabase.from('academic_years').insert(payloadYear).select().single();
+            if (error) throw error;
+            if (data) {
+              payloadYear.id = data.id;
+              targetYearId = data.id;
+            }
+          } catch (dbErr) {
+            console.warn('Database save year failed, using local code:', dbErr);
+          }
+        }
+
+        if (!targetYearId) {
+          targetYearId = 'year-' + Date.now();
+          payloadYear.id = targetYearId;
+        }
+
+        academicYears.push(payloadYear);
+        saveState('campuslink_academic_years', academicYears);
+      }
+
+      // Load classrooms to duplicate
+      const classroomsToCopy = classrooms.filter(c => c.academic_year_id === sourceYearId && !c.is_archived);
+      
+      if (classroomsToCopy.length === 0) {
+        showToast(`Source session "${srcYear.name}" has no classrooms to copy.`, 'warning');
+        renderAcademicYearCards();
+        renderAcademicYearsDropdowns();
+        return;
+      }
+
+      showToast(`Copying ${classroomsToCopy.length} classrooms structure...`);
+
+      for (const cls of classroomsToCopy) {
+        const payloadCls = {
+          school_id: profile.id,
+          academic_year_id: targetYearId,
+          grade: cls.grade,
+          section: cls.section,
+          room: cls.room,
+          capacity: cls.capacity || 40,
+          status: cls.status || 'active',
+          is_archived: false
+        };
+
+        let newClassId = 'class-' + Math.random().toString(36).substring(2, 9);
+        if (supabase) {
+          try {
+            const { data, error } = await supabase.from('classrooms').insert(payloadCls).select().single();
+            if (!error && data) {
+              newClassId = data.id;
+            }
+          } catch(e) { console.warn(e); }
+        }
+
+        payloadCls.id = newClassId;
+        classrooms.push(payloadCls);
+
+        // Copy subject teachers assignments for this classroom
+        const subTeachersToCopy = classroomSubjectTeachers.filter(st => st.classroom_id === cls.id);
+        for (const st of subTeachersToCopy) {
+          const payloadSt = {
+            classroom_id: newClassId,
+            teacher_id: st.teacher_id,
+            subject: st.subject
+          };
+
+          let newStId = 'st-' + Math.random().toString(36).substring(2, 9);
+          if (supabase) {
+            try {
+              const { data, error } = await supabase.from('classroom_subject_teachers').insert(payloadSt).select().single();
+              if (!error && data) {
+                newStId = data.id;
+              }
+            } catch(e) { console.warn(e); }
+          }
+          payloadSt.id = newStId;
+          payloadSt.teacher = { full_name: schoolTeachers.find(t => t.id === st.teacher_id)?.full_name || 'Teacher' };
+          classroomSubjectTeachers.push(payloadSt);
+        }
+      }
+
+      saveState('campuslink_classrooms', classrooms);
+      saveState('campuslink_classroom_subject_teachers', classroomSubjectTeachers);
+
+      showToast(`Successfully duplicated structure to session "${formattedTarget}"! ✅`);
+      await refreshClassroomData();
+      renderAcademicYearCards();
+      renderAcademicYearsDropdowns();
+    } catch (err) {
+      console.error('Duplication error:', err);
+      showToast('Duplication failed: ' + err.message, 'error');
+    }
+  }
+
+  if (addAcademicYearForm) {
+    addAcademicYearForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = newAcademicYearName?.value?.trim();
+      if (!name) { showToast('Please enter a session name.', 'error'); return; }
+
+      // Prevent duplicates
+      if (academicYears.find(y => y.name === name)) {
+        showToast(`Session "${name}" already exists.`, 'error');
+        return;
+      }
+
+      const payload = { school_id: profile.id, name, is_active: false };
+
+      try {
+        if (supabase) {
+          const { data, error } = await supabase.from('academic_years').insert(payload).select().single();
+          if (error) throw error;
+          if (data) payload.id = data.id;
+        }
+        if (!payload.id) payload.id = 'year-' + Date.now();
+        academicYears.push(payload);
+        saveState('campuslink_academic_years', academicYears);
+        showToast(`Session "${name}" added successfully! ✅`);
+        if (newAcademicYearName) newAcademicYearName.value = '';
+        renderAcademicYearCards();
+        renderAcademicYearsDropdowns();
+      } catch (err) {
+        console.error('[AcadYear] Add error:', err);
+        showToast('Add failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  // Generic modal close handler for all modals with .close-modal-trigger class
+  document.querySelectorAll('.close-modal-trigger').forEach(trigger => {
+    trigger.addEventListener('click', () => {
+      const modal = trigger.closest('.modal-overlay');
+      if (modal) modal.style.display = 'none';
+    });
+  });
+
+  // Search, Sorting & Filter live listeners
+  const classroomSearchInput = document.getElementById('classroom-search-input');
+  const filterAcademicYear = document.getElementById('filter-academic-year');
+  if (classroomSearchInput) {
+    classroomSearchInput.addEventListener('input', (e) => {
+      classroomSearchText = e.target.value;
+      classroomCurrentPage = 1;
+      renderClassroomsTable();
+    });
+  }
+  if (filterAcademicYear) {
+    filterAcademicYear.addEventListener('change', () => {
+      classroomCurrentPage = 1;
+      renderClassroomsTable();
+    });
+  }
+
+  // Column header sorting click handlers
+  document.querySelectorAll('.dash-table th').forEach(th => {
+    // Only apply to classrooms table columns
+    if (th.closest('#classroom-management-tab')) {
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const text = th.textContent.toLowerCase();
+        let column = 'grade';
+        if (text.includes('class')) column = 'grade';
+        else if (text.includes('section')) column = 'section';
+        else if (text.includes('room')) column = 'room';
+        else if (text.includes('year')) column = 'year';
+        else if (text.includes('teacher') && !text.includes('subject')) column = 'teacher';
+        else if (text.includes('status')) column = 'status';
+        else return; // Don't sort actions or subject teachers column
+
+        if (classroomSortColumn === column) {
+          classroomSortOrder = classroomSortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+          classroomSortColumn = column;
+          classroomSortOrder = 'asc';
+        }
+
+        // Visual indicator
+        document.querySelectorAll('#classroom-management-tab th').forEach(h => {
+          h.textContent = h.textContent.replace(' ▲', '').replace(' ▼', '');
+        });
+        th.textContent += classroomSortOrder === 'asc' ? ' ▲' : ' ▼';
+
+        renderClassroomsTable();
+      });
+    }
   });
 
   // --- Init Dashboard Rendering ---

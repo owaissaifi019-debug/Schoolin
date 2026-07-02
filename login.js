@@ -1,5 +1,5 @@
 // login.js
-// SchoolIn Login Page Logic
+// CampusLink Login Page Logic
 // Handles form submissions, tab switching, password visibility, avatar upload, validation.
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -387,7 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
       } else {
         document.getElementById('success-title').textContent = 'Account Created!';
-        document.getElementById('success-message').textContent = `Welcome, ${fullName}! You've joined SchoolIn as a ${typeLabel}. Redirecting...`;
+        document.getElementById('success-message').textContent = `Welcome, ${fullName}! You've joined CampusLink as a ${typeLabel}. Redirecting...`;
 
         setTimeout(() => {
           window.location.href = 'index.html';

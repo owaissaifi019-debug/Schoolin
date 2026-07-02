@@ -60,7 +60,7 @@
 
     // Bind Mobile menu toggle
     const mobileToggle = document.querySelector('.mobile-toggle');
-    const navLinks = document.querySelector('.nav-links');
+    const navLinks = document.querySelector('.nav-links') || document.querySelector('.header-nav');
     const body = document.body;
     if (mobileToggle && navLinks) {
       mobileToggle.addEventListener('click', () => {
@@ -70,7 +70,7 @@
     }
 
     // Close mobile nav when clicking a link
-    const navAnchors = document.querySelectorAll('.nav-links a');
+    const navAnchors = document.querySelectorAll('.nav-links a, .header-nav a');
     navAnchors.forEach(anchor => {
       anchor.addEventListener('click', () => {
         if (navLinks) navLinks.classList.remove('active');
@@ -1364,7 +1364,11 @@
     }, 3500);
   }
 
-  // Run on load
-  document.addEventListener('DOMContentLoaded', init);
+  // Run on load (robust ready state check)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 
 })();

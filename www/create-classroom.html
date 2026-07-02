@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Classroom | CampusLink Workspace</title>
+  <meta name="description" content="Dedicated premium setup wizard to register and assign new school classrooms.">
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Custom Style Rules matching premium theme -->
+  <style>
+    :root {
+      --primary: #2563EB;
+      --primary-hover: #1D4ED8;
+      --accent: #10B981;
+      --white: #ffffff;
+      --bg-light: #F8FAFC;
+      --border-color: #E2E8F0;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --radius-lg: 20px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #ffffff;
+      color: var(--text-main);
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .glass-surface {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      box-sizing: border-box;
+      background: var(--white);
+      transition: all 0.25s ease;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--white);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-light);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: #F1F5F9;
+    }
+
+    /* Live Preview card animations */
+    .preview-card {
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      padding: 24px;
+      background: var(--white);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preview-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+    }
+
+    .pulse {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.1); }
+      70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+    }
+  </style>
+</head>
+<body style="background: var(--bg-light); padding: 40px 20px;">
+
+  <div style="max-width: 1100px; margin: 0 auto;">
+    
+    <!-- Header Area -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+      <div>
+        <h1 style="margin: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.025em; color: var(--text-main);">Create Classroom</h1>
+        <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: var(--text-muted);">Set up and launch a new academic classroom in your school.</p>
+      </div>
+      <a href="dashboard.html?tab=classroom-management" class="btn btn-secondary">
+        ← Back to Dashboard
+      </a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: start;">
+      
+      <!-- Left Column: Setup Form -->
+      <form id="create-classroom-form" class="glass-surface" style="padding: 32px; display: flex; flex-direction: column; gap: 24px;">
+        
+        <!-- Step 1: Session & Grade -->
+        <div>
+          <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; color: var(--text-main);">
+            1. Academic Session & Grade
+          </h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Academic Session *</label>
+              <select id="year-select" required class="form-input">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Grade / Class *</label>
+              <select id="grade-select" required class="form-input">
+                <option value="Class I">Class I</option>
+                <option value="Class II">Class II</option>
+                <option value="Class III">Class III</option>
+                <option value="Class IV">Class IV</option>
+                <option value="Class V">Class V</option>
+                <option value="Class VI">Class VI</option>
+                <option value="Class VII">Class VII</option>
+                <option value="Class VIII">Class VIII</option>
+                <option value="Class IX">Class IX</option>
+                <option value="Class X">Class X</option>
+                <option value="Class XI">Class XI</option>
+                <option value="Class XII">Class XII</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Classroom Info -->
+        <div>
+          <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; color: var(--text-main);">
+            2. Room Details
+          </h3>
+          <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 16px;">
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Section Name *</label>
+              <input type="text" id="section-input" required placeholder="e.g. A" maxLength="2" class="form-input" style="text-transform: uppercase;">
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Room Number</label>
+              <input type="text" id="room-input" placeholder="e.g. Room 102, Lab A" class="form-input">
+            </div>
+          </div>
+          <div style="margin-top: 16px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px;">
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Classroom Capacity *</label>
+              <input type="range" id="capacity-range" min="10" max="80" value="40" style="width: 100%; height: 6px; background: #cbd5e1; outline: none; border-radius: 4px; cursor: pointer;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
+                <span>Min: 10</span>
+                <span style="font-weight: 700; color: var(--primary);" id="capacity-indicator">40 Students</span>
+                <span>Max: 80</span>
+              </div>
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Status *</label>
+              <select id="status-select" required class="form-input">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Class Teacher Assignment -->
+        <div>
+          <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; color: var(--text-main);">
+            3. Assign Class Teacher
+          </h3>
+          <div>
+            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Search & Select Class Teacher</label>
+            <input type="text" id="teacher-search-input" placeholder="Type to search teachers..." class="form-input" style="margin-bottom: 8px;">
+            <select id="teacher-select" class="form-input">
+              <!-- Populated dynamically -->
+            </select>
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 6px;">
+              Only faculty designated as eligible for "Class Teacher" will appear.
+            </span>
+          </div>
+        </div>
+
+        <!-- Submit actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+          <a href="dashboard.html?tab=classroom-management" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Save & Launch Classroom</button>
+        </div>
+      </form>
+
+      <!-- Right Column: Live Preview Card -->
+      <div class="glass-surface" style="padding: 32px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 40px;">
+        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--text-main);">Live Preview Card</h3>
+        <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted);">This card renders dynamically to match the active teacher and dashboard representation.</p>
+
+        <!-- Live Preview Card Rendering -->
+        <div class="preview-card pulse" id="live-preview-card">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+              <span id="preview-year" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; color: var(--text-muted);">Session 2025-26</span>
+              <h2 id="preview-class-title" style="margin: 4px 0 0 0; font-size: 1.4rem; font-weight: 800; color: var(--text-main);">Class IX-A</h2>
+            </div>
+            <div id="preview-status-badge">
+              <span style="display:inline-block; padding:3px 8px; border-radius:12px; font-size:0.72rem; font-weight:700; background:#D1FAE5; color:#059669; border:1px solid #A7F3D0;">Active</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px;">
+            <div>
+              <span style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Class Teacher</span>
+              <div style="font-size: 0.9rem; font-weight: 700; margin-top: 2px; color: var(--text-main);" id="preview-teacher">Unassigned</div>
+            </div>
+            <div style="display: flex; gap: 24px;">
+              <div>
+                <span style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Room</span>
+                <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main);" id="preview-room">Room 102</div>
+              </div>
+              <div>
+                <span style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Capacity</span>
+                <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main);" id="preview-capacity">40 Students</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; background: #FFFBEB; border: 1px solid #FDE68A; padding: 12px; border-radius: var(--radius-sm); color: #B45309;">
+          <strong>ℹ️ Classroom Asset Policy:</strong> Classrooms are permanent assets of the school. Transferring or removing teachers will not affect students' academic data, marks, or records, which persist permanently.
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 10000; display: flex; flex-direction: column; gap: 8px;"></div>
+
+  <!-- Supabase CDN + Config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="create-classroom.js"></script>
+
+</body>
+</html>

@@ -149,18 +149,27 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('[Mentions] Query:', query);
       
       try {
-        const { data: profiles, error: pErr } = await supabase
+        let pq = supabase
           .from('profiles')
           .select('id, full_name, avatar_url, user_type, platform_role, is_verified')
-          .or('user_type.eq.student,user_type.eq.school_representative,platform_role.eq.super_admin')
-          .ilike('full_name', `%${query}%`)
-          .limit(8);
-
-        const { data: schools, error: sErr } = await supabase
+          .or('user_type.eq.student,user_type.eq.school_representative,platform_role.eq.super_admin');
+        let sq = supabase
           .from('schools')
-          .select('id, name, logo_url, logo_letter, color_class, verification_badge')
-          .ilike('name', `%${query}%`)
-          .limit(8);
+          .select('id, name, logo_url, logo_letter, color_class, verification_badge');
+
+        if (query) {
+          pq = pq.ilike('full_name', `%${query}%`);
+          sq = sq.ilike('name', `%${query}%`);
+        }
+
+        const [pRes, sRes] = await Promise.all([
+          pq.limit(8),
+          sq.limit(8)
+        ]);
+        const profiles = pRes.data;
+        const schools = sRes.data;
+        const pErr = pRes.error;
+        const sErr = sRes.error;
 
         if (pErr) console.warn('Profiles query error:', pErr);
         if (sErr) console.warn('Schools query error:', sErr);

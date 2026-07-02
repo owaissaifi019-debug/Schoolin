@@ -149,18 +149,27 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('[Mentions] Query:', query);
       
       try {
-        const { data: profiles, error: pErr } = await supabase
+        let pq = supabase
           .from('profiles')
           .select('id, full_name, avatar_url, user_type, platform_role, is_verified')
-          .or('user_type.eq.student,user_type.eq.school_representative,platform_role.eq.super_admin')
-          .ilike('full_name', `%${query}%`)
-          .limit(8);
-
-        const { data: schools, error: sErr } = await supabase
+          .or('user_type.eq.student,user_type.eq.school_representative,platform_role.eq.super_admin');
+        let sq = supabase
           .from('schools')
-          .select('id, name, logo_url, logo_letter, color_class, verification_badge')
-          .ilike('name', `%${query}%`)
-          .limit(8);
+          .select('id, name, logo_url, logo_letter, color_class, verification_badge');
+
+        if (query) {
+          pq = pq.ilike('full_name', `%${query}%`);
+          sq = sq.ilike('name', `%${query}%`);
+        }
+
+        const [pRes, sRes] = await Promise.all([
+          pq.limit(8),
+          sq.limit(8)
+        ]);
+        const profiles = pRes.data;
+        const schools = sRes.data;
+        const pErr = pRes.error;
+        const sErr = sRes.error;
 
         if (pErr) console.warn('Profiles query error:', pErr);
         if (sErr) console.warn('Schools query error:', sErr);
@@ -443,43 +452,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* --- Mobile Navigation Menu --- */
   const mobileToggle = document.querySelector('.mobile-toggle');
-  const navLinks = document.querySelector('.nav-links');
+  const navLinks = document.querySelector('.nav-links') || document.querySelector('.header-nav');
   const body = document.body;
 
-  mobileToggle.addEventListener('click', () => {
-    navLinks.classList.toggle('active');
-    body.classList.toggle('mobile-nav-active');
-  });
+  if (mobileToggle && navLinks) {
+    mobileToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+      body.classList.toggle('mobile-nav-active');
+    });
+  }
 
   // Close mobile nav and toggle active class when clicking a link
-  const navAnchors = document.querySelectorAll('.nav-links a');
+  const navAnchors = document.querySelectorAll('.nav-links a, .header-nav a');
   navAnchors.forEach(anchor => {
-    anchor.addEventListener('click', (e) => {
-      navLinks.classList.remove('active');
+    anchor.addEventListener('click', () => {
+      if (navLinks) {
+        navLinks.classList.remove('active');
+      }
       body.classList.remove('mobile-nav-active');
       
       navAnchors.forEach(a => a.classList.remove('active'));
       anchor.classList.add('active');
     });
   });
-
-  // Events & Admissions Nav specific filtering behaviour
-  const navEventsLink = document.getElementById('nav-events-link');
-  const navAdmissionsLink = document.getElementById('nav-admissions-link');
-
-  if (navEventsLink) {
-    navEventsLink.addEventListener('click', () => {
-      const allTab = document.querySelector('.tab-btn[data-filter="all"]');
-      if (allTab) allTab.click();
-    });
-  }
-
-  if (navAdmissionsLink) {
-    navAdmissionsLink.addEventListener('click', () => {
-      const admissionsTab = document.querySelector('.tab-btn[data-filter="admissions"]');
-      if (admissionsTab) admissionsTab.click();
-    });
-  }
 
   // Active Link Scroll Highlight (ScrollSpy)
   const sections = document.querySelectorAll('section[id]');

@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+function initSchoolProfile() {
 
   // Update navigation based on auth state
   if (window.CampusLink && window.CampusLink.auth) {
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* --- Mobile Navigation Menu --- */
   const mobileToggle = document.querySelector('.mobile-toggle');
-  const navLinks = document.querySelector('.nav-links');
+  const navLinks = document.querySelector('.nav-links') || document.querySelector('.header-nav');
   const body = document.body;
 
   // Loading functions
@@ -108,16 +108,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  mobileToggle.addEventListener('click', () => {
-    navLinks.classList.toggle('active');
-    body.classList.toggle('mobile-nav-active');
-  });
+  if (mobileToggle && navLinks) {
+    mobileToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+      body.classList.toggle('mobile-nav-active');
+    });
+  }
 
   // Close mobile nav when clicking a link
-  const navAnchors = document.querySelectorAll('.nav-links a');
+  const navAnchors = document.querySelectorAll('.nav-links a, .header-nav a');
   navAnchors.forEach(anchor => {
     anchor.addEventListener('click', () => {
-      navLinks.classList.remove('active');
+      if (navLinks) navLinks.classList.remove('active');
       body.classList.remove('mobile-nav-active');
     });
   });
@@ -2854,4 +2856,10 @@ function showToast(message, type = 'success') {
   }
 
   // --- End of School Profile Redesign Additions ---
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSchoolProfile);
+} else {
+  initSchoolProfile();
+}

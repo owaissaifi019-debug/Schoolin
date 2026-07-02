@@ -146,6 +146,7 @@
           </span>
           Applications
         </a>
+
         <a class="dashboard-nav-link" data-tab="settings" style="cursor: pointer;" onclick="alert('Settings feature coming soon!')">
           <span class="icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -166,8 +167,26 @@
     
     <!-- --- Main Content Workspace --- -->
     <main class="dashboard-main-content">
-      
-      <!-- Mobile Dashboard Content Wrapper -->
+
+      <!-- Top header bar — desktop sticky header -->
+      <header class="dashboard-top-bar">
+        <div>
+          <h2 style="font-size: 1.4rem; margin-bottom: 0;" id="top-bar-title">Dashboard Overview</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted);" id="current-date-display">Thursday, June 4, 2026</p>
+        </div>
+        
+        <div class="dashboard-user-info">
+          <a id="view-profile-btn" href="school-profile.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Public Profile</a>
+          <div class="dashboard-avatar" id="school-avatar-letter">L</div>
+          <div>
+            <div style="font-weight: 700; font-size: 0.9rem;" id="school-username">Loading...</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);" id="school-userboard">Board Affiliation</div>
+          </div>
+          <a id="edit-school-btn" class="btn btn-primary" style="display: none; padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm); cursor: pointer;">Edit School</a>
+        </div>
+      </header>
+
+      <!-- Mobile Dashboard Content Wrapper (mobile headers + workspace) -->
       <div class="mobile-dashboard-content">
         
         <!-- Dedicated Mobile Header -->
@@ -203,42 +222,15 @@
           </button>
         </header>
 
-        <!-- Top header bar -->
-        <header class="dashboard-top-bar">
-          <div>
-            <h2 style="font-size: 1.4rem; margin-bottom: 0;" id="top-bar-title">Dashboard Overview</h2>
-            <p style="font-size: 0.8rem; color: var(--text-muted);" id="current-date-display">Thursday, June 4, 2026</p>
-          </div>
-          
-          <div class="dashboard-user-info">
-            <a id="view-profile-btn" href="school-profile.html" class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Public Profile</a>
-            <div class="dashboard-avatar" id="school-avatar-letter">L</div>
-            <div>
-              <div style="font-weight: 700; font-size: 0.9rem;" id="school-username">Loading...</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted);" id="school-userboard">Board Affiliation</div>
-            </div>
-            <a id="edit-school-btn" class="btn btn-primary" style="display: none; padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-sm); cursor: pointer;">Edit School</a>
-          </div>
-        </header>
-        
         <!-- Workspace Container -->
         <div class="dashboard-workspace">
-        
+
         <!-- ================= OVERVIEW TAB ================= -->
+
         <section id="overview-tab" class="dashboard-tab-panel active">
           
           <!-- Desktop Overview Widgets -->
           <div class="desktop-overview-widgets">
-            <!-- Hero Card -->
-            <div class="overview-hero-card" id="overview-hero-card" style="background: linear-gradient(135deg, #1E293B, #0F172A); color: white; padding: 28px; border-radius: 18px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
-              <div>
-                <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94A3B8; font-weight: 700; margin-bottom: 6px;">Logged in as</div>
-                <h1 id="hero-school-name" style="font-size: 1.6rem; font-weight: 800; margin: 0; color: white;">School Administrator</h1>
-                <div id="hero-school-role" style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px; font-weight: 500;">Role: School Administrator</div>
-              </div>
-              <span class="hero-role-badge" id="hero-school-badge" style="background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 8px 16px; border-radius: 9999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">School Partner</span>
-            </div>
-
             <!-- Statistics Cards Grid -->
             <div class="dash-stats-grid">
               <div class="dash-stat-card">
@@ -862,6 +854,8 @@
         <!-- Action buttons (Approve/Reject) -->
       </div>
     </div>
+  </div>
+
   </div>
 
   <!-- Toast Notification Container -->

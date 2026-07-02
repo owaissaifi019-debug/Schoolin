@@ -59,6 +59,9 @@
       <a class="dashboard-nav-link" data-tab="registrations">
         <span class="icon">📝</span> Registrations
       </a>
+      <a class="dashboard-nav-link" data-tab="community-members">
+        <span class="icon">🏅</span> Community Members
+      </a>
       <a class="dashboard-nav-link" data-tab="applications">
         <span class="icon">📁</span> Applications
       </a>
@@ -131,11 +134,23 @@
           </span>
           Students
         </a>
+        <a class="dashboard-nav-link" data-tab="community-members">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          </span>
+          Community Members
+        </a>
         <a class="dashboard-nav-link" data-tab="applications">
           <span class="icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><path d="M12 11v6"></path><path d="M9 14h6"></path></svg>
           </span>
           Applications
+        </a>
+        <a class="dashboard-nav-link" data-tab="classroom-management">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path></svg>
+          </span>
+          Classroom Management
         </a>
         <a class="dashboard-nav-link" data-tab="settings" style="cursor: pointer;" onclick="alert('Settings feature coming soon!')">
           <span class="icon">
@@ -652,49 +667,132 @@
           </div>
         </section>
         
-        <!-- ================= PROFILE TAB ================= -->
+        <!-- ================= COMMUNITY MEMBERS TAB ================= -->
+        <section id="community-members-tab" class="dashboard-tab-panel">
+          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
+            <h3 style="font-size: 1.3rem;">Community Members</h3>
+            <div class="dash-header-actions">
+              <button class="btn btn-primary" id="btn-add-member" style="padding: 10px 20px; font-size: 0.85rem; border-radius: var(--radius-sm);">+ Add Member</button>
+            </div>
+          </div>
+
+          <!-- Role Filter Bar -->
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
+            <button class="cm-filter-btn active" data-role="all">All</button>
+            <button class="cm-filter-btn" data-role="student">Students</button>
+            <button class="cm-filter-btn" data-role="teacher">Teachers</button>
+            <button class="cm-filter-btn" data-role="alumni">Alumni</button>
+            <button class="cm-filter-btn" data-role="staff">Staff</button>
+            <button class="cm-filter-btn" data-role="faculty">Faculty</button>
+            <button class="cm-filter-btn" data-role="counselor">Counselors</button>
+          </div>
+
+          <!-- Members Table -->
+          <div class="dash-table-card" style="padding: 24px;">
+            <div class="dash-table-wrapper">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Role</th>
+                    <th>Assigned Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="community-members-tbody">
+                  <tr>
+                    <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                      Loading community members...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Add Member Modal -->
+        <div class="modal-overlay" id="add-member-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(4px);">
+          <div class="modal-card" style="background: var(--white); width: 100%; max-width: 520px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); display: flex; flex-direction: column; max-height: 80vh; border: 1px solid var(--border-color);">
+            <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--dark-bg);">Add Community Member</h3>
+                <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: var(--text-muted);">Select a school connection and assign a verified role.</p>
+              </div>
+              <button id="close-add-member-modal" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-muted); font-weight: 300;">&times;</button>
+            </div>
+            <div style="padding: 24px; overflow-y: auto; flex-grow: 1;">
+              <!-- Search -->
+              <div style="margin-bottom: 16px;">
+                <input type="text" id="member-search-input" placeholder="Search connections by name..." style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none;">
+              </div>
+              <!-- Connections List -->
+              <div id="member-candidates-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto;">
+                <p style="text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 0.88rem;">Loading connections...</p>
+              </div>
+              <!-- Role Selector (shown after selecting a user) -->
+              <div id="member-role-selector" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                <div style="margin-bottom: 12px; background: var(--bg-light); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                  <div style="font-weight: 700; font-size: 0.88rem; color: var(--dark-bg);" id="selected-candidate-name">Selected User</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;" id="selected-candidate-status">Current Status: Connected</div>
+                </div>
+                <div style="margin-bottom: 16px;">
+                  <label for="member-role-select" style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Assign Verified Role *</label>
+                  <select id="member-role-select" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+                    <!-- Dynamic -->
+                  </select>
+                </div>
+                <button id="btn-confirm-add-member" class="btn btn-primary" style="width: 100%; padding: 12px;" disabled>Assign Role</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= School Profile TAB ================= -->
         <section id="profile-tab" class="dashboard-tab-panel">
           <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0;">
-            <h3 style="font-size: 1.3rem;">School Profile Settings</h3>
+            <h3 style="font-size: 1.3rem;">Edit School Profile</h3>
           </div>
           
-          <div class="dash-form-card">
+          <div class="dash-form-card" style="padding: 28px;">
             <form id="dashboard-profile-form">
               <div class="dash-form-row">
                 <div class="dash-form-group">
-                  <label for="profile-school-name">School Name *</label>
-                  <input type="text" id="profile-school-name" required placeholder="e.g. School Name">
+                  <label for="profile-name">School Name *</label>
+                  <input type="text" id="profile-name" required>
                 </div>
                 
                 <div class="dash-form-group">
+                  <label for="profile-board">Affiliation Board *</label>
+                  <select id="profile-board" required>
+                    <option value="">Select Board</option>
+                    <option value="CBSE">CBSE (Central Board of Secondary Education)</option>
+                    <option value="ICSE">ICSE (Indian Certificate of Secondary Education)</option>
+                    <option value="State Board">State Board</option>
+                    <option value="IB">IB (International Baccalaureate)</option>
+                    <option value="Cambridge">Cambridge Assessment International Education</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="dash-form-row">
+                <div class="dash-form-group">
                   <label for="profile-city">City *</label>
-                  <input type="text" id="profile-city" required placeholder="Dehradun">
+                  <input type="text" id="profile-city" required>
                 </div>
                 
                 <div class="dash-form-group">
                   <label for="profile-state">State *</label>
-                  <input type="text" id="profile-state" required placeholder="Uttarakhand">
+                  <input type="text" id="profile-state" required>
+                </div>
+
+                <div class="dash-form-group">
+                  <label for="profile-phone">School Contact Number</label>
+                  <input type="text" id="profile-phone" placeholder="e.g. +91 98765 43210">
                 </div>
               </div>
-              
-              <div class="dash-form-row">
-                <div class="dash-form-group">
-                  <label for="profile-board">Board Affiliation *</label>
-                  <select id="profile-board" required>
-                    <option value="CBSE">CBSE (Central Board of Secondary Education)</option>
-                    <option value="ICSE">CISCE (ICSE / ISC)</option>
-                    <option value="IB">IB (International Baccalaureate)</option>
-                    <option value="IGCSE">Cambridge (IGCSE / A Levels)</option>
-                    <option value="State Board">State Board</option>
-                  </select>
-                </div>
-                
-                <div class="dash-form-group">
-                  <label for="profile-logo-char">School Logo Character (Used as Avatar Logo) *</label>
-                  <input type="text" id="profile-logo-char" required maxlength="1" placeholder="S" style="text-transform: uppercase;">
-                </div>
-              </div>
-              
+
+              <!-- Logo & Cover row -->
               <div class="dash-form-row upload-row" style="margin-top: 16px; margin-bottom: 24px; display: flex; gap: 24px; flex-wrap: wrap;">
                 <!-- Logo Upload -->
                 <div class="dash-form-group" style="flex: 1; min-width: 250px;">
@@ -740,6 +838,51 @@
             </form>
           </div>
         </section>
+
+        <!-- ================= CLASSROOM MANAGEMENT TAB ================= -->
+        <section id="classroom-management-tab" class="dashboard-tab-panel">
+          <div class="dash-card-header" style="background-color: transparent; border-bottom: none; padding: 0 0 24px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h3 style="font-size: 1.3rem;">Classroom & Teacher Management</h3>
+              <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Manage classrooms, academic sessions, teacher transfers, and school stats.</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary" id="btn-show-archived-toggle" style="padding: 10px 18px; font-size: 0.82rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--white); color: var(--text-main);">Show Archived</button>
+              <button class="btn btn-secondary" id="btn-manage-academic-years" style="padding: 10px 18px; font-size: 0.82rem; border-radius: var(--radius-sm);">Manage Academic Years</button>
+              <button class="btn btn-primary" id="btn-create-classroom-trigger" style="padding: 10px 18px; font-size: 0.82rem; border-radius: var(--radius-sm);">Create Classroom</button>
+            </div>
+          </div>
+          
+          <!-- Filters & Search Toolbar -->
+          <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--white); padding: 16px 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <label for="filter-academic-year" style="font-size: 0.82rem; font-weight: 600; color: var(--text-main);">Academic Year:</label>
+                <select id="filter-academic-year" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.82rem; outline: none; background: var(--white); min-width: 130px;">
+                  <!-- Filled by JS -->
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-grow: 1; max-width: 320px; justify-content: flex-end;">
+              <input type="text" id="classroom-search-input" placeholder="Search by class, section, teacher..." style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.82rem; outline: none; width: 100%; background: var(--white);">
+            </div>
+          </div>
+
+          <!-- Cards Grid Container -->
+          <div id="classroom-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+            <!-- Filled by JS -->
+          </div>
+
+          <!-- Pagination -->
+          <div id="classroom-pagination-container" style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px;">
+            <div style="font-size: 0.82rem; color: var(--text-muted);" id="classroom-pagination-info">
+              Showing 0 to 0 of 0 entries
+            </div>
+            <div style="display: flex; gap: 8px;" id="classroom-pagination-buttons">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+        </section>
         
       </div>
       </div>
@@ -764,6 +907,548 @@
       </div>
       <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px; background: var(--bg-light);" id="reg-details-actions">
         <!-- Action buttons (Approve/Reject) -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 1. Academic Years Modal ── -->
+  <div class="modal-overlay" id="academic-years-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(4px);">
+    <div class="modal-card" style="background: var(--white); width: 100%; max-width: 580px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; max-height: 85vh; border: 1px solid var(--border-color);">
+      <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-light);">
+        <div>
+          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--dark-bg);">Academic Sessions Management</h3>
+          <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">View all academic years, switch active session, or duplicate previous structures.</p>
+        </div>
+        <button class="close-modal-trigger" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 24px; overflow-y: auto; flex-grow: 1;">
+        <!-- Add Year Inline Form -->
+        <form id="add-academic-year-form" style="display: flex; gap: 10px; margin-bottom: 20px; align-items: flex-end;">
+          <div style="flex: 1;">
+            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">Academic Year Name *</label>
+            <input type="text" id="new-academic-year-name" placeholder="e.g. 2024-25" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: var(--white);">
+          </div>
+          <button type="submit" class="btn btn-primary" style="padding: 9px 18px; font-size: 0.82rem; border-radius: var(--radius-sm); font-weight: 700;">Add Year</button>
+        </form>
+        <!-- Years Cards Grid -->
+        <div id="academic-years-cards-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;">
+          <!-- Filled dynamically by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. Create/Edit Classroom Modal ── -->
+  <div class="modal-overlay" id="classroom-form-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(4px);">
+    <div class="modal-card" style="background: var(--white); width: 100%; max-width: 650px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border-color); display: flex; flex-direction: column;">
+      <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-light);">
+        <div>
+          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--dark-bg);" id="classroom-modal-title">Create New Classroom</h3>
+          <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);" id="classroom-modal-subtitle">Complete the steps below to register a classroom container.</p>
+        </div>
+        <button class="close-modal-trigger" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+
+      <!-- Stepper Progress Header -->
+      <div id="classroom-stepper-header" style="display: flex; background: var(--bg-light); border-bottom: 1px solid var(--border-color); padding: 12px 24px; gap: 16px; align-items: center; justify-content: space-between;">
+        <div id="classroom-step-tab-1" style="display: flex; gap: 12px; align-items: center; font-size: 0.8rem; font-weight: 700;">
+          <span id="classroom-step-indicator-1" style="background: var(--primary); color: white; padding: 2px 8px; border-radius: 9999px;">1</span>
+          <span id="classroom-step-label-1" style="color: var(--text-main);">Academic Info</span>
+        </div>
+        <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+        <div id="classroom-step-tab-2" style="display: flex; gap: 12px; align-items: center; font-size: 0.8rem; font-weight: 700; opacity: 0.5;">
+          <span id="classroom-step-indicator-2" style="background: var(--border-color); color: var(--text-muted); padding: 2px 8px; border-radius: 9999px;">2</span>
+          <span id="classroom-step-label-2" style="color: var(--text-muted);">Class Teacher</span>
+        </div>
+        <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+        <div id="classroom-step-tab-3" style="display: flex; gap: 12px; align-items: center; font-size: 0.8rem; font-weight: 700; opacity: 0.5;">
+          <span id="classroom-step-indicator-3" style="background: var(--border-color); color: var(--text-muted); padding: 2px 8px; border-radius: 9999px;">3</span>
+          <span id="classroom-step-label-3" style="color: var(--text-muted);">Summary</span>
+        </div>
+      </div>
+
+      <form id="classroom-details-form" style="margin: 0; display: flex; flex-direction: column; overflow: hidden; flex-grow: 1;">
+        <input type="hidden" id="classroom-edit-id">
+        <div class="modal-body" style="padding: 24px; overflow-y: auto; flex-grow: 1;">
+          
+          <!-- STEP 1: ACADEMIC INFORMATION -->
+          <div id="classroom-modal-step-1-container" style="display: flex; flex-direction: column; gap: 16px;">
+            <div>
+              <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Academic Session *</label>
+              <select id="classroom-academic-year-select" required style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+                <!-- Filled by JS -->
+              </select>
+            </div>
+            
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 200px;">
+                <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Grade / Class *</label>
+                <select id="classroom-grade-input" required style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+                  <option value="Nursery">Nursery</option>
+                  <option value="KG">KG</option>
+                  <option value="Grade 1">Grade 1</option>
+                  <option value="Grade 2">Grade 2</option>
+                  <option value="Grade 3">Grade 3</option>
+                  <option value="Grade 4">Grade 4</option>
+                  <option value="Grade 5">Grade 5</option>
+                  <option value="Grade 6">Grade 6</option>
+                  <option value="Grade 7">Grade 7</option>
+                  <option value="Grade 8">Grade 8</option>
+                  <option value="Grade 9">Grade 9</option>
+                  <option value="Grade 10">Grade 10</option>
+                  <option value="Grade 11">Grade 11</option>
+                  <option value="Grade 12">Grade 12</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 200px;">
+                <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Section *</label>
+                <select id="classroom-section-select" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white); margin-bottom: 0;">
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="custom">Custom Section...</option>
+                </select>
+                <input type="text" id="classroom-section-input" placeholder="Enter custom section (e.g., Red)" required style="width: 100%; margin-top: 8px; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white); display: none;">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 200px;">
+                <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Room Number</label>
+                <input type="text" id="classroom-room-input" placeholder="e.g. Room 102" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+              </div>
+              <div style="flex: 1; min-width: 200px;">
+                <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Capacity</label>
+                <input type="number" id="classroom-capacity-input" placeholder="e.g. 40" min="1" value="40" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+              </div>
+            </div>
+
+            <div>
+              <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Status</label>
+              <select id="classroom-status-select" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- STEP 2: ASSIGN CLASS TEACHER -->
+          <div id="classroom-modal-step-2-container" style="display: none; flex-direction: column; gap: 12px;">
+            <div style="margin-bottom: 4px;">
+              <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Class Teacher Assignment</label>
+              <input type="text" id="classroom-teacher-search-input" placeholder="Search teacher by name or email..." style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+            </div>
+
+            <!-- Predefined Unassigned Option Card -->
+            <div id="teacher-card-unassigned" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 2px solid var(--primary); background: #EFF6FF; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s;">
+              <div style="width: 40px; height: 40px; border-radius: 50%; background: #94A3B8; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">👤</div>
+              <div style="flex-grow: 1;">
+                <div style="font-weight: 700; font-size: 0.9rem; color: var(--dark-bg);">No Class Teacher for now</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Assign class teacher privileges later.</div>
+              </div>
+              <div id="teacher-unassigned-check" style="font-size: 1.2rem; color: var(--primary);">✓</div>
+            </div>
+
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Or choose a teacher from Verified Members:</div>
+            
+            <!-- Teachers Scrollable Cards List -->
+            <div id="classroom-teachers-list-container" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+              <!-- Loaded dynamically -->
+            </div>
+          </div>
+
+          <!-- STEP 3: SUMMARY PREVIEW -->
+          <div id="classroom-modal-step-3-container" style="display: none; flex-direction: column; gap: 16px;">
+            <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+              <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--dark-bg); text-transform: uppercase; letter-spacing: 0.04em;">Classroom Configuration Summary</h4>
+              
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-top: 8px;">
+                <div>
+                  <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; text-transform: uppercase;">Class / Grade</span>
+                  <span id="summary-grade" style="font-size: 0.95rem; font-weight: 800; color: var(--text-main);">—</span>
+                </div>
+                <div>
+                  <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; text-transform: uppercase;">Section</span>
+                  <span id="summary-section" style="font-size: 0.95rem; font-weight: 800; color: var(--text-main);">—</span>
+                </div>
+                <div>
+                  <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; text-transform: uppercase;">Academic Session</span>
+                  <span id="summary-academic-year" style="font-size: 0.95rem; font-weight: 800; color: var(--text-main);">—</span>
+                </div>
+                <div>
+                  <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; text-transform: uppercase;">Room Number</span>
+                  <span id="summary-room" style="font-size: 0.95rem; font-weight: 800; color: var(--text-main);">—</span>
+                </div>
+                <div>
+                  <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; text-transform: uppercase;">Student Capacity</span>
+                  <span id="summary-capacity" style="font-size: 0.95rem; font-weight: 800; color: var(--text-main);">40</span>
+                </div>
+                <div>
+                  <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; text-transform: uppercase;">Status</span>
+                  <span id="summary-status" style="font-size: 0.95rem; font-weight: 800; color: var(--text-main);">Active</span>
+                </div>
+              </div>
+
+              <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 6px 0;">
+
+              <div>
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); display: block; text-transform: uppercase; margin-bottom: 6px;">Assigned Class Teacher</span>
+                <div id="summary-teacher-card" style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--white); border: 1px solid var(--border-color); border-radius: 8px;">
+                  <div id="summary-teacher-photo" style="width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700;">T</div>
+                  <div>
+                    <div id="summary-teacher-name" style="font-weight: 700; font-size: 0.88rem; color: var(--dark-bg);">Mrs. Sharma</div>
+                    <div id="summary-teacher-sub" style="font-size: 0.75rem; color: var(--text-muted);">Subject: English</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Validation Error Container -->
+            <div id="classroom-modal-validation-error" style="display: none; background: #FEF2F2; border: 1px solid #FCA5A5; color: #B91C1C; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600; line-height: 1.4;">
+              A classroom with the same Grade & Section already exists in this Academic Year.
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-light);">
+          <div>
+            <button type="button" id="btn-classroom-modal-back" class="btn btn-secondary" style="padding: 10px 20px; font-size: 0.85rem; display: none;">Back</button>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-secondary close-modal-trigger" style="padding: 10px 20px; font-size: 0.85rem;">Cancel</button>
+            <button type="button" id="btn-classroom-modal-next" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.85rem;">Next</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── 3. Transfer Class Teacher Modal ── -->
+  <div class="modal-overlay" id="transfer-teacher-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(4px);">
+    <div class="modal-card" style="background: var(--white); width: 100%; max-width: 500px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+      <!-- Screen 1: Selection Form -->
+      <div id="transfer-screen-form">
+        <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-light);">
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--dark-bg);">Assign Class Teacher</h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Transfer classroom ownership to a new Class Teacher.</p>
+          </div>
+          <button class="close-modal-trigger" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <div style="background: var(--bg-light); padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <div style="font-weight: 700; font-size: 0.88rem; color: var(--dark-bg);" id="transfer-class-label">Class: IX-A</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;" id="transfer-current-teacher-label">Current Teacher: Mrs. Sharma</div>
+          </div>
+          <div>
+            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Search & Select New Class Teacher *</label>
+            <input type="text" id="transfer-teacher-search" placeholder="Type to search teachers..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.82rem; outline: none; margin-bottom: 8px; background: var(--white);">
+            <select id="transfer-teacher-select" required style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+              <!-- Filled by JS (only teachers) -->
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px; background: var(--bg-light);">
+          <button type="button" class="btn btn-secondary close-modal-trigger" style="padding: 10px 20px; font-size: 0.85rem;">Cancel</button>
+          <button type="button" id="btn-next-transfer" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.85rem;">Change Teacher</button>
+        </div>
+      </div>
+      <!-- Screen 2: Confirmation Dialog -->
+      <div id="transfer-screen-confirm" style="display: none;">
+        <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); background: #FEF2F2; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #991B1B;">Transfer Classroom</h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #B91C1C;">Warning: This action transfers full permissions immediately.</p>
+          </div>
+          <button class="close-modal-trigger" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: #B91C1C;">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px; font-size: 0.9rem; line-height: 1.6; color: var(--text-main);">
+          <p id="transfer-confirm-msg" style="margin: 0; font-weight: 550; color: #1E293B;">
+            You are assigning Class IX-A to Mr. Rajesh Kumar.
+            The previous Class Teacher will immediately lose classroom management permissions.
+            All classroom records, attendance history, assignments, student data, parent connections, and analytics will remain unchanged and will automatically be available to the new Class Teacher.
+          </p>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px; background: var(--bg-light);">
+          <button type="button" id="btn-back-transfer" class="btn btn-secondary" style="padding: 10px 20px; font-size: 0.85rem;">Cancel</button>
+          <button type="button" id="btn-confirm-transfer-submit" class="btn" style="padding: 10px 20px; font-size: 0.85rem; background: #DC2626; color: white; border: none; border-radius: var(--radius-sm); font-weight: 700; cursor: pointer;">Transfer Classroom</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. Assign Temporary Class Teacher Modal ── -->
+  <div class="modal-overlay" id="temp-teacher-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(4px);">
+    <div class="modal-card" style="background: var(--white); width: 100%; max-width: 480px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+      <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-light);">
+        <div>
+          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--dark-bg);">Assign Temporary Class Teacher</h3>
+          <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Set permissions for a temporary replacement window.</p>
+        </div>
+        <button class="close-modal-trigger" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <form id="temp-teacher-form">
+        <input type="hidden" id="temp-classroom-id">
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Select Temporary Teacher *</label>
+            <select id="temp-teacher-select" required style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+              <!-- Filled by JS -->
+            </select>
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <div style="flex: 1;">
+              <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Start Date *</label>
+              <input type="date" id="temp-start-date" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: var(--white);">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">End Date *</label>
+              <input type="date" id="temp-end-date" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: var(--white);">
+            </div>
+          </div>
+          <div>
+            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 6px;">Reason for Replacement *</label>
+            <input type="text" id="temp-reason-input" placeholder="e.g. Medical Leave, Training" required style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white);">
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px; background: var(--bg-light);">
+          <button type="button" class="btn btn-secondary close-modal-trigger" style="padding: 10px 20px; font-size: 0.85rem;">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.85rem;">Assign Temp Teacher</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── 5. Manage Subject Teachers Modal ── -->
+  <div class="modal-overlay" id="subject-teachers-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(4px);">
+    <div class="modal-card" style="background: var(--white); width: 100%; max-width: 520px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; max-height: 85vh; border: 1px solid var(--border-color);">
+      <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-light);">
+        <div>
+          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--dark-bg);">Manage Subject Teachers</h3>
+          <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);" id="subject-class-subtitle">Class: IX-A</p>
+        </div>
+        <button class="close-modal-trigger" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 24px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 20px;">
+        <!-- Add Subject Teacher Form -->
+        <form id="add-subject-teacher-form" style="display: flex; flex-direction: column; gap: 12px; background: var(--bg-light); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+          <h4 style="margin: 0 0 4px 0; font-size: 0.88rem; font-weight: 700; color: var(--dark-bg);">Add Subject Teacher</h4>
+          <input type="hidden" id="subject-classroom-id">
+          <div style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+              <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">Subject *</label>
+              <select id="subject-name-input" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: var(--white);">
+                <option value="Mathematics">Mathematics</option>
+                <option value="English">English</option>
+                <option value="Science">Science</option>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Social Science">Social Science</option>
+                <option value="Hindi">Hindi</option>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Biology">Biology</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">Teacher *</label>
+              <select id="subject-teacher-select" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; background: var(--white);">
+                <!-- Filled by JS -->
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.82rem; align-self: flex-end; font-weight: 700; border-radius: var(--radius-sm);">Add Teacher</button>
+        </form>
+        
+        <!-- Assigned Subject Teachers List -->
+        <div>
+          <h4 style="margin: 0 0 10px 0; font-size: 0.88rem; font-weight: 700; color: var(--dark-bg);">Assigned Teachers</h4>
+          <div class="dash-table-wrapper" style="border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+            <table class="dash-table" style="font-size: 0.82rem;">
+              <thead>
+                <tr style="background: var(--bg-light);">
+                  <th style="padding: 10px;">Subject</th>
+                  <th style="padding: 10px;">Teacher</th>
+                  <th style="padding: 10px; text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="subject-teachers-tbody">
+                <!-- Filled by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 6. Classroom Details & Audit History Modal ── -->
+  <div class="modal-overlay" id="classroom-details-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(4px);">
+    <div class="modal-card" style="background: var(--white); width: 100%; max-width: 650px; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; max-height: 85vh; border: 1px solid var(--border-color);">
+      <div class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-light);">
+        <div>
+          <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dark-bg);" id="details-classroom-title">Grade 10 - A</h3>
+          <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: var(--text-muted);" id="details-classroom-subtitle">Room 203 • Academic Year 2026-2027</p>
+        </div>
+        <button class="close-modal-trigger" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+
+      <!-- Quick Metrics Header bar -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; background: #F8FAFC; border-bottom: 1px solid var(--border-color); padding: 12px 24px;">
+        <div style="border-right: 1px solid var(--border-color); padding-right: 8px;">
+          <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Class Teacher</span>
+          <span id="details-active-teacher" style="font-size: 0.82rem; font-weight: 800; color: var(--text-main); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ahmed Khan</span>
+        </div>
+        <div style="border-right: 1px solid var(--border-color); padding-right: 8px; padding-left: 8px;">
+          <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Students</span>
+          <span id="details-total-students" style="font-size: 0.82rem; font-weight: 800; color: var(--primary); display: block;">0</span>
+        </div>
+        <div style="border-right: 1px solid var(--border-color); padding-right: 8px; padding-left: 8px;">
+          <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Subjects</span>
+          <span id="details-subjects-count" style="font-size: 0.82rem; font-weight: 800; color: #10B981; display: block;">0</span>
+        </div>
+        <div style="padding-left: 8px;">
+          <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Status</span>
+          <span id="details-status" style="font-size: 0.82rem; font-weight: 800; color: #10B981; display: block;">Active</span>
+        </div>
+      </div>
+
+      <!-- Tab Navigation bar -->
+      <div class="details-tabs-bar" style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); background: var(--white); padding: 8px 24px 0 24px; overflow-x: auto;">
+        <button type="button" class="details-tab-btn active-tab" data-details-tab="students" style="padding: 10px 16px; font-size: 0.8rem; font-weight: 700; border: none; background: none; border-bottom: 3px solid var(--primary); cursor: pointer; color: var(--primary); outline: none;">Students</button>
+        <button type="button" class="details-tab-btn" data-details-tab="subjects" style="padding: 10px 16px; font-size: 0.8rem; font-weight: 700; border: none; background: none; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-muted); outline: none;">Subjects</button>
+        <button type="button" class="details-tab-btn" data-details-tab="attendance" style="padding: 10px 16px; font-size: 0.8rem; font-weight: 700; border: none; background: none; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-muted); outline: none;">Attendance</button>
+        <button type="button" class="details-tab-btn" data-details-tab="assignments" style="padding: 10px 16px; font-size: 0.8rem; font-weight: 700; border: none; background: none; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-muted); outline: none;">Assignments</button>
+        <button type="button" class="details-tab-btn" data-details-tab="announcements" style="padding: 10px 16px; font-size: 0.8rem; font-weight: 700; border: none; background: none; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-muted); outline: none;">Announcements</button>
+        <button type="button" class="details-tab-btn" data-details-tab="settings" style="padding: 10px 16px; font-size: 0.8rem; font-weight: 700; border: none; background: none; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-muted); outline: none;">Settings</button>
+      </div>
+
+      <div class="modal-body" style="padding: 24px; overflow-y: auto; flex-grow: 1; background: #FAFAFA;">
+        
+        <!-- PANEL 1: STUDENTS -->
+        <div id="details-panel-students" class="details-panel-content">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+            <div style="background: var(--white); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; text-align: center;">
+              <span id="details-boys-students" style="font-size: 1.25rem; font-weight: 800; color: #3B82F6; display: block;">0</span>
+              <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Boys</span>
+            </div>
+            <div style="background: var(--white); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; text-align: center;">
+              <span id="details-girls-students" style="font-size: 1.25rem; font-weight: 800; color: #EC4899; display: block;">0</span>
+              <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Girls</span>
+            </div>
+            <div style="background: var(--white); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; text-align: center;">
+              <span id="details-total-students-calc" style="font-size: 1.25rem; font-weight: 800; color: var(--primary); display: block;">0</span>
+              <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Strength</span>
+            </div>
+          </div>
+          
+          <h4 style="margin: 0 0 10px 0; font-size: 0.85rem; font-weight: 800; color: var(--dark-bg); text-transform: uppercase;">Class Roster</h4>
+          <div class="dash-table-wrapper" style="border: 1px solid var(--border-color); border-radius: 8px; background: var(--white);">
+            <table class="dash-table" style="font-size: 0.82rem; margin: 0;">
+              <thead>
+                <tr style="background: var(--bg-light);">
+                  <th style="padding: 10px;">Roll No</th>
+                  <th style="padding: 10px;">Student Name</th>
+                  <th style="padding: 10px;">Email</th>
+                  <th style="padding: 10px; text-align: center;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="details-students-tbody">
+                <!-- Dynamically loaded -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PANEL 2: SUBJECTS -->
+        <div id="details-panel-subjects" class="details-panel-content" style="display: none;">
+          <h4 style="margin: 0 0 12px 0; font-size: 0.85rem; font-weight: 800; color: var(--dark-bg); text-transform: uppercase;">Subject & Teacher Map</h4>
+          <div style="display: flex; flex-direction: column; gap: 8px;" id="details-subject-teachers-container">
+            <!-- Dynamically populated rows -->
+          </div>
+        </div>
+
+        <!-- PANEL 3: ATTENDANCE -->
+        <div id="details-panel-attendance" class="details-panel-content" style="display: none;">
+          <div style="background: var(--white); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 16px;">
+            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Average Monthly Attendance</span>
+            <span id="details-avg-attendance" style="font-size: 2.25rem; font-weight: 900; color: #10B981; display: block; margin: 8px 0;">94.2%</span>
+            <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden; max-width: 300px; margin: 0 auto;">
+              <div id="details-attendance-progress-bar" style="width: 94.2%; height: 100%; background: #10B981;"></div>
+            </div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; padding: 0 8px;">
+            ℹ️ Attendance statistics are compiled daily from class rolls. Class Teachers can verify attendance logs or download monthly reports inside the student attendance manager.
+          </div>
+        </div>
+
+        <!-- PANEL 4: ASSIGNMENTS -->
+        <div id="details-panel-assignments" class="details-panel-content" style="display: none;">
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="background: var(--white); border: 1px solid var(--border-color); padding: 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-weight: 700; font-size: 0.85rem; color: var(--dark-bg); display: block;">Active Homeworks</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Current pending homework assignments for pupils</span>
+              </div>
+              <span id="details-active-homeworks" style="background: #FEF3C7; color: #D97706; font-weight: 700; font-size: 0.75rem; padding: 4px 10px; border-radius: 20px;">3 Pending</span>
+            </div>
+            <div style="background: var(--white); border: 1px solid var(--border-color); padding: 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-weight: 700; font-size: 0.85rem; color: var(--dark-bg); display: block;">Graded Classroom Exams</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Assignments evaluated & scored in current session</span>
+              </div>
+              <span id="details-graded-assignments" style="background: #E0F2FE; color: #0369A1; font-weight: 700; font-size: 0.75rem; padding: 4px 10px; border-radius: 20px;">18/20 Graded</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 5: ANNOUNCEMENTS -->
+        <div id="details-panel-announcements" class="details-panel-content" style="display: none;">
+          <div style="display: flex; flex-direction: column; gap: 12px; padding: 4px;" id="details-timeline-container">
+            <!-- Timeline loaded here -->
+          </div>
+        </div>
+
+        <!-- PANEL 6: SETTINGS & AUDIT -->
+        <div id="details-panel-settings" class="details-panel-content" style="display: none;">
+          <div style="background: var(--white); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <span style="font-weight: 700; font-size: 0.88rem; color: var(--dark-bg); display: block;">Modify Classroom Details</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Change room number, adjust student capacity, or status.</span>
+            </div>
+            <button type="button" id="details-btn-edit-classroom" class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.78rem;">✏️ Edit Details</button>
+          </div>
+
+          <div style="background: var(--white); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <span style="font-weight: 700; font-size: 0.88rem; color: var(--dark-bg); display: block;">Re-Assign Class Teacher</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Transfer classroom management permissions to another teacher.</span>
+            </div>
+            <button type="button" id="details-btn-transfer-teacher" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.78rem;">👩‍🏫 Assign Teacher</button>
+          </div>
+
+          <h4 style="margin: 0 0 10px 0; font-size: 0.85rem; font-weight: 800; color: var(--dark-bg); text-transform: uppercase;">Teacher Assignment Audit History</h4>
+          <div class="dash-table-wrapper" style="border: 1px solid var(--border-color); border-radius: 8px; background: var(--white);">
+            <table class="dash-table" style="font-size: 0.78rem; margin: 0;">
+              <thead>
+                <tr style="background: var(--bg-light);">
+                  <th style="padding: 8px;">Teacher</th>
+                  <th style="padding: 8px;">Type</th>
+                  <th style="padding: 8px;">Start Date</th>
+                  <th style="padding: 8px;">End Date</th>
+                  <th style="padding: 8px; text-align: center;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="details-audit-tbody">
+                <!-- Loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

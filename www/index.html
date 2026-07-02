@@ -733,9 +733,15 @@
       console.log('[MentionEngine] Searching "'+q+'"');
       var s=sb();
       if(!s){ console.error('[MentionEngine] supabase unavailable'); return; }
+      var pq = s.from('profiles').select('id,full_name,avatar_url,user_type,platform_role,is_verified').or('user_type.eq.student,user_type.eq.school_representative,platform_role.eq.super_admin');
+      var sq = s.from('schools').select('id,name,logo_url,logo_letter,color_class,verification_badge');
+      if(q){
+        pq = pq.ilike('full_name','%'+q+'%');
+        sq = sq.ilike('name','%'+q+'%');
+      }
       Promise.all([
-        s.from('profiles').select('id,full_name,avatar_url,user_type,platform_role,is_verified').or('user_type.eq.student,user_type.eq.school_representative,platform_role.eq.super_admin').ilike('full_name','%'+q+'%').limit(6),
-        s.from('schools').select('id,name,logo_url,logo_letter,color_class,verification_badge').ilike('name','%'+q+'%').limit(6)
+        pq.limit(6),
+        sq.limit(6)
       ]).then(function(r){
         if(!self.on) return;
         var m=[];

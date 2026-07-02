@@ -774,10 +774,28 @@
   }
 }
 
-/* ── School Admin Dashboard (dashboard.html) Mobile Overrides ── */
+/* ── School Admin Dashboard (dashboard.html) Desktop Layout ── */
 
-/* Sticky Mobile Fixed Header */
+/* Desktop: top bar is always visible */
+.school-admin-body .dashboard-top-bar {
+  display: flex !important;
+}
+
+/* Desktop: mobile-dashboard-content is a flex column filling remaining height — no independent scroll */
+.school-admin-body .mobile-dashboard-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+/* Sticky Mobile Fixed Header — hidden on desktop */
 .mobile-fixed-header {
+  display: none !important;
+}
+
+/* Mobile App Header — hidden on desktop, shown only on mobile */
+.mobile-app-header {
   display: none !important;
 }
 

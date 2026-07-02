@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classroom | CampusLink Workspace</title>
+  <meta name="description" content="Premium teacher dashboard workspace for CampusLink Classroom.">
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Global Styles -->
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      background-color: #ffffff;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    
+    /* Premium custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #E2E8F0;
+      border-radius: 10px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #CBD5E1;
+    }
+    
+    /* Ripple-like active state animation */
+    .ripple-btn {
+      position: relative;
+      overflow: hidden;
+    }
+    .ripple-btn::after {
+      content: "";
+      background: rgba(255, 255, 255, 0.3);
+      display: block;
+      position: absolute;
+      border-radius: 50%;
+      padding-top: 240%;
+      padding-left: 240%;
+      margin-top: -120%;
+      margin-left: -120%;
+      opacity: 0;
+      transition: all 0.8s;
+    }
+    .ripple-btn:active::after {
+      padding-top: 0;
+      padding-left: 0;
+      margin-top: 0;
+      margin-left: 0;
+      opacity: 0.9;
+      transition: 0s;
+    }
+  </style>
+</head>
+<body class="bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-100">
+
+  <!-- React Mount Point -->
+  <div id="root"></div>
+
+  <!-- React & Babel CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Tailwind Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Initialize Supabase client for classroom workspace
+    // Reuse global CampusLink client if available, otherwise create a new one
+    let supabaseClient = null;
+    try {
+      if (window.CampusLink && window.CampusLink.supabase) {
+        supabaseClient = window.CampusLink.supabase;
+      } else {
+        const SUPABASE_URL = 'https://cfeeqgokzkzblddefhxn.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmZWVxZ29remt6YmxkZGVmaHhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTM1NTIsImV4cCI6MjA5NjA4OTU1Mn0.vzeLfLLeOajdsUaE__jvs_VoxzbvmX0j7p3GVAa26lI';
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch (e) {
+      console.warn('Supabase initialization failed, using offline mode:', e);
+    }
+  </script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              DEFAULT: '#2563EB',
+              light: '#3B82F6',
+              dark: '#1D4ED8',
+            },
+            accent: {
+              DEFAULT: '#10B981',
+              light: '#34D399',
+              dark: '#059669',
+            },
+            surface: {
+              light: '#F8FAFC',
+              dark: '#0F172A',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          borderRadius: {
+            'premium': '20px',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Mount Babel Compiled JS Controller -->
+  <script type="text/babel" data-type="module" src="classroom.js"></script>
+</body>
+</html>

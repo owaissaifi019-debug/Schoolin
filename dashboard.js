@@ -242,6 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (regFetchErr) {
               console.warn('Failed to query event_registrations:', regFetchErr);
             }
+
           }
         }
       } catch (err) {
@@ -390,9 +391,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       const tabTarget = link.getAttribute('data-tab');
       
-      // Update active nav link
-      tabLinks.forEach(l => l.classList.remove('active'));
-      link.classList.add('active');
+      // Update active nav links (syncs both desktop sidebar and mobile drawer)
+      tabLinks.forEach(l => {
+        if (l.getAttribute('data-tab') === tabTarget) {
+          l.classList.add('active');
+        } else {
+          l.classList.remove('active');
+        }
+      });
 
       // Update active tab panel
       tabPanels.forEach(panel => {
@@ -411,7 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tabTarget === 'contact-requests') tabName = 'Contact Requests Received';
       if (tabTarget === 'community-members') tabName = 'Community Members';
       if (tabTarget === 'profile') tabName = 'School Profile Settings';
-      if (topBarTitle) topBarTitle.textContent = tabName;
+if (topBarTitle) topBarTitle.textContent = tabName;
     });
   });
 
@@ -558,7 +564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
           `;
 
-          const typeText = reg.is_team ? `Team (${reg.team_size || 1})` : 'Individual';
+            const typeText = reg.is_team ? `Team (${reg.team_size || 1})` : 'Individual';
 
           tr.innerHTML = `
             <td style="font-weight: 700; color: var(--dark-bg);">${reg.studentName}</td>
@@ -2820,7 +2826,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
           communityMembers.push(newMember);
         }
-
         saveState('campuslink_community_members', communityMembers);
         showToast(`Member assigned as ${memberRoleSelect.value}!`);
         closeAddMemberModal();
@@ -2834,6 +2839,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   }
+
+  // Generic modal close handler for all modals with .close-modal-trigger class
+  document.querySelectorAll('.close-modal-trigger').forEach(trigger => {
+    trigger.addEventListener('click', () => {
+      const modal = trigger.closest('.modal-overlay');
+      if (modal) modal.style.display = 'none';
+    });
+  });
 
   // --- Init Dashboard Rendering ---
   loadDashboardData().then(() => {

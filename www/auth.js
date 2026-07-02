@@ -1,5 +1,5 @@
 // auth.js
-// SchoolIn Authentication Module
+// CampusLink Authentication Module
 // Provides signup, login, logout, session management, and auth guards.
 // Depends on supabase.js being loaded first (sets window.CampusLink.supabase).
 
@@ -320,6 +320,27 @@
         });
         guestOnlyEls.forEach(el => { el.style.setProperty('display', 'none', 'important'); });
 
+        // Dynamically add Classroom link to the main navigation header
+        if (!document.getElementById('nav-classroom-item')) {
+          const msgItem = document.querySelector('.nav-msg-item');
+          if (msgItem) {
+            const classroomLi = document.createElement('li');
+            classroomLi.id = 'nav-classroom-item';
+            classroomLi.className = 'member-only nav-classroom-item';
+            classroomLi.style.setProperty('display', 'inline-flex', 'important');
+            classroomLi.innerHTML = `
+              <a href="classroom.html" id="nav-classroom-link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 3px;">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
+                </svg>
+                <span>Classroom</span>
+              </a>
+            `;
+            msgItem.parentNode.insertBefore(classroomLi, msgItem.nextSibling);
+          }
+        }
+
         const user = session.user;
         const profile = await getProfile(user.id);
         const platformRole = (user.email === 'owaissaifi003@gmail.com') ? 'super_admin' : (profile?.platform_role || 'user');
@@ -374,6 +395,10 @@
                   <a href="#" class="me-menu-item" id="me-menu-edit-profile">
                     <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     <span>Edit Profile</span>
+                  </a>
+                  <a href="classroom.html" class="me-menu-item" id="me-menu-classroom">
+                    <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+                    <span>Classroom Workspace</span>
                   </a>
                   <a href="dashboard.html" class="me-menu-item" id="me-menu-dashboard" style="display: none;">
                     <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>

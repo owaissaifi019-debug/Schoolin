@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async () => {
+async function initAdmin() {
   'use strict';
 
   // ── Element References ──────────────────────────────────
@@ -2787,4 +2787,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderAnalytics();
     }
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAdmin);
+} else {
+  initAdmin();
+}
