@@ -13,6 +13,43 @@
   <link rel="stylesheet" href="css/core/utilities.css">
   <link rel="stylesheet" href="css/core/animations.css">
   <link rel="stylesheet" href="style.css?v=1.1">
+  <style>
+    /* --- Mobile Touch Responsiveness Overlay Fix --- */
+    .modal-overlay {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+      transition: opacity 0.3s ease, visibility 0.3s ease !important;
+    }
+    .modal-overlay.active {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      visibility: visible !important;
+    }
+
+    /* --- Horizontal Tabs Smooth Scrolling --- */
+    @media (max-width: 992px) {
+      .profile-tab-list {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        white-space: nowrap !important;
+        gap: 12px !important;
+        scrollbar-width: none !important; /* Hide scrollbars on Firefox */
+        border: 1px solid var(--border-color) !important;
+        padding: 8px 16px !important;
+        margin-bottom: 20px !important;
+      }
+      .profile-tab-list::-webkit-scrollbar {
+        display: none !important; /* Hide scrollbars on Chrome/Safari */
+      }
+      .profile-tab-btn {
+        flex: 0 0 auto !important;
+      }
+    }
+  </style>
 </head>
 <body>
 

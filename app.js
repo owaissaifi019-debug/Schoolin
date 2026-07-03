@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+-document.addEventListener('DOMContentLoaded', () => {
 
   // Update navigation based on auth state
   if (window.CampusLink && window.CampusLink.auth) {

@@ -1503,3 +1503,18 @@
   color: var(--text-muted);
   border: 1px solid var(--border-color);
 }
+
+/* --- Global Modal Touch blocker Fix --- */
+.modal-overlay {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transition: opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+.modal-overlay.active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+

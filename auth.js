@@ -327,7 +327,6 @@
             const classroomLi = document.createElement('li');
             classroomLi.id = 'nav-classroom-item';
             classroomLi.className = 'member-only nav-classroom-item';
-            classroomLi.style.setProperty('display', 'inline-flex', 'important');
             classroomLi.innerHTML = `
               <a href="classroom.html" id="nav-classroom-link">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 3px;">
@@ -420,6 +419,10 @@
 
                 <!-- Footer Section -->
                 <div class="me-dropdown-footer">
+                  <button class="me-menu-theme-toggle" id="me-menu-theme-toggle-btn" title="Toggle dark mode" style="display:inline-flex;align-items:center;gap:8px;background:none;border:1px solid var(--border-color);border-radius:20px;padding:8px 14px;cursor:pointer;color:var(--text-main);font-size:0.8rem;font-weight:600;transition:all 200ms;">
+                    <svg id="me-theme-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    <span id="me-theme-label">Dark Mode</span>
+                  </button>
                   <button class="me-dropdown-signout" id="me-dropdown-signout-btn">
                     <svg class="me-signout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                     <span>Sign Out</span>
@@ -527,6 +530,38 @@
               meDropdown.classList.remove('active');
               const bell = document.getElementById('notif-bell-btn');
               if (bell) bell.click();
+            });
+          }
+
+          // Bind theme toggle in menu
+          const meMenuThemeBtn = document.getElementById('me-menu-theme-toggle-btn');
+          if (meMenuThemeBtn) {
+            const _updateMenuThemeBtn = (theme) => {
+              const icon = document.getElementById('me-theme-icon');
+              const label = document.getElementById('me-theme-label');
+              const isDark = theme === 'dark';
+              if (icon) {
+                icon.innerHTML = isDark
+                  ? `<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>`
+                  : `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
+              }
+              if (label) label.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+              meMenuThemeBtn.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : 'var(--border-color)';
+            };
+            _updateMenuThemeBtn(document.documentElement.getAttribute('data-theme') || 'light');
+            meMenuThemeBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const current = document.documentElement.getAttribute('data-theme') || 'light';
+              const next = current === 'dark' ? 'light' : 'dark';
+              document.documentElement.setAttribute('data-theme', next);
+              localStorage.setItem('campuslink-theme', next);
+              _updateMenuThemeBtn(next);
+              // Sync all theme-toggle-btn icons on the page
+              document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
+                btn.innerHTML = next === 'dark'
+                  ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`
+                  : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+              });
             });
           }
 

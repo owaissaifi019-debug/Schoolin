@@ -1188,3 +1188,53 @@ footer {
     width: 100%;
   }
 }
+
+/* ============================================================
+   CAMPUSFEED TOPIC FILTER PILLS
+   Restored from original style.css after CSS modularization.
+   These were missing from css/landing.css, causing chips to
+   wrap instead of scroll horizontally on mobile.
+   ============================================================ */
+
+.topic-filter-container {
+  display: flex;
+  flex-wrap: nowrap;            /* CRITICAL: prevents wrapping — chips must stay on one row */
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;  /* smooth momentum scroll on iOS */
+  padding-bottom: 6px;
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE 10+ */
+}
+
+.topic-filter-container::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+.topic-filter-pill {
+  flex: 0 0 auto;               /* CRITICAL: prevents pills from shrinking or growing */
+  background-color: var(--light-bg, #f3f4f6);
+  border: 1px solid var(--border-color, #e5e7eb);
+  color: var(--text-main, #374151);
+  padding: 6px 14px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.topic-filter-pill:hover {
+  background-color: var(--border-color, #e5e7eb);
+}
+
+.topic-filter-pill.active {
+  background-color: var(--primary-light, rgba(79, 70, 229, 0.1));
+  color: var(--primary, #4f46e5);
+  border-color: var(--primary, #4f46e5);
+  font-weight: 600;
+}
+

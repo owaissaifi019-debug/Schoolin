@@ -1199,3 +1199,110 @@
     height: 36px !important;
   }
 }
+
+/* ============================================================
+   MESSAGING PAGE - TOUCH INTERACTION REGRESSION FIXES
+   Restored after CSS modularization cascade issues.
+   ============================================================ */
+
+/* ── 1. Toast container must never block taps when empty ── */
+/* The toast-container is a fixed-position element; without pointer-events:none
+   it intercepts all taps in its area even when no toasts are visible. */
+.messaging-page-body .toast-container {
+  pointer-events: none;
+}
+
+.messaging-page-body .toast-alert {
+  pointer-events: auto;
+}
+
+/* ── 2. Ensure all conversation items are fully tappable ── */
+/* style.css hides nav items with `display: none !important`; this restores
+   pointer-events pass-through on the conversation list so taps aren't blocked. */
+.conversation-list,
+.conversation-item {
+  position: relative;
+  z-index: auto;
+}
+
+.conversation-item {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ── 3. Inbox search input must be focusable/tappable ── */
+.inbox-search input {
+  position: relative;
+  z-index: 1;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Ensure min tap target */
+  min-height: 44px;
+}
+
+/* ── 4. Tab buttons – Chats / Requests ── */
+.inbox-tab-btn {
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Ensure min 44px tap target per WCAG */
+  min-height: 44px;
+}
+
+/* ── 5. Mobile: Show the Me dropdown and notification bell ── */
+/* style.css Phase 1 hides all .header-nav .nav-list > li items via
+   `display: none !important`. We restore only the ones needed on messaging.
+   NOTE: .theme-toggle-item is intentionally NOT restored here —
+   it is hidden globally (global.css). Theme switching is done via the
+   Me dropdown hamburger menu only. */
+@media (max-width: 768px) {
+  /* Show the notification bell */
+  .messaging-page-body .header-nav .nav-list > #nav-notif-item {
+    display: block !important;
+  }
+
+  /* Show the Me profile dropdown */
+  .messaging-page-body .header-nav .nav-list > #nav-me-item {
+    display: block !important;
+  }
+
+  /* Hide hamburger toggle (not needed on messaging mobile) */
+  .messaging-page-body .mobile-toggle {
+    display: none !important;
+  }
+}
+
+/* ── 6. Global mobile nav (pill nav) pointer-events fix ── */
+/* When global-mobile-nav is visible, ensure it is above the content
+   and that its items are fully tappable. */
+.global-mobile-nav {
+  touch-action: manipulation;
+}
+
+.gmn-item {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+/* ── 7. Floating post button ── */
+.gmn-post-item,
+.gmn-post-circle {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+/* ── 8. Logo touch area ── */
+.messaging-page-body #header-logo {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+

@@ -13,6 +13,35 @@
   <link rel="stylesheet" href="css/core/utilities.css">
   <link rel="stylesheet" href="css/core/animations.css">
   <link rel="stylesheet" href="style.css?v=1.5">
+  <style>
+    /* --- Mobile Touch Responsiveness Overlay & Sheet Fixes --- */
+    .mobile-network-overlay {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    .mobile-network-overlay.active {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+
+    .mobile-network-sheet {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    .mobile-network-sheet.active {
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+
+    .toast-container {
+      pointer-events: none !important;
+    }
+    .toast-alert {
+      pointer-events: auto !important;
+    }
+  </style>
 </head>
 <body class="page-networking">
 

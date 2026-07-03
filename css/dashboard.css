@@ -3,9 +3,18 @@
    ============================================================ */
 
 /* --- School Admin Dashboard Base Styles --- */
+
+/* Desktop: lock the page height so only the workspace scrolls (Stitch pattern) */
+@media (min-width: 993px) {
+  body.school-admin-body {
+    overflow: hidden;
+    height: 100vh;
+  }
+}
+
 .dashboard-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;           /* exact viewport height — no browser scrollbar */
   background-color: var(--light-bg);
   color: var(--text-main);
   overflow: hidden;
@@ -180,38 +189,101 @@
   margin-left: 260px;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;           /* fills viewport exactly */
+  overflow: hidden;        /* clips — only workspace scrolls */
 }
 
+/* --- Top Bar Layout (Stitch design) --- */
 .dashboard-top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px;
+  padding: 0 32px;
+  height: 72px;
   background-color: var(--white);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 50;
+  flex-shrink: 0;
 }
 
-.dashboard-welcome h2 {
-  font-size: 1.75rem;
-  margin-bottom: 4px;
-}
-
-.dashboard-welcome p {
-  font-size: 0.95rem;
+.dashboard-top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .dashboard-top-bar h2 {
-  color: var(--dark-bg);
+  font-size: 1.1rem;
   font-weight: 700;
+  color: var(--dark-bg);
+  margin: 0;
   letter-spacing: -0.01em;
 }
 
 .dashboard-top-bar p {
+  font-size: 0.73rem;
   color: var(--text-muted);
+  margin: 0;
+}
+
+/* Home icon button in top bar */
+.dash-home-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: var(--transition-fast);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.dash-home-icon-btn:hover {
+  color: var(--primary);
+  background-color: var(--primary-light);
+}
+
+/* Notification / Help icon buttons */
+.dash-topbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  border: none;
+  background: none;
+}
+.dash-topbar-icon-btn:hover {
+  color: var(--primary);
+  background-color: var(--primary-light);
+}
+
+/* Divider between icons and avatar */
+.dash-topbar-divider {
+  width: 1px;
+  height: 28px;
+  background-color: var(--border-color);
+  margin: 0 4px;
+}
+
+/* Username / board text */
+.dash-username {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--dark-bg);
+  line-height: 1.2;
+}
+.dash-userboard {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.2;
 }
 
 .dashboard-user-info {
@@ -241,10 +313,12 @@
 }
 
 /* --- Workspace & Panels --- */
+/* --- Workspace & Panels --- */
 .dashboard-workspace {
   padding: 28px 32px;
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto;   /* THE only scrollbar — workspace content scrolls */
+  min-height: 0;      /* required for flex child to shrink below content height */
 }
 
 .dashboard-tab-panel {
@@ -718,5 +792,187 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+  }
+}
+
+/* --- Missing Selectors Migrated from style.css --- */
+
+.dash-stat-icon.green {
+  background-color: #E6F4EA;
+  color: #137333;
+}
+
+.dash-table-wrapper {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+/* --- Auth Loading Overlay --- */
+.auth-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  transition: opacity 0.4s ease;
+}
+
+.auth-loading-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.auth-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.auth-loading-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* --- About Meta List (used in Overview) --- */
+.about-meta-list {
+  list-style: none;
+}
+
+.about-meta-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  padding: 8px 0;
+}
+
+.about-meta-item span:last-child {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* --- Success Screen --- */
+.success-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.success-screen.active {
+  display: flex;
+}
+
+.success-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 16px;
+}
+
+/* --- Spinner --- */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: var(--white);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+/* --- Animations --- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes authSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Responsive Toast Mobile Overrides --- */
+@media (max-width: 576px) {
+  .toast-container {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+  }
+  .toast-alert {
+    min-width: auto;
+    max-width: 100%;
+  }
+}
+
+/* --- Stitch-style Stat Icon Boxes (replace emoji icons) --- */
+.dash-stat-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.dash-stat-icon-box.blue {
+  background-color: rgba(0, 102, 200, 0.10);
+  color: var(--primary);
+}
+.dash-stat-icon-box.teal {
+  background-color: rgba(0, 210, 196, 0.12);
+  color: #00A89C;
+}
+.dash-stat-icon-box.orange {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #D97706;
+}
+
+/* --- Stat Card Label (Stitch uppercase label-caps style) --- */
+.dash-stat-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin: 0 0 8px 0;
+}
+
+/* Pending count in table header */
+.dash-card-header span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ── Desktop: Stitch inner-scroll pattern already handled above.
+   mobile-dashboard-content must fill remaining height so workspace can scroll. */
+@media (min-width: 993px) {
+  body.school-admin-body .mobile-dashboard-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Hide mobile drawer components on desktop to prevent layout shifting */
+  .mobile-sidebar-drawer,
+  .mobile-sidebar-overlay-bg {
+    display: none;
   }
 }

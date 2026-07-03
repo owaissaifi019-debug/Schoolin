@@ -38,6 +38,48 @@
   --transition-fast: all 0.15s ease;
 }
 
+/* --- Dark Mode Variable Overrides --- */
+[data-theme="dark"] {
+  --dark-bg: #F8FAFC;            /* Swap text headings to light */
+  --dark-surface: #0F172A;       /* Deep slate background */
+  --light-bg: #0B0F19;           /* Very dark blue/slate page background */
+  --white: #1E293B;              /* Dark slate surface/card background */
+  
+  --text-main: #F1F5F9;          /* Light gray primary text */
+  --text-muted: #94A3B8;         /* Gray muted text */
+  --border-color: rgba(255, 255, 255, 0.08); /* Transparent light border */
+  
+  --primary-light: rgba(0, 102, 200, 0.2);
+  --accent-light: rgba(0, 210, 196, 0.2);
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 12px 24px -6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Smooth Theme Transition --- */
+body, 
+header, 
+footer, 
+aside, 
+main, 
+section, 
+div, 
+h1, h2, h3, h4, h5, h6, 
+p, 
+span, 
+a, 
+button, 
+input, 
+select, 
+textarea, 
+table, 
+th, 
+td {
+  transition: background-color 250ms ease, color 250ms ease, border-color 250ms ease;
+}
+
+
 /* --- Base Resets --- */
 * {
   margin: 0;
@@ -134,3 +176,180 @@ a {
   70% { box-shadow: 0 0 0 15px rgba(0, 210, 196, 0); }
   100% { box-shadow: 0 0 0 0 rgba(0, 210, 196, 0); }
 }
+
+/* --- Theme Toggle Button --- */
+.theme-toggle-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  transition: background-color 250ms, border-color 250ms, transform 100ms;
+  padding: 0;
+  box-shadow: var(--shadow-sm);
+  user-select: none;
+  outline: none;
+}
+
+.theme-toggle-btn .theme-icon {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2px;
+  fill: none;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), stroke 250ms;
+}
+
+.theme-toggle-btn:hover {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.theme-toggle-btn:hover .theme-icon {
+  transform: rotate(25deg) scale(1.1);
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.92);
+}
+
+.theme-toggle-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .theme-toggle-btn {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .theme-toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* --- Specific Dark Mode Element Overrides --- */
+[data-theme="dark"] header:not(.auth-mobile-header) {
+  background-color: var(--white) !important;
+  border-bottom-color: var(--border-color) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="dark"] .dashboard-sidebar {
+  background-color: #0F172A !important;
+  border-right-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Also keep sidebar navigation active link text legible in dark mode */
+[data-theme="dark"] .dashboard-nav-link.active {
+  background: linear-gradient(90deg, rgba(0, 102, 200, 0.25) 0%, rgba(0, 210, 196, 0.1) 100%) !important;
+  color: var(--white) !important;
+}
+
+/* --- Me Dropdown Footer: theme toggle + sign out side by side --- */
+.me-dropdown-footer {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.me-menu-theme-toggle {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.me-menu-theme-toggle:hover {
+  background: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+[data-theme="dark"] .me-menu-theme-toggle {
+  border-color: rgba(255,255,255,0.2) !important;
+  color: var(--text-main);
+}
+
+[data-theme="dark"] .me-menu-theme-toggle:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+/* --- Me Dropdown Dark Mode Overrides --- */
+[data-theme="dark"] .me-dropdown {
+  background-color: var(--white) !important; /* #1E293B */
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="dark"] .me-dropdown-header {
+  background-color: var(--light-bg) !important; /* #0B0F19 */
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .me-dropdown-footer {
+  background-color: var(--light-bg) !important; /* #0B0F19 */
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .me-menu-item {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .me-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .me-menu-icon {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .me-menu-item:hover .me-menu-icon {
+  color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .me-dropdown-signout:hover {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* ============================================================
+   THEME TOGGLE VISIBILITY
+   Hide the theme toggle icon from the desktop header nav,
+   the login page, and the dashboard topbar.
+   The ONLY remaining toggle is the me-menu-theme-toggle inside
+   the Me dropdown / hamburger menu (injected by auth.js).
+   ============================================================ */
+
+/* 1. Desktop nav <li> wrapper — hidden on all pages, all sizes */
+.theme-toggle-item {
+  display: none !important;
+}
+
+/* 2. Login page standalone toggle container */
+.theme-toggle-container {
+  display: none !important;
+}
+
+/* 3. Dashboard topbar theme button */
+button.theme-toggle-btn.dash-topbar-icon-btn {
+  display: none !important;
+}
+
+
