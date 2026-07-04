@@ -26,7 +26,7 @@
   // ── Sign Up ──────────────────────────────────────────────
   // Creates a Supabase auth user with profile metadata.
   // platform_role is NEVER sent from client — the DB trigger forces 'user'.
-  async function signUp(email, password, fullName, userType, avatarFile, termsAccepted) {
+  async function signUp(email, password, fullName, userType, avatarFile, termsAccepted, username) {
     const sb = getClient();
     if (!sb) throw new Error('Supabase client not initialised');
 
@@ -73,7 +73,8 @@
           user_type: userType,
           avatar_url: avatarUrl,
           terms_accepted: true,
-          terms_accepted_at: new Date().toISOString()
+          terms_accepted_at: new Date().toISOString(),
+          username: username // Add username to metadata
           // NOTE: platform_role is intentionally NOT sent here.
           // The DB trigger always sets it to 'user'.
         }

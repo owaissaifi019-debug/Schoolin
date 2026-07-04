@@ -337,6 +337,15 @@
         
         <!-- Pre-fill form -->
         <form id="delete-form" class="deletion-form-container">
+          <!-- CampusLink ID Display Box -->
+          <div id="settings-campuslink-id-box" style="display: none; align-items: center; gap: 8px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 6px; margin-bottom: 20px;">
+            <span style="font-size: 0.8rem; color: #64748B; font-weight: 500;">Your CampusLink ID:</span>
+            <span id="settings-campuslink-id-value" style="font-family: monospace; font-size: 0.88rem; font-weight: 700; color: #0F172A;">CL-XXXXXX</span>
+            <button id="settings-copy-id-btn" type="button" style="background: none; border: 1px solid #CBD5E1; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; color: #475569; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; margin-left: auto;">
+              Copy ID
+            </button>
+          </div>
+
           <div class="form-group-del">
             <label for="del-email">Registered Email Address *</label>
             <input type="email" id="del-email" placeholder="e.g. user@school.edu" required>
@@ -475,6 +484,107 @@
       // Initialize Auth Nav State
       if (window.CampusLink && window.CampusLink.auth) {
         window.CampusLink.auth.updateNavAuthState();
+      }
+
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background-color: #333;
+          color: #fff;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 0.9rem;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          z-index: 10000;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        // Trigger transition
+        setTimeout(() => { toast.style.opacity = '1'; }, 10);
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          setTimeout(() => { document.body.removeChild(toast); }, 300);
+        }, 3000);
+      }
+
+      // Fetch profile for settings page
+      if (window.CampusLink && window.CampusLink.auth) {
+        const auth = window.CampusLink.auth;
+        auth.getSession().then(async (session) => {
+          const currentUser = session?.user;
+          if (currentUser) {
+            try {
+              const profile = await auth.getProfile(currentUser.id);
+              if (profile) {
+                // Populate email and name in deletion form if empty
+                const emailInput = document.getElementById('del-email');
+                const nameInput = document.getElementById('del-name');
+                if (emailInput && !emailInput.value) emailInput.value = currentUser.email || '';
+                if (nameInput && !nameInput.value) nameInput.value = profile.full_name || '';
+
+                // If user has a school linked, get school details
+                if (profile.school_id) {
+                  const sb = getSupabase();
+                  if (sb) {
+                    const { data: schoolData } = await sb
+                      .from('schools')
+                      .select('name')
+                      .eq('id', profile.school_id)
+                      .maybeSingle();
+                    if (schoolData && schoolData.name) {
+                      const schoolInput = document.getElementById('del-school');
+                      if (schoolInput && !schoolInput.value) schoolInput.value = schoolData.name;
+                    }
+                  }
+                }
+
+                // Show CampusLink ID Box
+                if (profile.campuslink_id) {
+                  const idBox = document.getElementById('settings-campuslink-id-box');
+                  const idValue = document.getElementById('settings-campuslink-id-value');
+                  if (idBox && idValue) {
+                    idValue.textContent = profile.campuslink_id;
+                    idBox.style.display = 'flex';
+                  }
+
+                  const copyBtn = document.getElementById('settings-copy-id-btn');
+                  if (copyBtn) {
+                    copyBtn.addEventListener('click', () => {
+                      navigator.clipboard.writeText(profile.campuslink_id)
+                        .then(() => {
+                          showToast('CampusLink ID copied');
+                        })
+                        .catch(err => {
+                          console.error('Failed to copy:', err);
+                          const textarea = document.createElement('textarea');
+                          textarea.value = profile.campuslink_id;
+                          textarea.style.position = 'fixed';
+                          textarea.style.left = '-9999px';
+                          document.body.appendChild(textarea);
+                          textarea.focus();
+                          textarea.select();
+                          try {
+                            document.execCommand('copy');
+                            showToast('CampusLink ID copied');
+                          } catch (e) {
+                            showToast('Failed to copy ID');
+                          }
+                          document.body.removeChild(textarea);
+                        });
+                    });
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn('Failed to load profile for settings:', err);
+            }
+          }
+        });
       }
 
       // Sticky Header Logic

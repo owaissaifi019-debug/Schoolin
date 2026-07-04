@@ -67,13 +67,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       tabRegister.classList.remove('active');
       loginForm.classList.add('active');
       registerForm.classList.remove('active');
-      indicator.style.transform = 'translateX(0)';
+      if (indicator) indicator.style.transform = 'translateX(0)';
     } else {
       tabRegister.classList.add('active');
       tabLogin.classList.remove('active');
       registerForm.classList.add('active');
       loginForm.classList.remove('active');
-      indicator.style.transform = 'translateX(100%)';
+      if (indicator) indicator.style.transform = 'translateX(100%)';
     }
     clearAllErrors();
   }
@@ -191,6 +191,112 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (regPassword) {
     regPassword.addEventListener('input', () => {
       checkPasswordStrength(regPassword.value);
+    });
+  }
+
+  // ── Username Uniqueness Check ───────────────────────────
+  const usernameInput = document.getElementById('reg-username');
+  let usernameAvailable = false;
+  let usernameTimeout = null;
+
+  function showUsernameStatus(status, message) {
+    const errorEl = document.getElementById('err-reg-username');
+    const inputEl = document.getElementById('reg-username');
+    if (!errorEl) return;
+
+    if (status === 'success') {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      errorEl.style.color = '#10B981'; // Green
+      if (inputEl) {
+        const wrapper = inputEl.closest('.input-icon-wrapper');
+        if (wrapper) {
+          wrapper.style.borderColor = '#10B981';
+          wrapper.classList.remove('input-error');
+        }
+      }
+    } else if (status === 'error') {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      errorEl.style.color = '#EF4444'; // Red
+      if (inputEl) {
+        const wrapper = inputEl.closest('.input-icon-wrapper');
+        if (wrapper) {
+          wrapper.style.borderColor = '#EF4444';
+          wrapper.classList.add('input-error');
+        }
+      }
+    } else if (status === 'checking') {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      errorEl.style.color = '#9CA3AF'; // Gray
+      if (inputEl) {
+        const wrapper = inputEl.closest('.input-icon-wrapper');
+        if (wrapper) {
+          wrapper.style.borderColor = '';
+          wrapper.classList.remove('input-error');
+        }
+      }
+    } else {
+      errorEl.textContent = '';
+      errorEl.style.display = 'none';
+      if (inputEl) {
+        const wrapper = inputEl.closest('.input-icon-wrapper');
+        if (wrapper) {
+          wrapper.style.borderColor = '';
+          wrapper.classList.remove('input-error');
+        }
+      }
+    }
+  }
+
+  if (usernameInput) {
+    usernameInput.addEventListener('input', () => {
+      const username = usernameInput.value.trim();
+      clearTimeout(usernameTimeout);
+      usernameAvailable = false;
+
+      if (!username) {
+        showUsernameStatus('', '');
+        return;
+      }
+
+      const usernameRegex = /^[a-zA-Z0-9_.]+$/;
+      if (username.length < 3 || username.length > 20) {
+        showUsernameStatus('error', 'Username must be 3-20 characters');
+        return;
+      }
+      if (!usernameRegex.test(username)) {
+        showUsernameStatus('error', 'Username can only contain letters, numbers, underscores, and periods');
+        return;
+      }
+
+      showUsernameStatus('checking', 'Checking availability...');
+
+      usernameTimeout = setTimeout(async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('username')
+            .ilike('username', username)
+            .maybeSingle();
+
+          if (error) throw error;
+
+          if (usernameInput.value.trim() !== username) return;
+
+          if (data) {
+            showUsernameStatus('error', '✗ Username already taken');
+            usernameAvailable = false;
+          } else {
+            showUsernameStatus('success', '✓ Username available');
+            usernameAvailable = true;
+          }
+        } catch (err) {
+          console.error('Error checking username:', err);
+          showUsernameStatus('error', 'Error checking availability');
+        }
+      }, 300);
     });
   }
 
@@ -338,6 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     clearAllErrors();
 
     const fullName = document.getElementById('reg-full-name').value.trim();
+    const username = document.getElementById('reg-username').value.trim();
     const email = document.getElementById('reg-email').value.trim();
     const userType = document.getElementById('reg-user-type').value;
     const password = document.getElementById('reg-password').value;
@@ -350,6 +457,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!fullName) { showError('reg-full-name', 'Full name is required'); hasError = true; }
     else if (fullName.length < 2) { showError('reg-full-name', 'Name must be at least 2 characters'); hasError = true; }
+
+    const usernameRegex = /^[a-zA-Z0-9_.]+$/;
+    if (!username) { showError('reg-username', 'Username is required'); hasError = true; }
+    else if (username.length < 3 || username.length > 20) { showError('reg-username', 'Username must be 3-20 characters'); hasError = true; }
+    else if (!usernameRegex.test(username)) { showError('reg-username', 'Username can only contain letters, numbers, underscores, and periods'); hasError = true; }
+    else if (!usernameAvailable) { showUsernameStatus('error', '✗ Username already taken'); hasError = true; }
 
     if (!email) { showError('reg-email', 'Email is required'); hasError = true; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('reg-email', 'Enter a valid email address'); hasError = true; }
@@ -368,7 +481,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setLoading('btn-register', true);
 
     try {
-      const result = await auth.signUp(email, password, fullName, userType, selectedAvatarFile, isConsentChecked);
+      const result = await auth.signUp(email, password, fullName, userType, selectedAvatarFile, isConsentChecked, username);
 
       // Show success and redirect
       registerForm.style.display = 'none';

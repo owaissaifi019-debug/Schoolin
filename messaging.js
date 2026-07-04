@@ -151,6 +151,7 @@
               class, 
               is_verified,
               school_id,
+              username,
               school:schools(id, name)
             ),
             school:schools(id, name, logo_letter, color_class, city, board, verification_badge, logo_url)
@@ -234,7 +235,8 @@
           isSchool: false,
           isVerified: firstPart.profile.is_verified,
           userType: roleLabel,
-          schoolName: firstPart.profile.school?.name || 'Not Linked'
+          schoolName: firstPart.profile.school?.name || 'Not Linked',
+          username: firstPart.profile.username
         };
       }
       return { id: 'unknown', name: 'SchoolIn Member', avatarUrl: null, logoLetter: 'S', headline: '', isSchool: false };
@@ -270,7 +272,8 @@
         isSchool: false,
         isVerified: !!profileObj.is_verified,
         userType: roleLabel,
-        schoolName: profileObj.school?.name || 'Not Linked'
+        schoolName: profileObj.school?.name || 'Not Linked',
+        username: profileObj.username
       };
     }
   }
@@ -436,6 +439,7 @@
             <span class="conversation-name">${other.name}${verificationBadgeHtml}</span>
             <span class="conversation-time">${lastMsgTime}</span>
           </div>
+          ${(!other.isSchool && other.username) ? `<div class="conversation-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${other.username}</div>` : ''}
           <p class="conversation-last-msg">${lastMsgText}</p>
           <div class="conversation-badges-row">
             ${categoryBadgeHtml}
@@ -592,6 +596,7 @@
           <div class="panel-identity-card">
             ${avatarHtml}
             <h3 class="panel-name">${other.name} ${badgeHtml}</h3>
+            ${other.username ? `<span class="panel-username" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400; display: block; margin-top: 2px; margin-bottom: 4px;">@${other.username}</span>` : ''}
             <span class="panel-subtitle">Member Profile</span>
           </div>
           <div class="panel-details-list">
@@ -662,6 +667,16 @@
         `;
       }
       chatRecipientName.innerHTML = other.name + badgeHtml;
+    }
+    const recipientUsernameEl = document.getElementById('chat-recipient-username');
+    if (recipientUsernameEl) {
+      if (!other.isSchool && other.username) {
+        recipientUsernameEl.textContent = `@${other.username}`;
+        recipientUsernameEl.style.display = 'block';
+      } else {
+        recipientUsernameEl.textContent = '';
+        recipientUsernameEl.style.display = 'none';
+      }
     }
     if (chatRecipientHeadline) chatRecipientHeadline.textContent = other.headline;
     

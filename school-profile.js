@@ -2068,7 +2068,7 @@ function showToast(message, type = 'success') {
         .from('school_members')
         .select(`
           id, role, assigned_at,
-          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified)
+          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified, username)
         `)
         .eq('school_id', currentProfile.id)
         .order('assigned_at', { ascending: false });
@@ -2134,6 +2134,7 @@ function showToast(message, type = 'success') {
                 <span>${name}</span>
                 ${verifiedBadgeHtml}
               </div>
+              ${u.username ? `<div class="cm-member-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${u.username}</div>` : ''}
               <div class="cm-member-title">${subtext}</div>
               <a href="profile.html?id=${u.id}" class="cm-member-btn">View Profile</a>
             `;
@@ -2637,7 +2638,8 @@ function showToast(message, type = 'success') {
               full_name,
               avatar_url,
               user_type,
-              is_verified
+              is_verified,
+              username
             )
           `)
           .eq('following_school_id', currentProfile.id)
@@ -2736,6 +2738,7 @@ function showToast(message, type = 'success') {
               <a href="profile.html?id=${u.id}" style="color: inherit; text-decoration: none;">${name}</a>
               ${badgeHtml}
             </div>
+            ${u.username ? `<div class="follower-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${u.username}</div>` : ''}
             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: capitalize; margin-top: 2px;">${userType}</div>
           </div>
         </div>

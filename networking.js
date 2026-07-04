@@ -557,7 +557,8 @@
         <a href="${profileUrl}" class="net-card-avatar-link">
           ${avatarHtml}
         </a>
-        <a href="${profileUrl}" class="net-card-name">${displayName}${verifiedBadge}</a>
+        <a href="${profileUrl}" class="net-card-name" style="margin-bottom: 0;">${displayName}${verifiedBadge}</a>
+        ${p.username ? `<span class="net-card-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; display: block; margin-top: 1px; margin-bottom: 4px;">@${p.username}</span>` : ''}
         <span class="net-card-headline">${bio ? truncate(bio, 55) : `${typeLabel}${schoolName ? ` at ${schoolName}` : ''}`}</span>
         ${schoolName ? `<span class="suggested-card-school">🏫 ${schoolName}</span>` : ''}
         ${mutualHtml}
@@ -736,6 +737,7 @@
           </a>
           <div class="invitation-details">
             <a href="${profileUrl}" class="invitation-name">${displayName}${verifiedBadge}</a>
+            ${p.username ? `<span class="invitation-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; display: block; margin-top: 1px; margin-bottom: 2px;">@${p.username}</span>` : ''}
             <span class="invitation-headline">${typeLabel}${schoolName ? ` at ${schoolName}` : ''}</span>
           </div>
         </div>
@@ -806,7 +808,13 @@
   }
 
   function matchProfile(p, q) {
-    return (p.full_name || '').toLowerCase().includes(q) ||
+    const cleanQ = q.startsWith('@') ? q.slice(1) : q;
+    const usernameMatch = p.username && (
+      p.username.toLowerCase() === cleanQ ||
+      p.username.toLowerCase().includes(cleanQ)
+    );
+    return usernameMatch ||
+           (p.full_name || '').toLowerCase().includes(q) ||
            (p.bio || '').toLowerCase().includes(q) ||
            (p.user_type || '').toLowerCase().includes(q) ||
            (p.schools?.name || '').toLowerCase().includes(q) ||
@@ -1067,7 +1075,8 @@
         <a href="${profileUrl}" class="net-card-avatar-link">
           ${avatarHtml}
         </a>
-        <a href="${profileUrl}" class="net-card-name">${displayName}${verifiedBadge}</a>
+        <a href="${profileUrl}" class="net-card-name" style="margin-bottom: 0;">${displayName}${verifiedBadge}</a>
+        ${p.username ? `<span class="net-card-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; display: block; margin-top: 1px; margin-bottom: 4px;">@${p.username}</span>` : ''}
         <span class="net-card-headline">${bio ? truncate(bio, 55) : `${typeLabel}${schoolName ? ` at ${schoolName}` : ''}`}</span>
         ${p.mutual_connections ? `<span class="net-card-mutual-connections">${p.mutual_connections} mutual connections</span>` : ''}
       </div>
@@ -1789,6 +1798,7 @@
         </a>
         <div class="result-info">
           <a href="${profileUrl}" class="result-name">${displayName}${verifiedBadge}</a>
+          ${p.username ? `<span class="result-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; display: block; margin-top: 1px; margin-bottom: 2px;">@${p.username}</span>` : ''}
           <span class="result-headline">${typeLabel}${schoolName ? ` at ${schoolName}` : ''}</span>
         </div>
         <div class="result-actions">

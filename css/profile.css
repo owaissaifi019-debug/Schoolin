@@ -49,7 +49,6 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
-  overflow: hidden;
   margin-bottom: 24px;
   position: relative;
 }
@@ -58,6 +57,8 @@
   position: relative;
   height: 220px;
   width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .profile-hero-banner {
@@ -83,7 +84,7 @@
 
 .profile-avatar-container {
   position: relative;
-  margin-top: -80px;
+  margin-top: -90px;
   width: 150px;
   height: 150px;
   flex-shrink: 0;
@@ -876,11 +877,13 @@
 /* Toast Notification Alerts */
 .toast-container {
   position: fixed;
-  top: 24px;
-  right: 24px;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 99999;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
   pointer-events: none;
 }
@@ -888,25 +891,25 @@
 .toast-alert {
   display: flex;
   align-items: center;
-  padding: 14px 22px;
+  padding: 12px 20px;
   border-radius: var(--radius-sm);
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--white);
   background: linear-gradient(135deg, hsl(217, 71%, 48%), hsl(217, 71%, 38%));
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   pointer-events: auto;
   opacity: 0;
-  transform: translateX(40px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
-  min-width: 280px;
-  max-width: 420px;
+  transform: translateY(-20px);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 320px;
+  max-width: 450px;
   backdrop-filter: blur(8px);
 }
 
 .toast-alert.show {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateY(0);
 }
 
 .toast-alert-success {
@@ -923,9 +926,10 @@
 
 @media (max-width: 576px) {
   .toast-container {
-    top: 12px;
+    top: 68px;
     right: 12px;
     left: 12px;
+    transform: none;
   }
   .toast-alert {
     min-width: auto;
@@ -1004,7 +1008,7 @@
   .profile-avatar-container {
     width: 170px !important;
     height: 170px !important;
-    margin-top: -95px !important;
+    margin-top: -105px !important;
   }
   .profile-avatar-large {
     width: 170px !important;
@@ -1124,7 +1128,7 @@
   .profile-avatar-container {
     width: 90px !important;
     height: 90px !important;
-    margin-top: -45px !important;
+    margin-top: -55px !important;
     margin-left: 16px !important;
     margin-bottom: 12px !important;
     position: relative !important;
@@ -1341,6 +1345,7 @@
     border: 1.5px solid #0066c8 !important;
   }
 
+
   /* 7. School Card & Section Repositioning via display: contents */
   .profile-grid {
     display: grid !important;
@@ -1517,4 +1522,93 @@
   pointer-events: auto !important;
   visibility: visible !important;
 }
+
+/* Profile Action Dropdown Styles */
+.profile-more-menu-container {
+  position: absolute;
+  top: 24px;
+  right: 40px;
+  z-index: 100;
+}
+
+@media (max-width: 767px) {
+  .profile-more-menu-container {
+    top: 16px;
+    right: 20px;
+  }
+}
+
+#profile-more-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: none;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  outline: none;
+}
+
+#profile-more-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
+}
+
+#profile-more-btn svg {
+  width: 28px;
+  height: 28px;
+}
+
+.profile-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 52px;
+  right: 0;
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  width: 220px;
+  z-index: 200;
+  padding: 8px 0;
+  overflow: hidden;
+}
+
+.profile-dropdown-menu.active {
+  display: block;
+}
+
+.profile-dropdown-item {
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.15s;
+}
+
+.profile-dropdown-item:hover {
+  background: var(--light-bg);
+}
+
+.profile-dropdown-item.danger {
+  color: #EF4444;
+}
+
+.profile-dropdown-item.danger:hover {
+  background: #FEF2F2;
+}
+
 

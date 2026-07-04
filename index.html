@@ -695,11 +695,13 @@
       if (searchInput) {
         searchInput.addEventListener('input', (e) => {
           const query = e.target.value.toLowerCase().trim();
+          const cleanQuery = query.startsWith('@') ? query.slice(1) : query;
           const cards = document.querySelectorAll('.feed-post-card');
           cards.forEach(card => {
             const text = card.querySelector('.post-text-content')?.textContent.toLowerCase() || '';
             const author = card.querySelector('.post-author-name')?.textContent.toLowerCase() || '';
-            if (text.includes(query) || author.includes(query)) {
+            const username = card.querySelector('.post-author-username')?.textContent.toLowerCase() || '';
+            if (text.includes(query) || author.includes(query) || (username && username.includes(cleanQuery))) {
               card.style.display = 'block';
             } else {
               card.style.display = 'none';

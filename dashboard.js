@@ -2219,7 +2219,7 @@ if (topBarTitle) topBarTitle.textContent = tabName;
         .from('school_members')
         .select(`
           id, role, assigned_at,
-          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified, school_id)
+          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified, school_id, username)
         `)
         .eq('school_id', profile.id);
 
@@ -2232,7 +2232,7 @@ if (topBarTitle) topBarTitle.textContent = tabName;
           id,
           status,
           created_at,
-          user:profiles!initiator_id(id, full_name, avatar_url, user_type, class, is_verified, school_id)
+          user:profiles!initiator_id(id, full_name, avatar_url, user_type, class, is_verified, school_id, username)
         `)
         .eq('school_id', profile.id)
         .eq('status', 'accepted');
@@ -2366,6 +2366,7 @@ if (topBarTitle) topBarTitle.textContent = tabName;
             ${avatarHtml}
             <div>
               <div style="font-weight:600;color:var(--dark-bg);font-size:0.88rem;">${name}</div>
+              ${u.username ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:400;margin-top:1px;">@${u.username}</div>` : ''}
               <div style="font-size:0.75rem;color:var(--text-muted);text-transform:capitalize;">${u.user_type || 'Member'}${u.class ? ' • ' + u.class : ''}</div>
             </div>
           </div>
@@ -2571,8 +2572,8 @@ if (topBarTitle) topBarTitle.textContent = tabName;
           const { data: conns, error: connErr } = await supabase
             .from('connections')
             .select(`
-              requester:profiles!requester_id(id, full_name, avatar_url, user_type, class, school_id, platform_role),
-              receiver:profiles!receiver_id(id, full_name, avatar_url, user_type, class, school_id, platform_role)
+              requester:profiles!requester_id(id, full_name, avatar_url, user_type, class, school_id, platform_role, username),
+              receiver:profiles!receiver_id(id, full_name, avatar_url, user_type, class, school_id, platform_role, username)
             `)
             .eq('status', 'accepted')
             .or(`requester_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
@@ -2594,7 +2595,7 @@ if (topBarTitle) topBarTitle.textContent = tabName;
           const { data: convs, error: convErr } = await supabase
             .from('conversations')
             .select(`
-              initiator:profiles!initiator_id(id, full_name, avatar_url, user_type, class, school_id, platform_role)
+              initiator:profiles!initiator_id(id, full_name, avatar_url, user_type, class, school_id, platform_role, username)
             `)
             .eq('school_id', profile.id)
             .eq('status', 'accepted');
@@ -2614,7 +2615,7 @@ if (topBarTitle) topBarTitle.textContent = tabName;
         try {
           const { data: students, error: studErr } = await supabase
             .from('profiles')
-            .select('id, full_name, avatar_url, user_type, class, school_id, platform_role')
+            .select('id, full_name, avatar_url, user_type, class, school_id, platform_role, username')
             .eq('school_id', profile.id)
             .eq('user_type', 'student');
 
@@ -2648,7 +2649,8 @@ if (topBarTitle) topBarTitle.textContent = tabName;
                 user_type: init.user_type || 'user',
                 class: init.class,
                 school_id: init.school_id,
-                platform_role: init.platform_role || 'user'
+                platform_role: init.platform_role || 'user',
+                username: init.username
               });
             }
           }
@@ -2680,8 +2682,10 @@ if (topBarTitle) topBarTitle.textContent = tabName;
       // Filter by search query in-memory if provided
       if (searchQuery.trim()) {
         const term = searchQuery.toLowerCase().trim();
+        const cleanTerm = term.startsWith('@') ? term.slice(1) : term;
         candidates = candidates.filter(p => 
-          p.full_name && p.full_name.toLowerCase().includes(term)
+          (p.full_name && p.full_name.toLowerCase().includes(term)) ||
+          (p.username && p.username.toLowerCase().includes(cleanTerm))
         );
       }
 
@@ -2705,6 +2709,7 @@ if (topBarTitle) topBarTitle.textContent = tabName;
           ${avatarHtml}
           <div style="flex:1;">
             <div style="font-weight:600;font-size:0.88rem;color:var(--dark-bg);">${p.full_name}</div>
+            ${p.username ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:400;margin-top:1px;">@${p.username}</div>` : ''}
             <div style="font-size:0.75rem;color:var(--text-muted);text-transform:capitalize;">${p.user_type || 'Member'}${p.class ? ' • ' + p.class : ''}</div>
           </div>
         `;

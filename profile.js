@@ -157,7 +157,74 @@
       });
     }
 
+    // --- Profile More Options Dropdown ---
+    const moreBtn = document.getElementById('profile-more-btn');
+    const moreDropdown = document.getElementById('profile-more-dropdown');
+
+    if (moreBtn && moreDropdown) {
+      // Toggle open/close
+      moreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        moreDropdown.classList.toggle('active');
+      });
+
+      // Close when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!moreDropdown.contains(e.target) && e.target !== moreBtn) {
+          moreDropdown.classList.remove('active');
+        }
+      });
+
+      const closeDropdown = () => moreDropdown.classList.remove('active');
+
+      // Share item → reuse existing share-profile-btn logic
+      const ddShare = document.getElementById('dropdown-share-btn');
+      if (ddShare) {
+        ddShare.addEventListener('click', () => {
+          closeDropdown();
+          document.getElementById('share-profile-btn')?.click();
+        });
+      }
+
+      // Edit Profile item → opens edit modal (visibility set in setupOwnerFeatures)
+      const ddEdit = document.getElementById('dropdown-edit-btn');
+      if (ddEdit) {
+        ddEdit.addEventListener('click', () => {
+          closeDropdown();
+          openEditModal();
+        });
+      }
+
+      // Connect item → delegates to the real connect-profile-btn
+      const ddConnect = document.getElementById('dropdown-connect-btn');
+      if (ddConnect) {
+        ddConnect.addEventListener('click', () => {
+          closeDropdown();
+          document.getElementById('connect-profile-btn')?.click();
+        });
+      }
+
+      // Follow item → delegates to the real follow-profile-btn
+      const ddFollow = document.getElementById('dropdown-follow-btn');
+      if (ddFollow) {
+        ddFollow.addEventListener('click', () => {
+          closeDropdown();
+          document.getElementById('follow-profile-btn')?.click();
+        });
+      }
+
+      // Report User item
+      const ddReport = document.getElementById('dropdown-report-btn');
+      if (ddReport) {
+        ddReport.addEventListener('click', () => {
+          closeDropdown();
+          showToast('Report submitted. Our team will review it shortly.');
+        });
+      }
+    }
+
     // 3. Load Profile details
+
     await loadProfileData(profileId);
 
     // If query parameters demand edit modal and user is owner
@@ -404,6 +471,13 @@
       ` : '';
       nameEl.innerHTML = (profile.full_name || 'No Name Provided') + verifiedBadge;
     }
+
+    const usernameEl = document.getElementById('profile-username');
+    if (usernameEl) {
+      usernameEl.textContent = profile.username ? `@${profile.username}` : '';
+    }
+
+
     
     // Headline e.g. "Student at Delhi Public School"
     let headlineStr = auth.getUserTypeLabel(profile.user_type);
@@ -476,29 +550,24 @@
       }
     }
 
-    // Connect Button display
+    // Connect / Follow / Message / Report Button display (Visitor only)
     const connectBtn = document.getElementById('connect-profile-btn');
-    if (connectBtn) {
-      if (currentUser && !isOwner) {
-        connectBtn.style.display = 'inline-flex';
-      } else if (!currentUser) {
-        connectBtn.style.display = 'inline-flex';
-      } else {
-        connectBtn.style.display = 'none';
-      }
-    }
+    const ddConnectBtn = document.getElementById('dropdown-connect-btn');
+    const ddFollowBtn = document.getElementById('dropdown-follow-btn');
+    const ddReportBtn = document.getElementById('dropdown-report-btn');
+    const shareBtn = document.getElementById('share-profile-btn');
+
+    const isVisitor = (currentUser && !isOwner) || !currentUser;
+
+    if (connectBtn) connectBtn.style.display = isVisitor ? 'inline-flex' : 'none';
+    if (ddConnectBtn) ddConnectBtn.style.display = isVisitor ? 'flex' : 'none';
+    if (ddFollowBtn) ddFollowBtn.style.display = isVisitor ? 'flex' : 'none';
+    if (ddReportBtn) ddReportBtn.style.display = isVisitor ? 'flex' : 'none';
+    if (shareBtn) shareBtn.style.display = isOwner ? 'inline-flex' : 'none';
 
     // Message Button display
     const messageBtn = document.getElementById('message-profile-btn');
-    if (messageBtn) {
-      if (currentUser && !isOwner) {
-        messageBtn.style.display = 'inline-flex';
-      } else if (!currentUser) {
-        messageBtn.style.display = 'inline-flex';
-      } else {
-        messageBtn.style.display = 'none';
-      }
-    }
+    if (messageBtn) messageBtn.style.display = isVisitor ? 'inline-flex' : 'none';
 
     // 2. About / Bio Card
     const bioCard = document.getElementById('section-bio-card');
@@ -684,6 +753,11 @@
 
   // --- Follow Actions ---
   function updateFollowButtonState(btn, following) {
+    const ddFollowText = document.getElementById('dropdown-follow-text');
+    if (ddFollowText) {
+      ddFollowText.textContent = following ? 'Following' : 'Follow';
+    }
+
     if (following) {
       btn.className = 'btn btn-following';
       btn.style.backgroundColor = 'transparent';
@@ -802,6 +876,19 @@
       existingRejectBtn.remove();
     }
 
+    const ddConnectText = document.getElementById('dropdown-connect-text');
+    if (ddConnectText) {
+      if (status === 'accepted') {
+        ddConnectText.textContent = 'Connected';
+      } else if (status === 'pending_sent') {
+        ddConnectText.textContent = 'Cancel Request';
+      } else if (status === 'pending_received') {
+        ddConnectText.textContent = 'Accept';
+      } else {
+        ddConnectText.textContent = 'Connect';
+      }
+    }
+
     if (status === 'accepted') {
       btn.className = 'btn-connected';
       btn.title = 'Click to disconnect';
@@ -814,7 +901,7 @@
       btn.title = 'Click to withdraw request';
       btn.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>Requested</span>
+        <span>Cancel Request</span>
       `;
     } else if (status === 'pending_received') {
       btn.className = 'btn-connect';
@@ -1179,6 +1266,16 @@
     // Show owner items
     if (editBtn) editBtn.style.display = 'inline-flex';
     if (avatarLabel) avatarLabel.style.display = 'flex';
+
+    // Dropdown: show Edit, hide Connect/Follow/Report for owner
+    const ddEdit = document.getElementById('dropdown-edit-btn');
+    const ddConnect = document.getElementById('dropdown-connect-btn');
+    const ddFollow = document.getElementById('dropdown-follow-btn');
+    const ddReport = document.getElementById('dropdown-report-btn');
+    if (ddEdit) ddEdit.style.display = 'flex';
+    if (ddConnect) ddConnect.style.display = 'none';
+    if (ddFollow) ddFollow.style.display = 'none';
+    if (ddReport) ddReport.style.display = 'none';
 
     // School Join CTA
     if (ctaCard && !profileUser.school_id) {

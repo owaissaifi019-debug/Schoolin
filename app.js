@@ -1866,6 +1866,7 @@
             avatar_url,
             school_id,
             is_verified,
+            username,
             schools (
               name,
               verification_badge,
@@ -1904,6 +1905,7 @@
               avatar_url,
               is_verified,
               school_id,
+              username,
               schools (
                 name,
                 verification_badge,
@@ -1985,6 +1987,7 @@
                   avatar_url,
                   school_id,
                   is_verified,
+                  username,
                   schools (
                     name,
                     verification_badge,
@@ -2023,6 +2026,7 @@
                     avatar_url,
                     is_verified,
                     school_id,
+                    username,
                     schools (
                       name,
                       verification_badge,
@@ -2301,11 +2305,12 @@
           <a href="${profileUrl}" class="post-avatar-link">
             ${authorAvatar}
           </a>
-          <div class="post-meta-info">
-            <div class="post-author-row">
-              <a href="${profileUrl}" class="post-author-name">${authorName}${badgeHtml}${roleBadgeHtml}</a>
-            </div>
-            <div class="post-meta-sub-row">
+            <div class="post-meta-info">
+              <div class="post-author-row">
+                <a href="${profileUrl}" class="post-author-name">${authorName}${badgeHtml}${roleBadgeHtml}</a>
+              </div>
+              ${(post.post_type !== 'school' && p.username) ? `<div class="post-author-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${p.username}</div>` : ''}
+              <div class="post-meta-sub-row">
               <span class="post-author-headline">${headlineText}</span>
               <span class="post-meta-separator">•</span>
               <span class="post-time">${formatRelativeTime(post.created_at)}</span>
@@ -2445,9 +2450,12 @@
                   </a>
                   <div class="comment-item-content-wrapper">
                     <div class="comment-item-header">
-                      <div class="comment-item-author-info">
-                        <a href="${commenterProfileUrl}" class="comment-item-author-name">${commenterName}${commenterBadge}</a>
-                        <span class="comment-item-author-role ${cp.user_type || 'student'}">${auth.getUserTypeLabel(cp.user_type)}</span>
+                      <div class="comment-item-author-info" style="display: flex; flex-direction: column; align-items: flex-start;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                          <a href="${commenterProfileUrl}" class="comment-item-author-name">${commenterName}${commenterBadge}</a>
+                          <span class="comment-item-author-role ${cp.user_type || 'student'}">${auth.getUserTypeLabel(cp.user_type)}</span>
+                        </div>
+                        ${cp.username ? `<span class="comment-item-author-username" style="font-size: 0.7rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${cp.username}</span>` : ''}
                       </div>
                       <span class="comment-item-time">${formatRelativeTime(c.created_at)}</span>
                     </div>
