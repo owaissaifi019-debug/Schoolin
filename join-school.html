@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join School | CampusLink</title>
+  <meta name="description" content="Join your school using a CampusLink invitation link.">
+
+  <!-- Stitch Design Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --primary: #0062e3;
+      --primary-hover: #0052be;
+      --success: #10b981;
+      --error: #ef4444;
+      --white: #ffffff;
+      --text-muted: #8fa0dd;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --input-bg: rgba(255, 255, 255, 0.04);
+      --font-family: 'Manrope', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background: #000a1f;
+      color: #f7f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Atmospheric Background ── */
+    .login-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: #000a1f;
+      overflow: hidden;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+      animation: orbFloat 10s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 50vw; height: 50vw; background: rgba(0, 98, 227, 0.15); top: -10%; left: -10%; }
+    .orb-2 { width: 45vw; height: 45vw; background: rgba(16, 185, 129, 0.06); bottom: -10%; right: -10%; animation-delay: 3s; }
+
+    @keyframes orbFloat {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(3%, 4%) scale(1.05); }
+    }
+
+    /* ── Card Styles ── */
+    .join-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 16px;
+      padding: 36px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+      position: relative;
+    }
+
+    .brand-logo {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--white);
+      text-align: center;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .brand-logo span {
+      background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 8px;
+      color: var(--white);
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    /* ── Invite Metadata Tag ── */
+    .invite-badge {
+      background: rgba(0, 98, 227, 0.08);
+      border: 1px solid rgba(0, 98, 227, 0.2);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .invite-badge-school {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+
+    .invite-badge-details {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Forms and Inputs ── */
+    .form-group {
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .input-field {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 0.85rem;
+      color: var(--white);
+      outline: none;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .input-field:focus {
+      border-color: rgba(0, 98, 227, 0.5);
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 0 3px rgba(0, 98, 227, 0.15);
+    }
+
+    .input-field[readonly] {
+      background: rgba(255, 255, 255, 0.02);
+      color: #a1b0cb;
+      cursor: not-allowed;
+      border-color: rgba(255, 255, 255, 0.04);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--white);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--white);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* ── Screen States ── */
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    /* ── Success Check Animation ── */
+    .success-icon-box {
+      width: 64px;
+      height: 64px;
+      background: rgba(16, 185, 129, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px auto;
+      font-size: 2.2rem;
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .error-icon-box {
+      width: 64px;
+      height: 64px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px auto;
+      font-size: 2.2rem;
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 24px;
+      z-index: 10;
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Orbs -->
+  <div class="login-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+
+  <div class="join-card">
+    <div class="brand-logo">
+      <span>CampusLink</span> Onboarding
+    </div>
+
+    <!-- 1. LOADING SCREEN -->
+    <div id="screen-loading" class="screen active">
+      <h2 style="margin-top: 20px;">Checking Invitation</h2>
+      <p class="subtitle">Validating your invitation code, please wait...</p>
+      <div style="text-align: center; font-size: 1.5rem; animation: spin 1s linear infinite; margin-bottom: 20px;">🔄</div>
+    </div>
+
+    <!-- 2. ERROR SCREEN -->
+    <div id="screen-error" class="screen">
+      <div class="error-icon-box">❌</div>
+      <h2>Invitation Error</h2>
+      <p class="subtitle" id="error-message">This invitation code is invalid or has expired.</p>
+      <button class="btn btn-secondary" onclick="window.location.reload();">Retry</button>
+    </div>
+
+    <!-- 3. AUTHENTICATION PRE-SCREEN -->
+    <div id="screen-auth" class="screen">
+      <h2>Account Required</h2>
+      <p class="subtitle">Please sign in or create a student account to join the school.</p>
+      
+      <!-- Invitation details badge -->
+      <div class="invite-badge">
+        <div class="invite-badge-school" id="auth-badge-school">Greenwood International School</div>
+        <div class="invite-badge-details" id="auth-badge-details">Class 9 A &bull; Academic Year 2026-2027</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <button class="btn btn-primary" id="btn-signin-redirect">Sign In as Student</button>
+        <button class="btn btn-secondary" id="btn-signup-redirect">Create Account</button>
+      </div>
+    </div>
+
+    <!-- 4. SUBMIT REQUEST SCREEN -->
+    <div id="screen-join-form" class="screen">
+      <h2>Submit Request</h2>
+      <p class="subtitle">Enter your academic details to request to join the classroom.</p>
+
+      <div class="invite-badge">
+        <div class="invite-badge-school" id="form-badge-school">Greenwood International School</div>
+        <div class="invite-badge-details" id="form-badge-details">Class 9 A &bull; Academic Year 2026-2027</div>
+      </div>
+
+      <!-- User profile banner -->
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+        <div>
+          <span style="color: var(--text-muted);">Signed in as:</span>
+          <strong id="session-user-display" style="color: var(--white); margin-left: 4px;">—</strong>
+        </div>
+        <a href="#" id="link-signout-switch" style="color: #63b3ed; text-decoration: none; font-weight: 600; transition: color 0.2s;" onmouseover="this.style.color='#90cdf4'" onmouseout="this.style.color='#63b3ed'">Switch Account</a>
+      </div>
+
+      <form id="join-school-form" onsubmit="handleFormSubmit(event)">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="join-fullname" readonly class="input-field">
+        </div>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="join-username" readonly class="input-field">
+        </div>
+        <div id="student-only-fields">
+          <div class="form-group">
+            <label>Admission Number (Optional)</label>
+            <input type="text" id="join-admission-no" class="input-field" placeholder="e.g. ADM2026119">
+          </div>
+          <div class="form-group">
+            <label>Roll Number (Optional)</label>
+            <input type="text" id="join-roll-no" class="input-field" placeholder="e.g. 09A-12">
+          </div>
+          <div class="form-group">
+            <label>Date of Birth *</label>
+            <input type="date" id="join-dob" class="input-field">
+          </div>
+          <div class="form-group">
+            <label>Phone Number (Optional)</label>
+            <input type="tel" id="join-phone" class="input-field" placeholder="e.g. +91 9000000000">
+          </div>
+          <div class="form-group">
+            <label>Guardian Name (Optional)</label>
+            <input type="text" id="join-guardian" class="input-field" placeholder="e.g. Ramesh Kumar">
+          </div>
+        </div>
+
+        <div id="teacher-only-fields" style="display: none;">
+          <div class="form-group">
+            <label>Employee ID (Optional)</label>
+            <input type="text" id="join-empid" class="input-field" placeholder="e.g. EMP-T1005">
+          </div>
+          <div class="form-group">
+            <label>Phone Number *</label>
+            <input type="tel" id="join-teacher-phone" class="input-field" placeholder="e.g. +91 9000000000">
+          </div>
+          <div class="form-group">
+            <label>Gender *</label>
+            <select id="join-teacher-gender" class="input-field" style="background-color: var(--input-bg); color: #f7f9fb; border: 1px solid var(--border-color); outline: none; cursor: pointer; width: 100%; padding: 12px 16px; border-radius: 8px; font-size: 0.9rem;">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Department *</label>
+            <input type="text" id="join-department" class="input-field" placeholder="e.g. Mathematics, Science">
+          </div>
+          <div class="form-group">
+            <label>Qualification *</label>
+            <input type="text" id="join-qualification" class="input-field" placeholder="e.g. B.Ed, M.Sc in Mathematics">
+          </div>
+          <div class="form-group">
+            <label>Experience (Years) *</label>
+            <input type="number" id="join-experience" class="input-field" min="0" placeholder="e.g. 5" value="0">
+          </div>
+          <div class="form-group">
+            <label>Joining Date *</label>
+            <input type="date" id="join-joining-date" class="input-field">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Submit Joining Request</button>
+      </form>
+    </div>
+
+    <!-- 5. SUCCESS SCREEN -->
+    <div id="screen-success" class="screen">
+      <div class="success-icon-box">✓</div>
+      <h2>Request Submitted!</h2>
+      <p class="subtitle" style="margin-bottom: 24px;">Your onboarding application was submitted successfully.</p>
+      
+      <div style="background: rgba(16,185,129,0.06); border: 1.5px dashed rgba(16,185,129,0.3); border-radius: 10px; padding: 18px; text-align: center; margin-bottom: 24px;">
+        <p style="font-size: 0.85rem; line-height: 1.5; color: #a2f2d9;">
+          Your request is now pending approval by the <strong>School Administrator</strong>.<br>Once approved, you will be automatically added to the classroom roster.
+        </p>
+      </div>
+
+      <button class="btn btn-secondary" onclick="window.close(); alert('You can now close this tab.');">Close Onboarding</button>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    Powered by CampusLink Platform &bull; India's Premier School Network
+  </div>
+
+  <!-- Supabase + Auth Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+
+  <script>
+    // In-memory simulation database
+    var invites = [];
+    var students = [];
+    var classes = [];
+    var activeInvite = null;
+    var activeUserSession = null;
+
+    // Load URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeParam = (urlParams.get('code') || '').trim();
+
+    window.onload = async function() {
+      // Load datasets from localStorage
+      try {
+        var invitesRaw = localStorage.getItem('campuslink_invites');
+        if (invitesRaw) invites = JSON.parse(invitesRaw);
+        var studentsRaw = localStorage.getItem('campuslink_students');
+        if (studentsRaw) students = JSON.parse(studentsRaw);
+        var classesRaw = localStorage.getItem('campuslink_classes');
+        if (classesRaw) classes = JSON.parse(classesRaw);
+      } catch (e) {
+        console.error("Failed to load local database:", e);
+      }
+
+      // Check current login session
+      const auth = window.CampusLink && window.CampusLink.auth;
+      if (auth) {
+        try {
+          const session = await auth.getSession();
+          if (session && session.user) {
+            const profile = await auth.getProfile(session.user.id);
+            activeUserSession = {
+              username: profile?.username || session.user.user_metadata?.username || session.user.email.split('@')[0],
+              fullName: profile?.full_name || session.user.user_metadata?.full_name || 'Member',
+              email: session.user.email
+            };
+          }
+        } catch (sessionErr) {
+          console.warn("Failed to retrieve auth session:", sessionErr);
+        }
+      }
+
+      setTimeout(function() {
+        validateInviteCode();
+      }, 1000); // Simulated loading spinner
+    };
+
+    async function validateInviteCode() {
+      activeInvite = null;
+
+      // 1. Try checking database (online) via Supabase if connected
+      if (window.CampusLink && window.CampusLink.supabase && codeParam) {
+        const sb = window.CampusLink.supabase;
+        try {
+          if (codeParam.toLowerCase().startsWith('tch-')) {
+            const { data, error } = await sb
+              .from('teacher_invitations')
+              .select('*')
+              .eq('invite_code', codeParam)
+              .maybeSingle();
+            if (!error && data) {
+              activeInvite = {
+                id: data.id,
+                inviteCode: data.invite_code,
+                status: data.status,
+                schoolId: data.school_id,
+                inviteType: 'teacher',
+                createdAt: data.created_at
+              };
+            }
+          } else {
+            const { data, error } = await sb
+              .from('student_invitations')
+              .select('*')
+              .eq('invite_code', codeParam)
+              .maybeSingle();
+            if (!error && data) {
+              activeInvite = {
+                id: data.id,
+                inviteCode: data.invite_code,
+                status: data.status,
+                schoolId: data.school_id,
+                academicYearId: data.academic_year_id,
+                classId: data.class_id,
+                sectionId: data.section_id,
+                inviteType: data.invite_type || 'student',
+                createdAt: data.created_at
+              };
+            }
+          }
+        } catch (dbErr) {
+          console.warn("Failed to validate invite from database:", dbErr);
+        }
+      }
+
+      // 2. Fallback to localStorage (offline)
+      if (!activeInvite && codeParam) {
+        if (codeParam.toLowerCase().startsWith('tch-')) {
+          var tInvitesRaw = localStorage.getItem('campuslink_teacher_invites');
+          var tInvites = tInvitesRaw ? JSON.parse(tInvitesRaw) : [];
+          var localTch = tInvites.find(function(inv) {
+            return inv.inviteCode.toLowerCase() === codeParam.toLowerCase();
+          });
+          if (localTch) {
+            activeInvite = {
+              id: localTch.id,
+              inviteCode: localTch.inviteCode,
+              status: localTch.status,
+              schoolId: localTch.schoolId,
+              inviteType: 'teacher',
+              createdAt: localTch.createdAt
+            };
+          }
+        } else {
+          var localStu = invites.find(function(inv) {
+            return inv.inviteCode.toLowerCase() === codeParam.toLowerCase();
+          });
+          if (localStu) {
+            activeInvite = {
+              id: localStu.id,
+              inviteCode: localStu.inviteCode,
+              status: localStu.status,
+              schoolId: localStu.schoolId,
+              academicYearId: localStu.academicYearId,
+              classId: localStu.classId,
+              sectionId: localStu.sectionId,
+              inviteType: localStu.inviteType || 'student',
+              createdAt: localStu.createdAt
+            };
+          }
+        }
+      }
+
+      if (!activeInvite) {
+        showScreen('screen-error');
+        document.getElementById('error-message').textContent = 'This invitation code is invalid, expired, or deleted by the school admin.';
+        return;
+      }
+
+      if (activeInvite.status !== 'active') {
+        showScreen('screen-error');
+        document.getElementById('error-message').textContent = 'This invitation code has been disabled by the school administrator.';
+        return;
+      }
+
+      // 3. Adapt UI based on inviteType
+      const isTeacher = activeInvite.inviteType === 'teacher';
+      const studentFields = document.getElementById('student-only-fields');
+      const teacherFields = document.getElementById('teacher-only-fields');
+      
+      const dobInput = document.getElementById('join-dob');
+      const teacherPhone = document.getElementById('join-teacher-phone');
+      const departmentInput = document.getElementById('join-department');
+      const qualificationInput = document.getElementById('join-qualification');
+      const experienceInput = document.getElementById('join-experience');
+      const joiningDateInput = document.getElementById('join-joining-date');
+
+      if (isTeacher) {
+        // Adapt Pre-Screen Auth texts
+        const authSubtitle = document.querySelector('#screen-auth .subtitle');
+        if (authSubtitle) authSubtitle.textContent = 'Please sign in or create a teacher account to join the school.';
+        const signinBtn = document.getElementById('btn-signin-redirect');
+        if (signinBtn) signinBtn.textContent = 'Sign In as Teacher';
+
+        // Adapt Badge Details
+        document.getElementById('auth-badge-school').textContent = 'Greenwood International School';
+        document.getElementById('auth-badge-details').textContent = 'Teacher Staff Onboarding';
+        document.getElementById('form-badge-school').textContent = 'Greenwood International School';
+        document.getElementById('form-badge-details').textContent = 'School Staff Onboarding';
+
+        // Adapt headings
+        document.querySelector('#screen-join-form h2').textContent = 'Teacher Onboarding';
+        document.querySelector('#screen-join-form .subtitle').textContent = 'Enter your staff details to request onboarding verification.';
+
+        // Display panels
+        if (studentFields) studentFields.style.display = 'none';
+        if (teacherFields) teacherFields.style.display = 'block';
+
+        // Set inputs validation required
+        if (dobInput) dobInput.required = false;
+        if (teacherPhone) teacherPhone.required = true;
+        if (departmentInput) departmentInput.required = true;
+        if (qualificationInput) qualificationInput.required = true;
+        if (experienceInput) experienceInput.required = true;
+        if (joiningDateInput) {
+          joiningDateInput.required = true;
+          // default joining date to today
+          joiningDateInput.value = new Date().toISOString().substring(0, 10);
+        }
+
+        // Set action buttons redirect roles preserving code Param
+        document.getElementById('btn-signin-redirect').onclick = function() {
+          window.location.href = 'login.html?redirect=join-school.html&role=teacher&code=' + encodeURIComponent(codeParam);
+        };
+        document.getElementById('btn-signup-redirect').onclick = function() {
+          window.location.href = 'login.html?redirect=join-school.html&role=teacher&code=' + encodeURIComponent(codeParam) + '#register';
+        };
+      } else {
+        // Adapt Pre-Screen Auth texts
+        const authSubtitle = document.querySelector('#screen-auth .subtitle');
+        if (authSubtitle) authSubtitle.textContent = 'Please sign in or create a student account to join the school.';
+        const signinBtn = document.getElementById('btn-signin-redirect');
+        if (signinBtn) signinBtn.textContent = 'Sign In as Student';
+
+        // Adapt Badge Details
+        var classLabel = getClassLabel(activeInvite.classId, activeInvite.sectionId);
+        document.getElementById('auth-badge-school').textContent = 'Greenwood International School';
+        document.getElementById('auth-badge-details').textContent = classLabel + ' • Academic Year 2026–2027';
+        document.getElementById('form-badge-school').textContent = 'Greenwood International School';
+        document.getElementById('form-badge-details').textContent = classLabel + ' • Academic Year 2026–2027';
+
+        // Adapt headings
+        document.querySelector('#screen-join-form h2').textContent = 'Submit Request';
+        document.querySelector('#screen-join-form .subtitle').textContent = 'Enter your academic details to request to join the classroom.';
+
+        // Display panels
+        if (studentFields) studentFields.style.display = 'block';
+        if (teacherFields) teacherFields.style.display = 'none';
+
+        // Set inputs validation required
+        if (dobInput) dobInput.required = true;
+        if (teacherPhone) teacherPhone.required = false;
+        if (departmentInput) departmentInput.required = false;
+        if (qualificationInput) qualificationInput.required = false;
+        if (experienceInput) experienceInput.required = false;
+        if (joiningDateInput) joiningDateInput.required = false;
+
+        // Set action buttons redirect roles preserving code Param
+        document.getElementById('btn-signin-redirect').onclick = function() {
+          window.location.href = 'login.html?redirect=join-school.html&role=student&code=' + encodeURIComponent(codeParam);
+        };
+        document.getElementById('btn-signup-redirect').onclick = function() {
+          window.location.href = 'login.html?redirect=join-school.html&role=student&code=' + encodeURIComponent(codeParam) + '#register';
+        };
+      }
+
+      // Route based on actual active authentication
+      if (activeUserSession) {
+        document.getElementById('join-fullname').value = activeUserSession.fullName;
+        document.getElementById('join-username').value = activeUserSession.username;
+
+        var userDisplayEl = document.getElementById('session-user-display');
+        if (userDisplayEl) {
+          userDisplayEl.textContent = activeUserSession.fullName + ' (' + activeUserSession.username + ')';
+        }
+
+        var switchLink = document.getElementById('link-signout-switch');
+        if (switchLink) {
+          switchLink.onclick = async function(e) {
+            e.preventDefault();
+            const sb = window.CampusLink && window.CampusLink.supabase;
+            if (sb && sb.auth) {
+              await sb.auth.signOut();
+            }
+            window.location.reload();
+          };
+        }
+
+        showScreen('screen-join-form');
+      } else {
+        showScreen('screen-auth');
+      }
+    }
+
+    function getClassLabel(classId, sectionId) {
+      const c = classes.find(function(cl) { return cl.id === classId; });
+      if (!c) return 'Class ' + classId + (sectionId ? (' ' + sectionId) : '');
+      const sec = c.section || sectionId || '';
+      return sec ? (c.name + ' ' + sec) : c.name;
+    }
+
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(function(s) {
+        s.classList.remove('active');
+      });
+      document.getElementById(id).classList.add('active');
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      if (!activeInvite || !activeUserSession) return;
+
+      const isTeacher = activeInvite.inviteType === 'teacher';
+
+      if (isTeacher) {
+        const empId = document.getElementById('join-empid').value.trim();
+        const phone = document.getElementById('join-teacher-phone').value.trim();
+        const gender = document.getElementById('join-teacher-gender').value;
+        const dept = document.getElementById('join-department').value.trim();
+        const qual = document.getElementById('join-qualification').value.trim();
+        const exp = parseInt(document.getElementById('join-experience').value) || 0;
+        const joiningDate = document.getElementById('join-joining-date').value;
+
+        // Create pending teacher record
+        const newTeacher = {
+          id: 'tch_' + Date.now(),
+          schoolId: activeInvite.schoolId || 'sch_001',
+          username: activeUserSession.username,
+          campuslinkId: 'CL-TCH-' + Math.floor(1000 + Math.random() * 9000),
+          employeeId: empId || 'EMP-' + Math.floor(1000 + Math.random() * 9000),
+          fullName: activeUserSession.fullName,
+          email: activeUserSession.email,
+          phone: phone,
+          qualification: qual,
+          experience: exp,
+          department: dept,
+          gender: gender,
+          joiningDate: joiningDate,
+          status: 'inactive', // inactive until admin verifies
+          verificationStatus: 'pending', // pending verification
+          inviteCode: activeInvite.inviteCode,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          assignments: [],
+          classes: [],
+          sections: [],
+          subjects: [],
+          isClassTeacher: false
+        };
+
+        // 1. Sync to Supabase if connected
+        if (window.CampusLink && window.CampusLink.supabase) {
+          const sb = window.CampusLink.supabase;
+          try {
+            // First fetch target profile user id
+            let targetUserId = null;
+            const { data: userProf } = await sb.from('profiles').select('id').ilike('username', activeUserSession.username).maybeSingle();
+            if (userProf) targetUserId = userProf.id;
+
+            const { data: insertedRow, error } = await sb.from('teachers').upsert({
+              school_id: activeInvite.schoolId,
+              user_id: targetUserId,
+              employee_id: newTeacher.employeeId,
+              full_name: activeUserSession.fullName,
+              username: activeUserSession.username,
+              email: activeUserSession.email,
+              phone: phone,
+              qualification: qual,
+              experience: exp,
+              department: dept,
+              joining_date: joiningDate || null,
+              gender: gender,
+              status: 'inactive',
+              verification_status: 'pending'
+            }, { onConflict: 'school_id,username' }).select().maybeSingle();
+
+            if (error) {
+              console.error("Database teacher onboarding upsert failed:", error);
+              // Show a visible error — do NOT proceed to success screen
+              const btn = document.getElementById('join-submit-btn');
+              if (btn) { btn.disabled = false; btn.textContent = 'Submit Application'; }
+              let errBox = document.getElementById('join-db-error-msg');
+              if (!errBox) {
+                errBox = document.createElement('div');
+                errBox.id = 'join-db-error-msg';
+                errBox.style.cssText = 'background:#FEE2E2;color:#DC2626;padding:12px 16px;border-radius:8px;font-size:0.87rem;font-weight:600;margin-top:12px;';
+                const form = document.getElementById('join-school-form') || document.querySelector('form');
+                if (form) form.appendChild(errBox);
+              }
+              errBox.textContent = '⚠ Could not save your registration to the server. Please contact the school admin. (Error: ' + (error.message || error.code || 'unknown') + ')';
+              return; // Stop — do not show success screen
+            }
+          } catch (dbErr) {
+            console.error("Database connection error during teacher onboarding:", dbErr);
+          }
+        }
+
+        // 2. Save locally
+        var teachersRaw = localStorage.getItem('campuslink_teachers');
+        var teachers = teachersRaw ? JSON.parse(teachersRaw) : [];
+        teachers.unshift(newTeacher);
+        localStorage.setItem('campuslink_teachers', JSON.stringify(teachers));
+
+        // Sync local communityMembers state so they instantly appear in lists
+        var cmRaw = localStorage.getItem('campuslink_community_members');
+        var communityMembers = cmRaw ? JSON.parse(cmRaw) : [];
+        const existingCmIdx = communityMembers.findIndex(m => m.user && m.user.username === activeUserSession.username);
+        const cmObj = {
+          id: existingCmIdx >= 0 ? communityMembers[existingCmIdx].id : 'local-' + Date.now(),
+          role: 'teacher',
+          assigned_at: new Date().toISOString(),
+          user: {
+            id: existingCmIdx >= 0 ? communityMembers[existingCmIdx].user.id : 'user-' + Date.now(),
+            username: activeUserSession.username,
+            full_name: activeUserSession.fullName,
+            user_type: 'teacher',
+            school_id: activeInvite.schoolId,
+            is_verified: false
+          }
+        };
+        if (existingCmIdx >= 0) {
+          communityMembers[existingCmIdx] = cmObj;
+        } else {
+          communityMembers.push(cmObj);
+        }
+        localStorage.setItem('campuslink_community_members', JSON.stringify(communityMembers));
+
+      } else {
+        var admNo = document.getElementById('join-admission-no').value.trim();
+        var rollNo = document.getElementById('join-roll-no').value.trim();
+        var dob = document.getElementById('join-dob').value;
+        var phone = document.getElementById('join-phone').value.trim();
+        var guardian = document.getElementById('join-guardian').value.trim();
+
+        // Create new pending student record mapping to the target classroom of the invite
+        var campusLinkId = 'CL-STU-' + Math.floor(1000 + Math.random() * 9000);
+        var newStudent = {
+          id: 'stu_' + Date.now(),
+          schoolId: activeInvite.schoolId || 'sch_001',
+          academicYearId: activeInvite.academicYearId,
+          classId: activeInvite.classId,
+          sectionId: activeInvite.sectionId,
+          username: activeUserSession.username,
+          campuslinkId: campusLinkId,
+          admissionNumber: admNo || '\u2014',
+          rollNumber: rollNo || '\u2014',
+          fullName: activeUserSession.fullName,
+          email: activeUserSession.email,
+          phone: phone || '',
+          gender: 'Male', // Mock default
+          dateOfBirth: dob,
+          bloodGroup: 'B+', // Mock default
+          religion: 'Hinduism', // Mock default
+          nationality: 'Indian',
+          address: 'Sector 62, Noida, Uttar Pradesh',
+          emergencyContact: phone || '',
+          guardianId: 'grd_' + Date.now(),
+          transportId: null,
+          houseId: 'house_red',
+          house: 'Red House',
+          status: 'pending', // Key state: pending review by admin
+          inviteCode: activeInvite.inviteCode, // Link back to invite
+          admissionDate: new Date().toISOString().substring(0, 10),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        // 1. Sync to Supabase if connected
+        if (window.CampusLink && window.CampusLink.supabase) {
+          const sb = window.CampusLink.supabase;
+          try {
+            // First fetch target profile user id
+            let targetUserId = null;
+            const { data: userProf } = await sb.from('profiles').select('id').ilike('username', activeUserSession.username).maybeSingle();
+            if (userProf) targetUserId = userProf.id;
+
+            const { error } = await sb.from('students').upsert({
+              school_id: activeInvite.schoolId,
+              user_id: targetUserId,
+              academic_year_id: activeInvite.academicYearId,
+              class_id: activeInvite.classId,
+              section_id: activeInvite.sectionId,
+              username: activeUserSession.username,
+              campuslink_id: campusLinkId,
+              admission_number: newStudent.admissionNumber,
+              roll_number: newStudent.rollNumber,
+              full_name: activeUserSession.fullName,
+              email: activeUserSession.email,
+              phone: phone || null,
+              gender: 'Male',
+              date_of_birth: dob || null,
+              status: 'pending'
+            }, { onConflict: 'school_id,username' });
+
+            if (error) console.error("Database student onboarding upsert failed:", error);
+          } catch (dbErr) {
+            console.error("Database connection error during student onboarding:", dbErr);
+          }
+        }
+
+        // 2. Save locally
+        students.unshift(newStudent);
+        localStorage.setItem('campuslink_students', JSON.stringify(students));
+      }
+
+      showScreen('screen-success');
+    }
+  </script>
+
+  <style>
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</body>
+</html>

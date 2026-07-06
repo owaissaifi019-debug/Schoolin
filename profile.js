@@ -16,6 +16,7 @@
   let editSports = [];
   let editAchievements = [];
   let editCertificates = [];
+  let editExperience = []; // Each entry: {title, type, company, location, start_date, end_date, current, description}
 
   // DOM Elements
   const loadingDiv = document.getElementById('profile-loading');
@@ -216,9 +217,29 @@
       // Report User item
       const ddReport = document.getElementById('dropdown-report-btn');
       if (ddReport) {
-        ddReport.addEventListener('click', () => {
+        ddReport.addEventListener('click', async () => {
           closeDropdown();
-          showToast('Report submitted. Our team will review it shortly.');
+          if (!currentUser) {
+            showToast('You must be logged in to report a user.', 'error');
+            return;
+          }
+          const sb = getSupabase();
+          if (!sb) return;
+
+          try {
+            const { error } = await sb.from('user_reports').insert({
+              reported_user_id: profileId,
+              reporter_id: currentUser.id,
+              reason: 'Inappropriate profile / behavior',
+              details: 'Reported from profile dropdown menu'
+            });
+
+            if (error) throw error;
+            showToast('Report submitted. Our team will review it shortly.');
+          } catch (err) {
+            console.error('Failed to submit user report:', err);
+            showToast('Failed to submit report: ' + err.message, 'error');
+          }
         });
       }
     }
@@ -469,7 +490,8 @@
           <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
         </svg>
       ` : '';
-      nameEl.innerHTML = (profile.full_name || 'No Name Provided') + verifiedBadge;
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+      nameEl.innerHTML = escape(profile.full_name || 'No Name Provided') + verifiedBadge;
     }
 
     const usernameEl = document.getElementById('profile-username');
@@ -517,6 +539,42 @@
         roleBadge.style.display = 'inline-block';
       } else {
         roleBadge.style.display = 'none';
+      }
+    }
+
+    // Show verification pending notification on profile if owner is unverified teacher
+    if (profile.user_type === 'teacher' && isOwner) {
+      const teachersRaw = localStorage.getItem('campuslink_teachers');
+      const teachers = teachersRaw ? JSON.parse(teachersRaw) : [];
+      const displayName = profile.full_name || '';
+      const matchingTeacher = teachers.find(t => 
+        t.fullName.toLowerCase() === displayName.toLowerCase() || 
+        t.email?.toLowerCase() === currentUser.email?.toLowerCase()
+      );
+
+      const isVerified = matchingTeacher ? matchingTeacher.verificationStatus === 'verified' : false;
+      
+      if (!isVerified) {
+        let profileNotice = document.getElementById('profile-classroom-unverified-banner');
+        if (!profileNotice) {
+          profileNotice = document.createElement('div');
+          profileNotice.id = 'profile-classroom-unverified-banner';
+          profileNotice.style.cssText = 'background: #FFFBEB; border: 1.5px dashed #F59E0B; border-radius: 12px; padding: 16px; margin-top: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem; color: #B45309; width: 100%; box-sizing: border-box;';
+          profileNotice.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:0.9rem;">
+              <span>⚠️</span> Account Verification Pending
+            </div>
+            <div style="font-weight: 500;">Join a school to access Classrooms. Once a school verifies your account, your primary classroom workspace will be unlocked.</div>
+          `;
+          
+          const profileCard = document.querySelector('.profile-header-card');
+          if (profileCard) {
+            profileCard.appendChild(profileNotice);
+          }
+        }
+      } else {
+        const profileNotice = document.getElementById('profile-classroom-unverified-banner');
+        if (profileNotice) profileNotice.remove();
       }
     }
 
@@ -609,12 +667,13 @@
       if (achArray.length > 0) {
         achievementsContainer.innerHTML = '';
         achArray.forEach(ach => {
+          const escape = window.CampusLink?.security?.escapeHTML || (s => s);
           const item = document.createElement('div');
           item.className = 'achievements-timeline-item';
           item.innerHTML = `
             <div class="timeline-dot">🏆</div>
             <div class="timeline-content">
-              <p class="timeline-desc">${ach}</p>
+              <p class="timeline-desc">${escape(ach)}</p>
             </div>
           `;
           achievementsContainer.appendChild(item);
@@ -633,9 +692,10 @@
       if (sportsArray.length > 0) {
         sportsContainer.innerHTML = '';
         sportsArray.forEach(sport => {
+          const escape = window.CampusLink?.security?.escapeHTML || (s => s);
           const chip = document.createElement('span');
           chip.className = 'profile-sport-chip';
-          chip.innerHTML = `<span class="sport-icon">⚽</span> ${sport}`;
+          chip.innerHTML = `<span class="sport-icon">⚽</span> ${escape(sport)}`;
           sportsContainer.appendChild(chip);
         });
         sportsCard.style.display = 'block';
@@ -652,12 +712,13 @@
       if (certsArray.length > 0) {
         certificatesContainer.innerHTML = '';
         certsArray.forEach(cert => {
+          const escape = window.CampusLink?.security?.escapeHTML || (s => s);
           const card = document.createElement('div');
           card.className = 'profile-cert-card';
           card.innerHTML = `
             <div class="cert-icon">📜</div>
             <div class="cert-info">
-              <h4 class="cert-title">${cert}</h4>
+              <h4 class="cert-title">${escape(cert)}</h4>
               <p class="cert-issuer">Verified Certificate</p>
             </div>
           `;
@@ -683,7 +744,8 @@
         sbSchoolLogo.className = `school-logo-placeholder ${school.color_class || 'bg-gradient-1'}`;
       }
       if (sbSchoolTitle) {
-        sbSchoolTitle.innerHTML = `<a href="school-profile.html?id=${school.id}">${school.name}</a>`;
+        const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+        sbSchoolTitle.innerHTML = `<a href="school-profile.html?id=${school.id}">${escape(school.name)}</a>`;
       }
       if (sbSchoolSub) sbSchoolSub.textContent = school.board ? `${school.board} Affiliation` : 'Registered School';
       if (sbSchoolCity) sbSchoolCity.textContent = school.city || '';
@@ -746,6 +808,66 @@
             </span>
           `;
           affContainer.style.display = 'inline-flex';
+        }
+      }
+    }
+
+    // --- 7.5: Experience Section (LinkedIn-style) ---
+    const expCard = document.getElementById('section-experience-card');
+    const expContainer = document.getElementById('profile-experience-list');
+    if (expCard && expContainer) {
+      const expArray = profile.experience || [];
+      if (expArray.length > 0) {
+        expContainer.innerHTML = '';
+        expArray.forEach(exp => {
+          const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+          const typeLabels = {
+            work: '💼 Work', internship: '🎯 Internship',
+            volunteer: '🤝 Volunteer', education: '📚 Education',
+            project: '🚀 Project', other: '📌 Other'
+          };
+          const typeLabel = typeLabels[exp.type] || exp.type || '📌';
+          const dateStr = (() => {
+            const fmt = d => d ? new Date(d + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' }) : '';
+            if (exp.start_date && !exp.current && exp.end_date) return `${fmt(exp.start_date)} – ${fmt(exp.end_date)}`;
+            if (exp.start_date && exp.current) return `${fmt(exp.start_date)} – Present`;
+            if (exp.start_date) return fmt(exp.start_date);
+            return '';
+          })();
+          const card = document.createElement('div');
+          card.className = 'exp-card';
+          card.innerHTML = `
+            <div class="exp-card-left">
+              <div class="exp-icon-circle">${typeLabels[exp.type]?.split(' ')[0] || '📌'}</div>
+            </div>
+            <div class="exp-card-body">
+              <div class="exp-card-header">
+                <h4 class="exp-title">${escape(exp.title || '')}</h4>
+                <span class="exp-type-badge exp-type-${exp.type || 'other'}">${typeLabel}</span>
+              </div>
+              ${exp.company ? `<p class="exp-company">${escape(exp.company)}</p>` : ''}
+              <div class="exp-meta">
+                ${dateStr ? `<span class="exp-date">📅 ${dateStr}</span>` : ''}
+                ${exp.location ? `<span class="exp-loc">📍 ${escape(exp.location)}</span>` : ''}
+              </div>
+              ${exp.description ? `<p class="exp-desc">${escape(exp.description)}</p>` : ''}
+            </div>
+          `;
+          expContainer.appendChild(card);
+        });
+        expCard.style.display = 'block';
+        // Show inline add btn for owner
+        const addBtn = document.getElementById('exp-add-inline-btn');
+        if (addBtn && isOwner) addBtn.style.display = 'inline-flex';
+      } else {
+        // Show section anyway for owner so they can add via inline button
+        if (isOwner) {
+          expContainer.innerHTML = '<p class="empty-section-msg">No experience added yet. Click + to add.</p>';
+          expCard.style.display = 'block';
+          const addBtn = document.getElementById('exp-add-inline-btn');
+          if (addBtn) addBtn.style.display = 'inline-flex';
+        } else {
+          expCard.style.display = 'none';
         }
       }
     }
@@ -1312,17 +1434,21 @@
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Avatar file size must be less than 2MB', 'error');
-      return;
+    const validator = window.CampusLink?.security?.validateImageFile;
+    if (validator) {
+      const err = await validator(file, 2 * 1024 * 1024);
+      if (err) {
+        showToast(err, 'error');
+        return;
+      }
     }
 
     showToast('Uploading avatar...', 'info');
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const ext = file.name.split('.').pop().toLowerCase();
+      const randomString = Math.random().toString(36).substring(2, 10);
+      const fileName = `avatar_${randomString}.${ext}`;
       const filePath = `avatars/${profileUser.id}/${fileName}`;
 
       // Upload avatar to Supabase bucket
@@ -1390,17 +1516,21 @@
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Cover image size must be less than 2MB', 'error');
-      return;
+    const validator = window.CampusLink?.security?.validateImageFile;
+    if (validator) {
+      const err = await validator(file, 5 * 1024 * 1024); // 5MB limit
+      if (err) {
+        showToast(err, 'error');
+        return;
+      }
     }
 
     showToast('Uploading cover photo...', 'info');
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const ext = file.name.split('.').pop().toLowerCase();
+      const randomString = Math.random().toString(36).substring(2, 10);
+      const fileName = `cover_${randomString}.${ext}`;
       const filePath = `covers/${profileUser.id}/${fileName}`;
 
       // Upload cover to Supabase bucket
@@ -1488,12 +1618,14 @@
       editSports = [...(profileUser.sports || [])];
       editAchievements = [...(profileUser.achievements || [])];
       editCertificates = [...(profileUser.certificates || [])];
+      editExperience = JSON.parse(JSON.stringify(profileUser.experience || []));
 
       // 3. Render initial Tag Chips and Lists
       renderSkillsChips();
       renderSportsChips();
       renderAchievementsList();
       renderCertificatesList();
+      renderExperienceEditList();
 
       // 4. Populate profile header in modal
       const epmAvatar = document.getElementById('epm-avatar-display');
@@ -1604,6 +1736,8 @@
 
     // Tag Inputs bind
     setupTagInputs();
+    // Experience Tab
+    setupExperienceTab();
 
     // Form Submission
     if (form) {
@@ -1655,7 +1789,8 @@
     // Achievements Add
     if (addAchBtn && achInput) {
       const addAch = () => {
-        const val = achInput.value.trim();
+        const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+        const val = sanitize(achInput.value);
         if (val && !editAchievements.includes(val)) {
           editAchievements.push(val);
           renderAchievementsList();
@@ -1674,7 +1809,8 @@
     // Certificates Add
     if (addCertBtn && certInput) {
       const addCert = () => {
-        const val = certInput.value.trim();
+        const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+        const val = sanitize(certInput.value);
         if (val && !editCertificates.includes(val)) {
           editCertificates.push(val);
           renderCertificatesList();
@@ -1701,9 +1837,10 @@
     container.querySelectorAll('.tag-chip').forEach(el => el.remove());
 
     editSkills.forEach((skill, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
       const chip = document.createElement('span');
       chip.className = 'tag-chip';
-      chip.innerHTML = `${skill} <span class="tag-remove" data-index="${index}">&times;</span>`;
+      chip.innerHTML = `${escape(skill)} <span class="tag-remove" data-index="${index}">&times;</span>`;
       container.insertBefore(chip, input);
     });
 
@@ -1725,9 +1862,10 @@
     container.querySelectorAll('.tag-chip').forEach(el => el.remove());
 
     editSports.forEach((sport, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
       const chip = document.createElement('span');
       chip.className = 'tag-chip';
-      chip.innerHTML = `${sport} <span class="tag-remove" data-index="${index}">&times;</span>`;
+      chip.innerHTML = `${escape(sport)} <span class="tag-remove" data-index="${index}">&times;</span>`;
       container.insertBefore(chip, input);
     });
 
@@ -1751,10 +1889,11 @@
     }
 
     editAchievements.forEach((ach, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
       const li = document.createElement('li');
       li.className = 'editable-list-item';
       li.innerHTML = `
-        <span>${ach}</span>
+        <span>${escape(ach)}</span>
         <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
       `;
       listEl.appendChild(li);
@@ -1780,10 +1919,11 @@
     }
 
     editCertificates.forEach((cert, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
       const li = document.createElement('li');
       li.className = 'editable-list-item';
       li.innerHTML = `
-        <span>${cert}</span>
+        <span>${escape(cert)}</span>
         <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
       `;
       listEl.appendChild(li);
@@ -1798,6 +1938,112 @@
     });
   }
 
+  // --- Experience Edit List (modal) ---
+  function renderExperienceEditList() {
+    const listEl = document.getElementById('experience-editable-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    if (editExperience.length === 0) {
+      listEl.innerHTML = '<li class="empty-list-msg">No experience entries yet.</li>';
+      return;
+    }
+
+    const typeLabels = {
+      work: '💼 Work', internship: '🎯 Internship',
+      volunteer: '🤝 Volunteer', education: '📚 Education',
+      project: '🚀 Project', other: '📌 Other'
+    };
+
+    editExperience.forEach((exp, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+      const li = document.createElement('li');
+      li.className = 'exp-edit-item';
+      const dateStr = (() => {
+        const fmt = d => d ? new Date(d + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' }) : '';
+        if (exp.start_date && !exp.current && exp.end_date) return `${fmt(exp.start_date)} – ${fmt(exp.end_date)}`;
+        if (exp.start_date && exp.current) return `${fmt(exp.start_date)} – Present`;
+        return fmt(exp.start_date);
+      })();
+      li.innerHTML = `
+        <div class="exp-edit-info">
+          <span class="exp-edit-badge">${typeLabels[exp.type] || '📌'}</span>
+          <strong>${escape(exp.title || 'Untitled')}</strong>
+          ${exp.company ? `<span> @ ${escape(exp.company)}</span>` : ''}
+          ${dateStr ? `<span class="exp-edit-date"> · ${dateStr}</span>` : ''}
+        </div>
+        <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
+      `;
+      listEl.appendChild(li);
+    });
+
+    listEl.querySelectorAll('.btn-remove-list-item').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+        editExperience.splice(idx, 1);
+        renderExperienceEditList();
+      });
+    });
+  }
+
+  // --- Experience Tab Setup ---
+  function setupExperienceTab() {
+    const addBtn = document.getElementById('exp-add-entry-btn');
+    if (!addBtn) return;
+
+    addBtn.addEventListener('click', () => {
+      const title = document.getElementById('exp-title')?.value.trim();
+      if (!title) {
+        showToast('Please enter a title/position.', 'error');
+        return;
+      }
+      const type = document.getElementById('exp-type')?.value || 'work';
+      const company = document.getElementById('exp-company')?.value.trim() || '';
+      const location = document.getElementById('exp-location')?.value.trim() || '';
+      const startDate = document.getElementById('exp-start')?.value || '';
+      const endDate = document.getElementById('exp-end')?.value || '';
+      const current = document.getElementById('exp-current')?.checked || false;
+      const description = document.getElementById('exp-description')?.value.trim() || '';
+
+      editExperience.unshift({ title, type, company, location, start_date: startDate, end_date: current ? '' : endDate, current, description });
+      renderExperienceEditList();
+
+      // Clear form
+      ['exp-title', 'exp-company', 'exp-location', 'exp-start', 'exp-end', 'exp-description'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const cb = document.getElementById('exp-current');
+      if (cb) cb.checked = false;
+      const endInput = document.getElementById('exp-end');
+      if (endInput) endInput.disabled = false;
+      showToast('Experience entry added!', 'info');
+    });
+
+    // Toggle end date when "current" checked
+    const currentCheckbox = document.getElementById('exp-current');
+    const endInput = document.getElementById('exp-end');
+    if (currentCheckbox && endInput) {
+      currentCheckbox.addEventListener('change', () => {
+        endInput.disabled = currentCheckbox.checked;
+        if (currentCheckbox.checked) endInput.value = '';
+      });
+    }
+
+    // Inline add btn from profile view redirects to modal tab
+    const inlineAddBtn = document.getElementById('exp-add-inline-btn');
+    if (inlineAddBtn) {
+      inlineAddBtn.addEventListener('click', () => {
+        openEditModal().then(() => {
+          setTimeout(() => {
+            const expTabBtn = document.querySelector('.epm-tab[data-tab="tab-experience"]');
+            if (expTabBtn) expTabBtn.click();
+          }, 100);
+        });
+      });
+    }
+  }
+
   // --- Form Submission Save ---
   async function handleFormSubmit(e) {
     e.preventDefault();
@@ -1806,15 +2052,66 @@
 
     showToast('Saving profile details...', 'info');
 
-    // Extract inputs
-    const fullName = document.getElementById('edit-full-name').value.trim();
-    const schoolId = document.getElementById('edit-school').value || null;
-    const gradeClass = document.getElementById('edit-class').value.trim() || null;
-    const bioText = document.getElementById('edit-bio').value.trim() || null;
+    // Extract inputs & sanitize
+    const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+    const validateName = window.CampusLink?.security?.validateName || (s => null);
 
-    if (!fullName) {
-      showToast('Full name is required.', 'error');
+    const fullName = sanitize(document.getElementById('edit-full-name').value);
+    const schoolId = document.getElementById('edit-school').value || null;
+    const gradeClass = sanitize(document.getElementById('edit-class').value) || null;
+    const bioText = sanitize(document.getElementById('edit-bio').value) || null;
+
+    const nameErr = validateName(fullName);
+    if (nameErr) {
+      showToast(nameErr, 'error');
       return;
+    }
+
+    // Auto-commit any unsaved experience, achievements, or certificates currently typed in inputs
+    const unsavedExpTitle = document.getElementById('exp-title')?.value.trim();
+    if (unsavedExpTitle) {
+      const type = document.getElementById('exp-type')?.value || 'work';
+      const company = document.getElementById('exp-company')?.value.trim() || '';
+      const location = document.getElementById('exp-location')?.value.trim() || '';
+      const startDate = document.getElementById('exp-start')?.value || '';
+      const endDate = document.getElementById('exp-end')?.value || '';
+      const current = document.getElementById('exp-current')?.checked || false;
+      const description = document.getElementById('exp-description')?.value.trim() || '';
+      
+      editExperience.unshift({
+        title: unsavedExpTitle,
+        type,
+        company,
+        location,
+        start_date: startDate,
+        end_date: current ? '' : endDate,
+        current,
+        description
+      });
+      
+      // Clear inputs
+      ['exp-title', 'exp-company', 'exp-location', 'exp-start', 'exp-end', 'exp-description'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const cb = document.getElementById('exp-current');
+      if (cb) cb.checked = false;
+      const endInput = document.getElementById('exp-end');
+      if (endInput) endInput.disabled = false;
+    }
+
+    const unsavedAch = document.getElementById('achievement-item-input')?.value.trim();
+    if (unsavedAch && !editAchievements.includes(unsavedAch)) {
+      editAchievements.push(unsavedAch);
+      const el = document.getElementById('achievement-item-input');
+      if (el) el.value = '';
+    }
+
+    const unsavedCert = document.getElementById('certificate-item-input')?.value.trim();
+    if (unsavedCert && !editCertificates.includes(unsavedCert)) {
+      editCertificates.push(unsavedCert);
+      const el = document.getElementById('certificate-item-input');
+      if (el) el.value = '';
     }
 
     try {
@@ -1827,7 +2124,8 @@
         skills: editSkills,
         sports: editSports,
         achievements: editAchievements,
-        certificates: editCertificates
+        certificates: editCertificates,
+        experience: editExperience
       };
 
       const { error: updateError } = await sb

@@ -601,7 +601,7 @@ function initSchoolProfile() {
             <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">🔗</span>
             <div style="flex: 1; min-width: 0; word-break: break-all;">
               <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Website</strong>
-              <a href="${cleanUrl}" target="_blank" style="color: var(--primary); font-weight: 500; text-decoration: none; word-break: break-all;">${displayUrl}</a>
+              <a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 500; text-decoration: none; word-break: break-all;">${displayUrl}</a>
             </div>
           </li>
         `;
@@ -1522,10 +1522,14 @@ function showToast(message, type = 'success') {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-          showToast('Logo image must be smaller than 2MB.', 'error');
-          uploadLogoInput.value = '';
-          return;
+        const validator = window.CampusLink?.security?.validateImageFile;
+        if (validator) {
+          const err = await validator(file, 2 * 1024 * 1024);
+          if (err) {
+            showToast(err, 'error');
+            uploadLogoInput.value = '';
+            return;
+          }
         }
 
         showToast('Uploading logo...', 'info');
@@ -1534,8 +1538,9 @@ function showToast(message, type = 'success') {
         console.log('[UPLOAD-DEBUG] Profile modal logo upload started. supabase:', !!supabase, '| dbSchool.id:', dbSchool.id);
         if (supabase && dbSchool.id && dbSchool.id.length > 8) {
           try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const ext = file.name.split('.').pop().toLowerCase();
+            const randomString = Math.random().toString(36).substring(2, 10);
+            const fileName = `school_logo_${randomString}.${ext}`;
             const filePath = `${dbSchool.id}/${fileName}`;
             console.log('[UPLOAD-DEBUG] Profile logo filePath:', filePath);
 
@@ -1591,10 +1596,14 @@ function showToast(message, type = 'success') {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-          showToast('Cover photo must be smaller than 2MB.', 'error');
-          uploadCoverInput.value = '';
-          return;
+        const validator = window.CampusLink?.security?.validateImageFile;
+        if (validator) {
+          const err = await validator(file, 5 * 1024 * 1024); // 5MB limit
+          if (err) {
+            showToast(err, 'error');
+            uploadCoverInput.value = '';
+            return;
+          }
         }
 
         showToast('Uploading cover banner...', 'info');
@@ -1603,8 +1612,9 @@ function showToast(message, type = 'success') {
         console.log('[UPLOAD-DEBUG] Profile modal cover upload started. supabase:', !!supabase, '| dbSchool.id:', dbSchool.id);
         if (supabase && dbSchool.id && dbSchool.id.length > 8) {
           try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const ext = file.name.split('.').pop().toLowerCase();
+            const randomString = Math.random().toString(36).substring(2, 10);
+            const fileName = `school_cover_${randomString}.${ext}`;
             const filePath = `${dbSchool.id}/${fileName}`;
             console.log('[UPLOAD-DEBUG] Profile cover filePath:', filePath);
 
@@ -1702,24 +1712,61 @@ function showToast(message, type = 'success') {
         
         showToast('Saving school details...', 'info');
 
+        const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+        const validateURL = window.CampusLink?.security?.validateURL || (s => null);
+        const validateEmail = window.CampusLink?.security?.validateEmail || (s => null);
+
+        const schName = sanitize(document.getElementById('edit-sch-name').value);
+        const schBoard = document.getElementById('edit-sch-board').value;
+        const schCity = sanitize(document.getElementById('edit-sch-city').value);
+        const schAddress = sanitize(document.getElementById('edit-sch-address').value) || null;
+        const schEmail = sanitize(document.getElementById('edit-sch-email').value) || null;
+        const schWebsite = sanitize(document.getElementById('edit-sch-website').value) || null;
+        const schPhone = sanitize(document.getElementById('edit-sch-phone').value) || null;
+        const schEst = sanitize(document.getElementById('edit-sch-est').value) || null;
+        const schSize = sanitize(document.getElementById('edit-sch-size').value) || null;
+        const logoLetter = sanitize(document.getElementById('edit-sch-logo-letter').value).toUpperCase() || null;
+        const colorClass = document.getElementById('edit-sch-color-class').value;
+
+        if (!schName) {
+          showToast('School name is required.', 'error');
+          return;
+        }
+
+        if (schEmail) {
+          const emailErr = validateEmail(schEmail);
+          if (emailErr) {
+            showToast(emailErr, 'error');
+            return;
+          }
+        }
+
+        if (schWebsite) {
+          const urlErr = validateURL(schWebsite);
+          if (urlErr) {
+            showToast(urlErr, 'error');
+            return;
+          }
+        }
+
         const aboutJSON = JSON.stringify({
-          description: document.getElementById('edit-sch-about').value.trim(),
+          description: sanitize(document.getElementById('edit-sch-about').value),
           achievements: tempAchievements,
           highlights: tempHighlights
         });
 
         const updateData = {
-          name: document.getElementById('edit-sch-name').value.trim(),
-          board: document.getElementById('edit-sch-board').value,
-          city: document.getElementById('edit-sch-city').value.trim(),
-          address: document.getElementById('edit-sch-address').value.trim() || null,
-          contact_email: document.getElementById('edit-sch-email').value.trim() || null,
-          website: document.getElementById('edit-sch-website').value.trim() || null,
-          contact_phone: document.getElementById('edit-sch-phone').value.trim() || null,
-          est_year: document.getElementById('edit-sch-est').value.trim() || null,
-          campus_size: document.getElementById('edit-sch-size').value.trim() || null,
-          logo_letter: document.getElementById('edit-sch-logo-letter').value.trim().toUpperCase() || null,
-          color_class: document.getElementById('edit-sch-color-class').value,
+          name: schName,
+          board: schBoard,
+          city: schCity,
+          address: schAddress,
+          contact_email: schEmail,
+          website: schWebsite,
+          contact_phone: schPhone,
+          est_year: schEst,
+          campus_size: schSize,
+          logo_letter: logoLetter,
+          color_class: colorClass,
           logo_url: tempLogoUrl || null,
           cover_url: tempCoverUrl || null,
           about: aboutJSON

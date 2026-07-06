@@ -196,15 +196,30 @@
 
   // Helper to parse participant info
   function getOtherParticipant(conv) {
+    // If the conversation is a Group, Classroom, or School Community
+    if (conv.type === 'CLASSROOM' || conv.type === 'SCHOOL' || conv.type === 'CLUB' || (conv.name && conv.name !== 'Direct Message' && conv.name.trim() !== '')) {
+      return {
+        id: conv.id,
+        name: conv.name || 'Group Chat',
+        logoLetter: (conv.name || 'G').charAt(0).toUpperCase(),
+        colorClass: 'bg-gradient-3',
+        avatarUrl: conv.avatar_url || null,
+        headline: conv.description || 'Group Conversation',
+        isSchool: false,
+        isGroup: true,
+        isVerified: false
+      };
+    }
+
     const isSchoolRep = currentUserProfile?.user_type === 'school_representative';
     const mySchoolId = currentUserProfile?.school_id;
 
     // Filter participants that are NOT current user
-    const otherPart = conv.conversation_participants.find(p => {
+    const otherPart = conv.conversation_participants ? conv.conversation_participants.find(p => {
       if (p.user_id && p.user_id !== currentUser.id) return true;
       if (p.school_id && (!isSchoolRep || p.school_id !== mySchoolId)) return true;
       return false;
-    });
+    }) : null;
 
     if (!otherPart) {
       const firstPart = conv.conversation_participants[0];
@@ -344,7 +359,9 @@
 
       // Avatar setup
       let avatarHtml = '';
-      if (other.isSchool) {
+      if (other.isGroup) {
+        avatarHtml = `<div class="conversation-avatar" style="background: var(--primary-light); color: var(--primary); font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border-radius: 50%;">👥</div>`;
+      } else if (other.isSchool) {
         if (other.avatarUrl) {
           avatarHtml = `<div class="conversation-avatar" style="background-image: url(${other.avatarUrl}); border-radius:var(--radius-sm);"></div>`;
         } else {
@@ -361,7 +378,11 @@
       let lastMsgTime = '';
       if (conv.messages && conv.messages.length > 0) {
         const lastMsg = conv.messages[conv.messages.length - 1];
-        lastMsgText = lastMsg.message.startsWith('[Inquiry:') ? lastMsg.message.substring(lastMsg.message.indexOf(']') + 2) : lastMsg.message;
+        let rawText = lastMsg.message.startsWith('[Inquiry:') ? lastMsg.message.substring(lastMsg.message.indexOf(']') + 2) : lastMsg.message;
+        // Sanitize: strip HTML tags and collapse whitespace
+        rawText = rawText.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        // Truncate to 80 chars for sidebar preview
+        lastMsgText = rawText.length > 80 ? rawText.substring(0, 80) + '…' : rawText;
         
         const msgDate = new Date(lastMsg.created_at);
         const today = new Date();
@@ -440,7 +461,7 @@
             <span class="conversation-time">${lastMsgTime}</span>
           </div>
           ${(!other.isSchool && other.username) ? `<div class="conversation-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${other.username}</div>` : ''}
-          <p class="conversation-last-msg">${lastMsgText}</p>
+          <p class="conversation-last-msg" data-last-msg></p>
           <div class="conversation-badges-row">
             ${categoryBadgeHtml}
             ${statusBadge}
@@ -450,6 +471,9 @@
       `;
 
       item.addEventListener('click', () => selectConversation(conv.id));
+      // Safely set last message preview text via textContent (prevents XSS / raw code display)
+      const lastMsgEl = item.querySelector('[data-last-msg]');
+      if (lastMsgEl) lastMsgEl.textContent = lastMsgText;
       conversationList.appendChild(item);
     });
   }
@@ -682,7 +706,18 @@
     
     if (chatRecipientAvatar) {
       chatRecipientAvatar.innerHTML = '';
-      if (other.isSchool) {
+      if (other.isGroup) {
+        chatRecipientAvatar.className = 'chat-recipient-avatar';
+        chatRecipientAvatar.style.borderRadius = '50%';
+        chatRecipientAvatar.style.background = 'var(--primary-light)';
+        chatRecipientAvatar.style.color = 'var(--primary)';
+        chatRecipientAvatar.style.display = 'flex';
+        chatRecipientAvatar.style.alignItems = 'center';
+        chatRecipientAvatar.style.justifyContent = 'center';
+        chatRecipientAvatar.style.fontSize = '1.25rem';
+        chatRecipientAvatar.textContent = '👥';
+        chatRecipientAvatar.style.backgroundImage = 'none';
+      } else if (other.isSchool) {
         if (other.avatarUrl) {
           chatRecipientAvatar.className = 'chat-recipient-avatar';
           chatRecipientAvatar.style.borderRadius = 'var(--radius-sm)';
@@ -863,8 +898,17 @@
       }
 
       row.innerHTML = `
-        <div class="message-bubble-wrapper">
-          <div class="message-bubble">${cleanMsg}</div>
+        <div class="message-bubble-wrapper" style="position: relative;">
+          <div class="message-bubble" style="position: relative; padding-right: 32px;">
+            <span class="message-text-content">${cleanMsg}</span>
+            <button class="message-options-btn" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 4px; cursor: pointer; color: inherit; opacity: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; line-height: 1; border-radius: 50%; transition: opacity 0.2s;" onclick="toggleMessageMenu(event, '${msg.id}')">
+              ⋮
+            </button>
+            <div id="menu-${msg.id}" class="message-dropdown-menu" style="display: none; position: absolute; right: 0; top: 100%; background: var(--white); border: 1px solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); z-index: 99; min-width: 100px; padding: 4px 0;">
+              <a href="#" style="display: block; padding: 8px 12px; font-size: 0.8rem; color: var(--text-main); text-decoration: none;" onclick="copyMessageText(event, '${msg.id}')">Copy</a>
+              ${isSent ? `<a href="#" style="display: block; padding: 8px 12px; font-size: 0.8rem; color: #EF4444; text-decoration: none;" onclick="deleteMessage(event, '${msg.id}')">Delete</a>` : ''}
+            </div>
+          </div>
           <div class="message-time-meta">
             <span>${timeStr}</span>
             ${ticksHtml}
@@ -1378,6 +1422,437 @@
       }, 400);
     }, 3500);
   }
+
+  // ── Message Bubble Dropdown Options ──
+  window.toggleMessageMenu = function(event, msgId) {
+    event.stopPropagation();
+    // Close any other open message menus first
+    document.querySelectorAll('.message-dropdown-menu').forEach(m => {
+      if (m.id !== 'menu-' + msgId) m.style.display = 'none';
+    });
+    
+    const menu = document.getElementById('menu-' + msgId);
+    if (menu) {
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+  };
+
+  // Close menus when clicking outside
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.message-dropdown-menu').forEach(m => m.style.display = 'none');
+  });
+
+  window.copyMessageText = function(event, msgId) {
+    event.preventDefault();
+    event.stopPropagation();
+    const menu = document.getElementById('menu-' + msgId);
+    if (menu) {
+      const bubble = menu.closest('.message-bubble');
+      if (bubble) {
+        const textContentSpan = bubble.querySelector('.message-text-content');
+        const text = textContentSpan ? textContentSpan.textContent.trim() : bubble.textContent.trim();
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Message copied to clipboard!', 'success');
+        }).catch(err => {
+          console.error('Failed to copy message:', err);
+        });
+      }
+    }
+  };
+
+  window.deleteMessage = async function(event, msgId) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!confirm('Are you sure you want to delete this message?')) return;
+    
+    const sb = getSupabase();
+    if (!sb) return;
+
+    try {
+      const { error } = await sb
+        .from('messages')
+        .delete()
+        .eq('id', msgId);
+
+      if (error) throw error;
+      
+      showToast('Message deleted successfully', 'success');
+      
+      // Update local state and re-render
+      if (activeChatId) {
+        const conv = conversations.find(c => c.id === activeChatId);
+        if (conv) {
+          conv.messages = conv.messages.filter(m => m.id !== msgId);
+          renderMessageHistory(conv.messages);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete message:', err);
+      showToast('Failed to delete message: ' + err.message, 'error');
+    }
+  };
+
+  // ── Multi-Step Conversation Creator State ──
+  let currentGroupMembersList = [];
+  let selectedGroupMembers = new Set();
+  let selectedGroupPhotoBase64 = null;
+  let activeConvType = 'group'; // 'group' or 'dm'
+
+  window.selectConvType = function(type) {
+    if (type !== 'dm' && type !== 'group') return;
+    activeConvType = type;
+
+    // Update Card Borders
+    document.querySelectorAll('.conv-type-card').forEach(card => {
+      const cardType = card.dataset.type;
+      if (cardType === type) {
+        card.style.borderColor = 'var(--primary)';
+        card.style.background = 'rgba(99, 102, 241, 0.04)';
+        card.classList.add('active');
+      } else {
+        card.style.borderColor = 'var(--border-color)';
+        card.style.background = 'var(--white)';
+        card.classList.remove('active');
+      }
+    });
+
+    // Toggle blocks
+    const groupInfoSection = document.getElementById('section-group-info');
+    const permissionsSection = document.getElementById('section-permissions');
+    const visibilitySection = document.getElementById('section-visibility');
+    const countEl = document.getElementById('selected-members-count');
+
+    if (type === 'dm') {
+      if (groupInfoSection) groupInfoSection.style.display = 'none';
+      if (permissionsSection) permissionsSection.style.display = 'none';
+      if (visibilitySection) visibilitySection.style.display = 'none';
+      if (countEl) countEl.textContent = 'Select recipient';
+    } else {
+      if (groupInfoSection) groupInfoSection.style.display = 'flex';
+      if (permissionsSection) permissionsSection.style.display = 'flex';
+      if (visibilitySection) visibilitySection.style.display = 'block';
+      if (countEl) countEl.textContent = '0 selected';
+    }
+
+    selectedGroupMembers.clear();
+    renderMemberChips();
+    renderGroupMembers();
+  };
+
+  window.handleGroupPhotoChange = function(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        selectedGroupPhotoBase64 = e.target.result;
+        const preview = document.getElementById('group-photo-preview');
+        if (preview) {
+          preview.textContent = '';
+          preview.style.backgroundImage = `url('${selectedGroupPhotoBase64}')`;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  function renderGroupMembers(filterText = '') {
+    const listContainer = document.getElementById('group-members-list');
+    if (!listContainer) return;
+
+    if (currentGroupMembersList.length === 0) {
+      listContainer.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:0.8rem;">No members found.</div>';
+      return;
+    }
+
+    const search = filterText.toLowerCase().trim();
+    const filtered = currentGroupMembersList.filter(p => {
+      return (p.full_name || '').toLowerCase().includes(search) || 
+             (p.username || '').toLowerCase().includes(search);
+    });
+
+    if (filtered.length === 0) {
+      listContainer.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:0.8rem;">No matching members.</div>';
+      return;
+    }
+
+    // Role Grouping
+    const teachers = filtered.filter(p => p.user_type === 'teacher');
+    const students = filtered.filter(p => p.user_type === 'student');
+    const reps = filtered.filter(p => p.user_type === 'school_representative');
+    const others = filtered.filter(p => p.user_type !== 'teacher' && p.user_type !== 'student' && p.user_type !== 'school_representative');
+
+    let html = '';
+    const auth = getAuth();
+
+    const renderSection = (title, list) => {
+      if (list.length === 0) return '';
+      let sectHtml = `<div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 6px 8px 4px 8px; background: rgba(0,0,0,0.02); border-radius: 4px; margin-top: 6px;">${title} (${list.length})</div>`;
+      sectHtml += list.map(p => {
+        const isChecked = selectedGroupMembers.has(p.id);
+        const roleLabel = auth ? auth.getUserTypeLabel(p.user_type) : 'Member';
+        const initials = (p.full_name || '?').charAt(0).toUpperCase();
+        const avatarHtml = p.avatar_url 
+          ? `<div style="width:30px;height:30px;border-radius:50%;background-image:url('${p.avatar_url}');background-size:cover;flex-shrink:0;"></div>`
+          : `<div style="width:30px;height:30px;border-radius:50%;background:var(--primary-light);color:var(--primary);font-weight:700;font-size:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initials}</div>`;
+
+        const inputType = activeConvType === 'dm' ? 'radio' : 'checkbox';
+        const inputName = activeConvType === 'dm' ? 'group-member-radio' : 'group-member-checkbox';
+
+        return `
+          <label style="display:flex;align-items:center;gap:10px;padding:8px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.03);margin:0;transition:background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
+            <input type="${inputType}" name="${inputName}" value="${p.id}" ${isChecked ? 'checked' : ''} style="margin:0;cursor:pointer;" onchange="toggleMemberSelection('${p.id}', this.checked)">
+            ${avatarHtml}
+            <div style="flex-grow:1;min-width:0;line-height:1.2;">
+              <div style="font-size:0.85rem;font-weight:600;color:var(--dark-bg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.full_name}</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);">${roleLabel}</div>
+            </div>
+          </label>
+        `;
+      }).join('');
+      return sectHtml;
+    };
+
+    html += renderSection('Teachers', teachers);
+    html += renderSection('Students', students);
+    html += renderSection('School Representatives', reps);
+    html += renderSection('Others', others);
+
+    listContainer.innerHTML = html;
+  }
+
+  window.toggleMemberSelection = function(memberId, isChecked) {
+    if (activeConvType === 'dm') {
+      selectedGroupMembers.clear();
+      if (isChecked) {
+        selectedGroupMembers.add(memberId);
+      }
+    } else {
+      if (isChecked) {
+        selectedGroupMembers.add(memberId);
+      } else {
+        selectedGroupMembers.delete(memberId);
+      }
+    }
+    
+    const countEl = document.getElementById('selected-members-count');
+    if (countEl) {
+      if (activeConvType === 'dm') {
+        countEl.textContent = selectedGroupMembers.size > 0 ? 'Recipient selected' : 'Select recipient';
+      } else {
+        countEl.textContent = `${selectedGroupMembers.size} selected`;
+      }
+    }
+
+    renderMemberChips();
+    renderGroupMembers(document.getElementById('group-member-search')?.value || '');
+  };
+
+  function renderMemberChips() {
+    const chipsContainer = document.getElementById('selected-members-chips');
+    if (!chipsContainer) return;
+    
+    chipsContainer.innerHTML = '';
+    selectedGroupMembers.forEach(id => {
+      const member = currentGroupMembersList.find(p => p.id === id);
+      if (member) {
+        const chip = document.createElement('span');
+        chip.style.cssText = 'display:inline-flex; align-items:center; gap:6px; background:var(--primary-light); color:var(--primary); font-size:0.78rem; font-weight:600; padding:4px 10px; border-radius:100px; margin-bottom:4px;';
+        chip.innerHTML = `
+          ${member.full_name}
+          <span style="cursor:pointer; font-weight:bold; font-size:0.9rem;" onclick="removeMemberChip('${id}')">&times;</span>
+        `;
+        chipsContainer.appendChild(chip);
+      }
+    });
+  }
+
+  window.removeMemberChip = function(id) {
+    selectedGroupMembers.delete(id);
+    const countEl = document.getElementById('selected-members-count');
+    if (countEl) {
+      if (activeConvType === 'dm') {
+        countEl.textContent = 'Select recipient';
+      } else {
+        countEl.textContent = `${selectedGroupMembers.size} selected`;
+      }
+    }
+    renderMemberChips();
+    renderGroupMembers(document.getElementById('group-member-search')?.value || '');
+  };
+
+  window.filterGroupMembers = function() {
+    const searchVal = document.getElementById('group-member-search').value;
+    renderGroupMembers(searchVal);
+  };
+
+  window.openGroupModal = async function() {
+    const modal = document.getElementById('create-group-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+
+    // Clear inputs
+    document.getElementById('group-name-input').value = '';
+    document.getElementById('group-desc-input').value = '';
+    document.getElementById('group-member-search').value = '';
+    document.getElementById('group-purpose-select').value = 'General Discussion';
+    
+    // Clear image previews
+    selectedGroupPhotoBase64 = null;
+    const preview = document.getElementById('group-photo-preview');
+    if (preview) {
+      preview.textContent = '👥';
+      preview.style.backgroundImage = 'none';
+    }
+
+    selectedGroupMembers.clear();
+    renderMemberChips();
+
+    selectConvType('group');
+
+    const listContainer = document.getElementById('group-members-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:0.8rem;">Loading school members...</div>';
+
+    const sb = getSupabase();
+    if (!sb || !currentUserProfile?.school_id) {
+      listContainer.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:0.8rem;">No members found. Connect to a school first.</div>';
+      return;
+    }
+
+    try {
+      const { data: profiles, error } = await sb
+        .from('profiles')
+        .select('id, full_name, username, avatar_url, user_type')
+        .eq('school_id', currentUserProfile.school_id)
+        .not('id', 'eq', currentUser.id)
+        .order('full_name');
+
+      if (error) throw error;
+
+      currentGroupMembersList = profiles || [];
+      renderGroupMembers();
+
+    } catch (err) {
+      console.error('Failed to load school members:', err);
+      listContainer.innerHTML = '<div style="padding:12px;text-align:center;color:#EF4444;font-size:0.8rem;">Failed to load members.</div>';
+    }
+  };
+
+  window.closeGroupModal = function() {
+    const modal = document.getElementById('create-group-modal');
+    if (modal) modal.style.display = 'none';
+  };
+
+  window.submitCreateGroup = async function() {
+    const sb = getSupabase();
+    if (!sb || !currentUser) return;
+
+    if (activeConvType === 'group') {
+      const name = document.getElementById('group-name-input').value.trim();
+      const description = document.getElementById('group-desc-input').value.trim();
+      const purpose = document.getElementById('group-purpose-select').value;
+      const visibility = document.querySelector('input[name="conv-visibility"]:checked')?.value || 'Private';
+
+      if (!name) {
+        alert('Please enter a group name.');
+        return;
+      }
+
+      if (selectedGroupMembers.size === 0) {
+        alert('Please select at least one member.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit-group');
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+
+      try {
+        const { data: newConv, error: err1 } = await sb
+          .from('conversations')
+          .insert({
+            school_id: currentUserProfile.school_id,
+            name: name,
+            description: purpose, // Storing purpose directly in description so it matches the badge
+            avatar_url: selectedGroupPhotoBase64 || null,
+            type: 'CLUB',
+            initiator_id: currentUser.id,
+            status: 'accepted',
+            is_archived: false,
+            created_by: currentUser.id
+          })
+          .select()
+          .single();
+
+        if (err1) throw err1;
+
+        const allParticipants = [currentUser.id, ...selectedGroupMembers];
+        const participantRows = allParticipants.map(uid => ({
+          conversation_id: newConv.id,
+          user_id: uid
+        }));
+
+        const { error: err2 } = await sb
+          .from('conversation_participants')
+          .insert(participantRows);
+
+        if (err2) throw err2;
+
+        const memberRows = allParticipants.map(uid => ({
+          conversation_id: newConv.id,
+          user_id: uid,
+          role: uid === currentUser.id ? 'Owner' : 'Member'
+        }));
+
+        const { error: err3 } = await sb
+          .from('conversation_members')
+          .insert(memberRows);
+
+        if (err3) throw err3;
+
+        await sb.from('messages').insert({
+          conversation_id: newConv.id,
+          sender_id: currentUser.id,
+          content: `Group "${name}" created for ${purpose}. Visibility is set to ${visibility}.`,
+          message: `Group "${name}" created for ${purpose}. Visibility is set to ${visibility}.`,
+          type: 'SYSTEM'
+        });
+
+        showToast('Group conversation created successfully!', 'success');
+        closeGroupModal();
+
+        await loadConversations();
+        selectConversation(newConv.id);
+
+        if (chatMessageInput) {
+          chatMessageInput.focus();
+        }
+
+      } catch (err) {
+        console.error('Failed to create group:', err);
+        showToast('Failed to create group: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Conversation';
+      }
+    } else {
+      if (selectedGroupMembers.size === 0) {
+        alert('Please select a recipient.');
+        return;
+      }
+      
+      const recipientId = Array.from(selectedGroupMembers)[0];
+      closeGroupModal();
+      
+      await initNewDirectChat(recipientId);
+      
+      if (chatMessageInput) {
+        chatMessageInput.focus();
+      }
+      
+      showToast('Direct conversation opened', 'success');
+    }
+  };
 
   // Run on load (robust ready state check)
   if (document.readyState === 'loading') {

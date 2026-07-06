@@ -16,6 +16,7 @@
   let editSports = [];
   let editAchievements = [];
   let editCertificates = [];
+  let editExperience = []; // Each entry: {title, type, company, location, start_date, end_date, current, description}
 
   // DOM Elements
   const loadingDiv = document.getElementById('profile-loading');
@@ -614,6 +615,66 @@
 
     if (sbClassVal) sbClassVal.textContent = profile.class || 'Not Specified';
     if (sbEmailVal) sbEmailVal.textContent = isOwner ? (profile.email || 'Private') : 'Private';
+
+    // --- 7.5: Experience Section (LinkedIn-style) ---
+    const expCard = document.getElementById('section-experience-card');
+    const expContainer = document.getElementById('profile-experience-list');
+    if (expCard && expContainer) {
+      const expArray = profile.experience || [];
+      if (expArray.length > 0) {
+        expContainer.innerHTML = '';
+        expArray.forEach(exp => {
+          const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+          const typeLabels = {
+            work: '💼 Work', internship: '🎯 Internship',
+            volunteer: '🤝 Volunteer', education: '📚 Education',
+            project: '🚀 Project', other: '📌 Other'
+          };
+          const typeLabel = typeLabels[exp.type] || exp.type || '📌';
+          const dateStr = (() => {
+            const fmt = d => d ? new Date(d + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' }) : '';
+            if (exp.start_date && !exp.current && exp.end_date) return `${fmt(exp.start_date)} – ${fmt(exp.end_date)}`;
+            if (exp.start_date && exp.current) return `${fmt(exp.start_date)} – Present`;
+            if (exp.start_date) return fmt(exp.start_date);
+            return '';
+          })();
+          const card = document.createElement('div');
+          card.className = 'exp-card';
+          card.innerHTML = `
+            <div class="exp-card-left">
+              <div class="exp-icon-circle">${typeLabels[exp.type]?.split(' ')[0] || '📌'}</div>
+            </div>
+            <div class="exp-card-body">
+              <div class="exp-card-header">
+                <h4 class="exp-title">${escape(exp.title || '')}</h4>
+                <span class="exp-type-badge exp-type-${exp.type || 'other'}">${typeLabel}</span>
+              </div>
+              ${exp.company ? `<p class="exp-company">${escape(exp.company)}</p>` : ''}
+              <div class="exp-meta">
+                ${dateStr ? `<span class="exp-date">📅 ${dateStr}</span>` : ''}
+                ${exp.location ? `<span class="exp-loc">📍 ${escape(exp.location)}</span>` : ''}
+              </div>
+              ${exp.description ? `<p class="exp-desc">${escape(exp.description)}</p>` : ''}
+            </div>
+          `;
+          expContainer.appendChild(card);
+        });
+        expCard.style.display = 'block';
+        // Show inline add btn for owner
+        const addBtn = document.getElementById('exp-add-inline-btn');
+        if (addBtn && isOwner) addBtn.style.display = 'inline-flex';
+      } else {
+        // Show section anyway for owner so they can add via inline button
+        if (isOwner) {
+          expContainer.innerHTML = '<p class="empty-section-msg">No experience added yet. Click + to add.</p>';
+          expCard.style.display = 'block';
+          const addBtn = document.getElementById('exp-add-inline-btn');
+          if (addBtn) addBtn.style.display = 'inline-flex';
+        } else {
+          expCard.style.display = 'none';
+        }
+      }
+    }
   }
 
   // --- Follow Actions ---
@@ -1325,12 +1386,14 @@
       editSports = [...(profileUser.sports || [])];
       editAchievements = [...(profileUser.achievements || [])];
       editCertificates = [...(profileUser.certificates || [])];
+      editExperience = JSON.parse(JSON.stringify(profileUser.experience || []));
 
       // 3. Render initial Tag Chips and Lists
       renderSkillsChips();
       renderSportsChips();
       renderAchievementsList();
       renderCertificatesList();
+      renderExperienceEditList();
 
       // 4. Populate profile header in modal
       const epmAvatar = document.getElementById('epm-avatar-display');
@@ -1441,6 +1504,8 @@
 
     // Tag Inputs bind
     setupTagInputs();
+    // Experience Tab
+    setupExperienceTab();
 
     // Form Submission
     if (form) {
@@ -1635,6 +1700,112 @@
     });
   }
 
+  // --- Experience Edit List (modal) ---
+  function renderExperienceEditList() {
+    const listEl = document.getElementById('experience-editable-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    if (editExperience.length === 0) {
+      listEl.innerHTML = '<li class="empty-list-msg">No experience entries yet.</li>';
+      return;
+    }
+
+    const typeLabels = {
+      work: '💼 Work', internship: '🎯 Internship',
+      volunteer: '🤝 Volunteer', education: '📚 Education',
+      project: '🚀 Project', other: '📌 Other'
+    };
+
+    editExperience.forEach((exp, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+      const li = document.createElement('li');
+      li.className = 'exp-edit-item';
+      const dateStr = (() => {
+        const fmt = d => d ? new Date(d + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'short' }) : '';
+        if (exp.start_date && !exp.current && exp.end_date) return `${fmt(exp.start_date)} – ${fmt(exp.end_date)}`;
+        if (exp.start_date && exp.current) return `${fmt(exp.start_date)} – Present`;
+        return fmt(exp.start_date);
+      })();
+      li.innerHTML = `
+        <div class="exp-edit-info">
+          <span class="exp-edit-badge">${typeLabels[exp.type] || '📌'}</span>
+          <strong>${escape(exp.title || 'Untitled')}</strong>
+          ${exp.company ? `<span> @ ${escape(exp.company)}</span>` : ''}
+          ${dateStr ? `<span class="exp-edit-date"> · ${dateStr}</span>` : ''}
+        </div>
+        <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
+      `;
+      listEl.appendChild(li);
+    });
+
+    listEl.querySelectorAll('.btn-remove-list-item').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+        editExperience.splice(idx, 1);
+        renderExperienceEditList();
+      });
+    });
+  }
+
+  // --- Experience Tab Setup ---
+  function setupExperienceTab() {
+    const addBtn = document.getElementById('exp-add-entry-btn');
+    if (!addBtn) return;
+
+    addBtn.addEventListener('click', () => {
+      const title = document.getElementById('exp-title')?.value.trim();
+      if (!title) {
+        showToast('Please enter a title/position.', 'error');
+        return;
+      }
+      const type = document.getElementById('exp-type')?.value || 'work';
+      const company = document.getElementById('exp-company')?.value.trim() || '';
+      const location = document.getElementById('exp-location')?.value.trim() || '';
+      const startDate = document.getElementById('exp-start')?.value || '';
+      const endDate = document.getElementById('exp-end')?.value || '';
+      const current = document.getElementById('exp-current')?.checked || false;
+      const description = document.getElementById('exp-description')?.value.trim() || '';
+
+      editExperience.unshift({ title, type, company, location, start_date: startDate, end_date: current ? '' : endDate, current, description });
+      renderExperienceEditList();
+
+      // Clear form
+      ['exp-title', 'exp-company', 'exp-location', 'exp-start', 'exp-end', 'exp-description'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const cb = document.getElementById('exp-current');
+      if (cb) cb.checked = false;
+      const endInput = document.getElementById('exp-end');
+      if (endInput) endInput.disabled = false;
+      showToast('Experience entry added!', 'info');
+    });
+
+    // Toggle end date when "current" checked
+    const currentCheckbox = document.getElementById('exp-current');
+    const endInput = document.getElementById('exp-end');
+    if (currentCheckbox && endInput) {
+      currentCheckbox.addEventListener('change', () => {
+        endInput.disabled = currentCheckbox.checked;
+        if (currentCheckbox.checked) endInput.value = '';
+      });
+    }
+
+    // Inline add btn from profile view redirects to modal tab
+    const inlineAddBtn = document.getElementById('exp-add-inline-btn');
+    if (inlineAddBtn) {
+      inlineAddBtn.addEventListener('click', () => {
+        openEditModal().then(() => {
+          setTimeout(() => {
+            const expTabBtn = document.querySelector('.epm-tab[data-tab="tab-experience"]');
+            if (expTabBtn) expTabBtn.click();
+          }, 100);
+        });
+      });
+    }
+  }
+
   // --- Form Submission Save ---
   async function handleFormSubmit(e) {
     e.preventDefault();
@@ -1654,6 +1825,53 @@
       return;
     }
 
+    // Auto-commit any unsaved experience, achievements, or certificates currently typed in inputs
+    const unsavedExpTitle = document.getElementById('exp-title')?.value.trim();
+    if (unsavedExpTitle) {
+      const type = document.getElementById('exp-type')?.value || 'work';
+      const company = document.getElementById('exp-company')?.value.trim() || '';
+      const location = document.getElementById('exp-location')?.value.trim() || '';
+      const startDate = document.getElementById('exp-start')?.value || '';
+      const endDate = document.getElementById('exp-end')?.value || '';
+      const current = document.getElementById('exp-current')?.checked || false;
+      const description = document.getElementById('exp-description')?.value.trim() || '';
+      
+      editExperience.unshift({
+        title: unsavedExpTitle,
+        type,
+        company,
+        location,
+        start_date: startDate,
+        end_date: current ? '' : endDate,
+        current,
+        description
+      });
+      
+      // Clear inputs
+      ['exp-title', 'exp-company', 'exp-location', 'exp-start', 'exp-end', 'exp-description'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const cb = document.getElementById('exp-current');
+      if (cb) cb.checked = false;
+      const endInput = document.getElementById('exp-end');
+      if (endInput) endInput.disabled = false;
+    }
+
+    const unsavedAch = document.getElementById('achievement-item-input')?.value.trim();
+    if (unsavedAch && !editAchievements.includes(unsavedAch)) {
+      editAchievements.push(unsavedAch);
+      const el = document.getElementById('achievement-item-input');
+      if (el) el.value = '';
+    }
+
+    const unsavedCert = document.getElementById('certificate-item-input')?.value.trim();
+    if (unsavedCert && !editCertificates.includes(unsavedCert)) {
+      editCertificates.push(unsavedCert);
+      const el = document.getElementById('certificate-item-input');
+      if (el) el.value = '';
+    }
+
     try {
       // Build update payload
       const updateData = {
@@ -1664,7 +1882,8 @@
         skills: editSkills,
         sports: editSports,
         achievements: editAchievements,
-        certificates: editCertificates
+        certificates: editCertificates,
+        experience: editExperience
       };
 
       const { error: updateError } = await sb
@@ -1693,6 +1912,10 @@
   }
 
   // Run on page load
-  document.addEventListener('DOMContentLoaded', init);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 
 })();

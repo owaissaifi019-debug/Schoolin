@@ -253,6 +253,51 @@
           </div>
         </form>
 
+        <!-- Forgot Password Form -->
+        <form class="auth-form" id="forgot-form" style="display: none;">
+          <div class="auth-form-header">
+            <h2>Reset Password</h2>
+            <p>Enter your email address and we'll send you a recovery link.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="forgot-email">Email Address</label>
+            <div class="input-icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <input type="email" id="forgot-email" placeholder="you@school.edu" required autocomplete="email">
+            </div>
+            <span class="error-msg" id="err-forgot-email"></span>
+          </div>
+
+          <button type="submit" class="auth-submit-btn" id="btn-forgot-submit">
+            <span class="btn-text">Send Reset Link</span>
+            <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
+          </button>
+
+          <div class="auth-form-footer">
+            <p><a href="#" id="forgot-back-to-login">Back to Sign In</a></p>
+          </div>
+        </form>
+
+        <!-- Verify Email Window / Info Panel -->
+        <div class="auth-verify-email-form" id="verify-email-window" style="display: none;">
+          <div class="auth-verify-icon">📬</div>
+          <h2>Verify Your Email</h2>
+          <p>
+            We've sent a verification email to <strong id="verify-email-address" style="color: #fff;">your email</strong>.<br><br>
+            Please check your inbox (and spam folder) and click the activation link to access your account.
+          </p>
+
+          <button type="button" class="auth-submit-btn" id="btn-resend-verification" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); box-shadow: none; margin-bottom: 16px;">
+            <span class="btn-text">Resend Verification Email</span>
+            <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
+          </button>
+
+          <button type="button" class="auth-submit-btn" id="verify-back-to-login">
+            <span>Back to Sign In</span>
+          </button>
+        </div>
+
         <!-- ── Success State ── -->
         <div class="auth-success-state" id="auth-success-state" style="display:none;">
           <div class="auth-success-icon">
@@ -305,78 +350,7 @@
       });
     })();
 
-    /* ── Forgot Password ── */
-    (function () {
-      var link = document.getElementById('forgot-password-link');
-      if (!link) return;
-      link.addEventListener('click', function (e) {
-        e.preventDefault();
-        var email = document.getElementById('login-email');
-        var emailVal = email ? email.value.trim() : '';
-        var prompt = emailVal
-          ? 'Send reset link to: ' + emailVal + '?'
-          : 'Enter your email in the field above, then click Forgot password.';
-
-        if (!emailVal) {
-          // Show toast with instruction
-          var toast = document.getElementById('auth-toast');
-          var msg = document.getElementById('auth-toast-msg');
-          if (toast && msg) {
-            msg.textContent = 'Enter your email address above, then click "Forgot password?" to reset it.';
-            toast.style.display = 'flex';
-            toast.classList.add('show');
-            setTimeout(function () {
-              toast.classList.remove('show');
-              setTimeout(function () { toast.style.display = 'none'; }, 300);
-            }, 4000);
-          }
-          if (email) email.focus();
-          return;
-        }
-
-        // If email present, attempt Supabase password reset (uses existing supabase client)
-        if (typeof window.supabaseClient !== 'undefined' || typeof supabase !== 'undefined') {
-          var client = window.supabaseClient || supabase;
-          if (client && client.auth && client.auth.resetPasswordForEmail) {
-            client.auth.resetPasswordForEmail(emailVal, {
-              redirectTo: window.location.origin + '/login.html'
-            }).then(function (res) {
-              var toast = document.getElementById('auth-toast');
-              var msg = document.getElementById('auth-toast-msg');
-              if (res.error) {
-                if (toast && msg) {
-                  msg.textContent = res.error.message || 'Could not send reset email.';
-                  toast.style.display = 'flex';
-                  toast.classList.add('show');
-                  setTimeout(function () {
-                    toast.classList.remove('show');
-                    setTimeout(function () { toast.style.display = 'none'; }, 300);
-                  }, 4000);
-                }
-              } else {
-                // Success toast (reuse existing element but style as success)
-                if (toast && msg) {
-                  toast.style.background = '#F0FDF4';
-                  toast.style.borderColor = '#BBF7D0';
-                  var icon = toast.querySelector('.auth-toast-icon');
-                  if (icon) { icon.textContent = '✓'; icon.style.color = '#16A34A'; }
-                  msg.style.color = '#15803D';
-                  msg.textContent = 'Password reset email sent to ' + emailVal;
-                  toast.style.display = 'flex';
-                  toast.classList.add('show');
-                  setTimeout(function () {
-                    toast.classList.remove('show');
-                    setTimeout(function () { toast.style.display = 'none'; }, 300);
-                  }, 5000);
-                }
-              }
-            });
-          }
-        } else {
-          alert('Password reset: ' + prompt);
-        }
-      });
-    })();
+    /* Forgot Password is now handled in login.js */
   </script>
 
 </body>

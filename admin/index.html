@@ -112,6 +112,12 @@
           </span>
           Content Moderation
         </a>
+        <a class="dashboard-nav-link" data-tab="user-reports" id="tab-link-user-reports">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </span>
+          User Reports
+        </a>
         <a class="dashboard-nav-link" data-tab="profile" id="tab-link-profile" style="display: none;">
           <span class="icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -750,6 +756,49 @@
           </div>
         </section>
 
+        <!-- ================= USER REPORTS TAB ================= -->
+        <section id="user-reports-tab" class="dashboard-tab-panel">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
+            <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+              <div>
+                <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 4px;">User Reports Moderation</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Review flagged user accounts and take administrative action</p>
+              </div>
+              
+              <!-- Tab filters -->
+              <div class="feed-filter-tabs" style="display: flex; gap: 8px;">
+                <button class="feed-filter-tab active" id="btn-user-rep-pending" onclick="setUserReportsFilter('pending')">Pending Review</button>
+                <button class="feed-filter-tab" id="btn-user-rep-dismissed" onclick="setUserReportsFilter('dismissed')">Dismissed Reports</button>
+                <button class="feed-filter-tab" id="btn-user-rep-action" onclick="setUserReportsFilter('action_taken')">Action Taken</button>
+              </div>
+            </div>
+
+            <!-- Table of flagged users -->
+            <div class="dash-table-wrapper">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Reported User</th>
+                    <th>Reporter</th>
+                    <th>Reason</th>
+                    <th>Details</th>
+                    <th>Date Flagged</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="user-reports-tbody">
+                  <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                      Loading user reports...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         <!-- ================= PROFILE TAB (School Admin Only) ================= -->
         <section id="profile-tab" class="dashboard-tab-panel">
           <div class="dash-form-card" style="padding: 24px;">
@@ -836,7 +885,7 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
           <div>
             <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Website</h4>
-            <a id="modal-school-website" href="#" target="_blank" style="font-size: 0.9rem; color: var(--primary); font-weight: 600; text-decoration: none;">Visit Website</a>
+            <a id="modal-school-website" href="#" target="_blank" rel="noopener noreferrer" style="font-size: 0.9rem; color: var(--primary); font-weight: 600; text-decoration: none;">Visit Website</a>
           </div>
           <div>
             <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Contact Email</h4>

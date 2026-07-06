@@ -409,6 +409,10 @@ async function initAdmin() {
         pageTitle = 'Content Moderation Panel';
         await loadModerationReports();
       }
+      if (tabTarget === 'user-reports') {
+        pageTitle = 'User Reports Moderation';
+        await loadUserReports();
+      }
       if (topBarTitle) topBarTitle.textContent = pageTitle;
       const mobTitle = document.getElementById('mobile-header-title');
       if (mobTitle) mobTitle.textContent = pageTitle;
@@ -1535,8 +1539,21 @@ async function initAdmin() {
       await loadSystemStats();
       await loadUsersData();
     } catch (e) {
-      console.error('Failed to delete user:', e);
-      showToast(`Failed to delete user: ${e.message}`, 'error');
+      console.warn('Failed to delete user via Edge Function, trying database fallback:', e);
+      try {
+        const { error: dbError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+        if (dbError) throw dbError;
+
+        showToast('User profile deleted from database (fallback)!', 'success');
+        await loadSystemStats();
+        await loadUsersData();
+      } catch (fallbackErr) {
+        console.error('Failed delete fallback:', fallbackErr);
+        showToast(`Failed to delete user: ${e.message}`, 'error');
+      }
     }
   }
 
@@ -2522,9 +2539,12 @@ async function initAdmin() {
   }
 
   // ── Content Moderation Functions ─────────────────────────
+  let currentModerationFilter = 'pending';
+  let allModerationReports = {};
+
   async function loadModerationReports() {
     if (!supabase) return;
-    const listContainer = document.getElementById('reported-posts-list');
+    const listContainer = document.getElementById('moderation-list');
     if (!listContainer) return;
 
     try {
@@ -2554,7 +2574,8 @@ async function initAdmin() {
         grouped[r.post_id].push(r);
       });
 
-      renderModerationReports(grouped);
+      allModerationReports = grouped;
+      renderModerationReports();
     } catch (e) {
       console.error('Failed to load moderation reports:', e);
       listContainer.innerHTML = `
@@ -2565,28 +2586,28 @@ async function initAdmin() {
     }
   }
 
-  function renderModerationReports(groupedReports) {
-    const listContainer = document.getElementById('reported-posts-list');
+  function renderModerationReports() {
+    const listContainer = document.getElementById('moderation-list');
     if (!listContainer) return;
     listContainer.innerHTML = '';
 
-    const postIds = Object.keys(groupedReports);
-    // Filter only postIds that have at least one 'pending' report
-    const pendingPostIds = postIds.filter(postId => 
-      groupedReports[postId].some(r => r.status === 'pending')
+    const postIds = Object.keys(allModerationReports);
+    // Filter only postIds that have at least one report matching the current filter status
+    const filteredPostIds = postIds.filter(postId => 
+      allModerationReports[postId].some(r => r.status === currentModerationFilter)
     );
 
-    if (pendingPostIds.length === 0) {
+    if (filteredPostIds.length === 0) {
       listContainer.innerHTML = `
         <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">
-          🎉 No reported content pending review. All clear!
+          🎉 No reported content in this category. All clear!
         </div>
       `;
       return;
     }
 
-    pendingPostIds.forEach(postId => {
-      const reports = groupedReports[postId].filter(r => r.status === 'pending');
+    filteredPostIds.forEach(postId => {
+      const reports = allModerationReports[postId].filter(r => r.status === currentModerationFilter);
       const firstReport = reports[0];
       const postContent = firstReport.post_content || '[No Content]';
       const authorName = firstReport.author ? (firstReport.author.full_name || 'Anonymous') : 'Anonymous';
@@ -2612,13 +2633,34 @@ async function initAdmin() {
         minute: '2-digit'
       });
 
+      let badgeText = 'PENDING REVIEW';
+      let badgeClass = 'status-rejected';
+      if (currentModerationFilter === 'ignored') {
+        badgeText = 'IGNORED';
+        badgeClass = 'status-approved';
+      } else if (currentModerationFilter === 'deleted') {
+        badgeText = 'REMOVED';
+        badgeClass = 'status-rejected';
+      }
+
+      let actionButtonsHtml = '';
+      if (currentModerationFilter === 'pending') {
+        actionButtonsHtml = `
+          <button class="btn btn-secondary btn-view-reported-post" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Details</button>
+          <button class="btn btn-secondary btn-ignore-report" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); border-color: #D1D5DB; color: #374151; background: transparent;">Ignore Report</button>
+          <button class="btn btn-primary btn-delete-reported-post" data-post-id="${postId}" data-author-id="${authorId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); background-color: #EF4444; border-color: #EF4444; color: white;">Delete Post</button>
+        `;
+      } else {
+        actionButtonsHtml = `<span style="font-size: 0.8rem; color: var(--text-muted);">Resolved</span>`;
+      }
+
       const card = document.createElement('div');
       card.className = 'dash-table-card moderation-card';
       card.style = 'padding: 20px; border-left: 4px solid #EF4444; margin-bottom: 16px; transition: all 0.3s ease; text-align: left;';
       card.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
           <div>
-            <span class="badge-status status-rejected" style="font-weight: 700; background-color: #FEF2F2; color: #EF4444; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem;">PENDING REVIEW</span>
+            <span class="badge-status ${badgeClass}" style="font-weight: 700; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem;">${badgeText}</span>
             <span style="margin-left: 8px; font-weight: 700; color: #EF4444; font-size: 0.8rem; background-color: #FEF2F2; padding: 3px 8px; border-radius: 4px;">Reports: ${reportCount}</span>
           </div>
           <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Latest report: ${formattedDate}</span>
@@ -2644,9 +2686,7 @@ async function initAdmin() {
         </div>
         
         <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px; flex-wrap: wrap;">
-          <button class="btn btn-secondary btn-view-reported-post" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Details</button>
-          <button class="btn btn-secondary btn-ignore-report" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); border-color: #D1D5DB; color: #374151; background: transparent;">Ignore Report</button>
-          <button class="btn btn-primary btn-delete-reported-post" data-post-id="${postId}" data-author-id="${authorId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); background-color: #EF4444; border-color: #EF4444; color: white;">Delete Post</button>
+          ${actionButtonsHtml}
         </div>
       `;
       listContainer.appendChild(card);
@@ -2656,7 +2696,7 @@ async function initAdmin() {
     listContainer.querySelectorAll('.btn-view-reported-post').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const postId = btn.getAttribute('data-post-id');
-        openReportedPostDetailsModal(postId, groupedReports[postId]);
+        openReportedPostDetailsModal(postId, allModerationReports[postId]);
       });
     });
 
@@ -2670,17 +2710,34 @@ async function initAdmin() {
     });
 
     listContainer.querySelectorAll('.btn-delete-reported-post').forEach(btn => {
-      console.log('[Delete Binding] Binding click handler for reported post delete button:', btn.getAttribute('data-post-id'));
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
-        console.log('[Delete Click] Reported post delete button clicked:', btn);
         const postId = btn.getAttribute('data-post-id');
         const authorId = btn.getAttribute('data-author-id');
-        console.log('[Delete Click] Retrieved attributes - postId:', postId, 'authorId:', authorId);
         await deletePostWorkflow(postId, authorId);
       });
     });
   }
+
+  // Expose filter helper globally
+  window.setModerationFilter = function(filter) {
+    currentModerationFilter = filter;
+    
+    // Toggle active classes on filter buttons
+    const btnPending = document.getElementById('btn-mod-pending');
+    const btnIgnored = document.getElementById('btn-mod-ignored');
+    const btnDeleted = document.getElementById('btn-mod-deleted');
+    
+    if (btnPending) btnPending.classList.remove('active');
+    if (btnIgnored) btnIgnored.classList.remove('active');
+    if (btnDeleted) btnDeleted.classList.remove('active');
+    
+    if (filter === 'pending' && btnPending) btnPending.classList.add('active');
+    if (filter === 'ignored' && btnIgnored) btnIgnored.classList.add('active');
+    if (filter === 'deleted' && btnDeleted) btnDeleted.classList.add('active');
+    
+    renderModerationReports();
+  };
 
   async function ignorePostReports(postId) {
     if (!supabase) return;
@@ -2763,6 +2820,194 @@ async function initAdmin() {
     }
   });
 
+  // ── User Reports Moderation Functions ─────────────────────────
+  let currentUserReportsFilter = 'pending';
+  let allUserReports = [];
+
+  async function loadUserReports() {
+    if (!supabase) return;
+    const tbody = document.getElementById('user-reports-tbody');
+    if (!tbody) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_reports')
+        .select(`
+          *,
+          reported_user:profiles!reported_user_id (
+            id,
+            full_name,
+            email
+          ),
+          reporter:profiles!reporter_id (
+            id,
+            full_name,
+            email
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      allUserReports = data || [];
+      renderUserReports();
+    } catch (e) {
+      console.error('Failed to load user reports:', e);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px; color: #EF4444;">
+            Failed to fetch user reports: ${e.message}
+          </td>
+        </tr>
+      `;
+    }
+  }
+
+  function renderUserReports() {
+    const tbody = document.getElementById('user-reports-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const filtered = allUserReports.filter(r => r.status === currentUserReportsFilter);
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No user reports found in this category.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    filtered.forEach(r => {
+      const tr = document.createElement('tr');
+      const createdDate = new Date(r.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      const reportedName = r.reported_user ? (r.reported_user.full_name || 'N/A') : 'Deleted User';
+      const reportedEmail = r.reported_user ? (r.reported_user.email || 'N/A') : 'N/A';
+      const reporterName = r.reporter ? (r.reporter.full_name || 'Anonymous') : 'Anonymous';
+
+      let statusBadgeClass = 'status-pending';
+      if (r.status === 'dismissed') statusBadgeClass = 'status-approved';
+      if (r.status === 'action_taken') statusBadgeClass = 'status-rejected';
+
+      let actionButtons = '';
+      if (r.status === 'pending') {
+        actionButtons = `
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-dismiss-user-report" data-id="${r.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); border-color: #D1D5DB; color: #374151;">
+              Dismiss
+            </button>
+            <button class="btn btn-secondary btn-delete-reported-user" data-id="${r.id}" data-user-id="${r.reported_user_id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">
+              Delete Account
+            </button>
+          </div>
+        `;
+      } else {
+        actionButtons = `<span style="font-size: 0.8rem; color: var(--text-muted);">Resolved</span>`;
+      }
+
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${reportedName}<br><span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${reportedEmail}</span></td>
+        <td>${reporterName}</td>
+        <td><span class="badge-status status-pending" style="background-color: rgba(239, 68, 68, 0.08); color: #EF4444; font-weight:700;">${r.reason}</span></td>
+        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.details || ''}">${r.details || 'N/A'}</td>
+        <td>${createdDate}</td>
+        <td><span class="badge-status ${statusBadgeClass}" style="font-weight:700;">${r.status.toUpperCase()}</span></td>
+        <td>${actionButtons}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Bind action buttons
+    tbody.querySelectorAll('.btn-dismiss-user-report').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = btn.getAttribute('data-id');
+        await resolveUserReport(id, 'dismissed');
+      });
+    });
+
+    tbody.querySelectorAll('.btn-delete-reported-user').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const reportId = btn.getAttribute('data-id');
+        const userId = btn.getAttribute('data-user-id');
+        if (confirm('Are you sure you want to permanently delete this user account? This will remove their authentication record, cascade delete their profile, and delete all associated data across the entire platform.')) {
+          await resolveUserReport(reportId, 'action_taken', userId);
+        }
+      });
+    });
+  }
+
+  async function resolveUserReport(reportId, action, userId = null) {
+    if (!supabase) return;
+
+    try {
+      if (action === 'action_taken' && userId) {
+        // Try deleting the user using our edge function
+        try {
+          const { error: deleteError } = await supabase.functions.invoke('delete-user', {
+            body: { userId }
+          });
+          if (deleteError) throw deleteError;
+          showToast('User account successfully deleted from database and platform!', 'success');
+        } catch (funcErr) {
+          console.warn('Failed to delete user via Edge Function, trying database fallback:', funcErr);
+          // Try fallback database delete
+          const { error: dbError } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', userId);
+          if (dbError) throw dbError;
+          showToast('User profile deleted from database (fallback)!', 'success');
+        }
+      } else if (action === 'dismissed') {
+        const { error } = await supabase
+          .from('user_reports')
+          .update({
+            status: 'dismissed',
+            resolved_at: new Date().toISOString(),
+            resolved_by: (await supabase.auth.getSession()).data.session?.user?.id || null
+          })
+          .eq('id', reportId);
+
+        if (error) throw error;
+        showToast('Report dismissed successfully.', 'success');
+      }
+
+      await loadUserReports();
+      await loadSystemStats();
+      await loadUsersData();
+    } catch (e) {
+      console.error('Failed to resolve user report:', e);
+      showToast(`Failed to resolve report: ${e.message}`, 'error');
+    }
+  }
+
+  // Expose filter helper globally
+  window.setUserReportsFilter = function(filter) {
+    currentUserReportsFilter = filter;
+    
+    // Toggle active classes on filter buttons
+    const btnPending = document.getElementById('btn-user-rep-pending');
+    const btnDismissed = document.getElementById('btn-user-rep-dismissed');
+    const btnAction = document.getElementById('btn-user-rep-action');
+    
+    if (btnPending) btnPending.classList.remove('active');
+    if (btnDismissed) btnDismissed.classList.remove('active');
+    if (btnAction) btnAction.classList.remove('active');
+    
+    if (filter === 'pending' && btnPending) btnPending.classList.add('active');
+    if (filter === 'dismissed' && btnDismissed) btnDismissed.classList.add('active');
+    if (filter === 'action_taken' && btnAction) btnAction.classList.add('active');
+    
+    renderUserReports();
+  };
+
   // ── Initial Data Load ────────────────────────────────────
   if (supabase) {
     if (currentUserProfile.platform_role === 'school_admin') {
@@ -2784,6 +3029,7 @@ async function initAdmin() {
       await loadPostsData();
       await loadContactRequestsData();
       await loadModerationReports();
+      await loadUserReports();
       renderAnalytics();
     }
   }

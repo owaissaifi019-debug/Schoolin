@@ -1995,3 +1995,39 @@ body.platform-android .mobile-fixed-header {
     transform: translateY(0) !important;
   }
 }
+
+/* ── Premium Filter Tabs (Segmented Control) ── */
+.feed-filter-tabs {
+  display: inline-flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 30px;
+  border: 1px solid #e2e8f0;
+  gap: 2px;
+  align-items: center;
+}
+
+.feed-filter-tab {
+  background: transparent;
+  border: none;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  margin: 0 !important;
+}
+
+.feed-filter-tab:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.feed-filter-tab.active {
+  background: #ffffff;
+  color: #0066c8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+}

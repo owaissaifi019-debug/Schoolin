@@ -173,6 +173,7 @@
       margin: 0 auto;
       padding: 0 64px;
       gap: 48px;
+      align-items: flex-start;
     }
 
     /* ── Left Hero Panel ── */
@@ -182,6 +183,7 @@
       flex-direction: column;
       justify-content: center;
       padding: 64px 0;
+      will-change: transform;
     }
 
     .login-hero-eyebrow {
@@ -721,6 +723,34 @@
       .login-nav-btn-ghost { display: none; }
       .login-form-card { padding: 24px 18px; border-radius: 16px; }
       .role-card-grid { grid-template-columns: repeat(2, 1fr); }
+    /* ── Forgot & Verify Forms ── */
+    .auth-verify-email-form {
+      text-align: center;
+      padding: 20px 10px;
+    }
+    .auth-verify-icon {
+      width: 72px; height: 72px;
+      background: rgba(0,98,227,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      color: #0062e3;
+      font-size: 2rem;
+    }
+    .auth-verify-email-form h2 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .auth-verify-email-form p {
+      color: rgba(255,255,255,0.65);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 24px;
     }
   </style>
 </head>
@@ -959,7 +989,7 @@
             <div class="form-group" style="margin-top: 12px; margin-bottom: 20px;">
               <label class="consent-checkbox-label" for="reg-terms-consent">
                 <input type="checkbox" id="reg-terms-consent" required>
-                <span>I agree to the <a href="terms-and-conditions.html" target="_blank">Terms &amp; Conditions</a> and <a href="privacy-policy.html" target="_blank">Privacy Policy</a></span>
+                <span>I agree to the <a href="terms-and-conditions.html" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a> and <a href="privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a></span>
               </label>
               <span class="error-msg" id="err-reg-terms-consent" style="display: none;"></span>
             </div>
@@ -973,6 +1003,51 @@
               <p>Already have an account? <a href="#" id="switch-to-login">Sign in</a></p>
             </div>
           </form>
+
+          <!-- Forgot Password Form -->
+          <form class="auth-form" id="forgot-form" style="display: none;">
+            <div class="auth-form-header">
+              <h2>Reset Password</h2>
+              <p>Enter your email address and we'll send you a recovery link.</p>
+            </div>
+
+            <div class="form-group">
+              <label for="forgot-email">Email Address</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="forgot-email" placeholder="you@school.edu" required autocomplete="email">
+              </div>
+              <span class="error-msg" id="err-forgot-email"></span>
+            </div>
+
+            <button type="submit" class="auth-submit-btn" id="btn-forgot-submit">
+              <span class="btn-text">Send Reset Link</span>
+              <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
+            </button>
+
+            <div class="auth-form-footer">
+              <p><a href="#" id="forgot-back-to-login">Back to Sign In</a></p>
+            </div>
+          </form>
+
+          <!-- Verify Email Window / Info Panel -->
+          <div class="auth-verify-email-form" id="verify-email-window" style="display: none;">
+            <div class="auth-verify-icon">📬</div>
+            <h2>Verify Your Email</h2>
+            <p>
+              We've sent a verification email to <strong id="verify-email-address" style="color: #fff;">your email</strong>.<br><br>
+              Please check your inbox (and spam folder) and click the activation link to access your account.
+            </p>
+
+            <button type="button" class="auth-submit-btn" id="btn-resend-verification" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); box-shadow: none; margin-bottom: 16px;">
+              <span class="btn-text">Resend Verification Email</span>
+              <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
+            </button>
+
+            <button type="button" class="auth-submit-btn" id="verify-back-to-login">
+              <span>Back to Sign In</span>
+            </button>
+          </div>
 
           <!-- Success State -->
           <div class="auth-success-state" id="auth-success-state" style="display:none;">
@@ -1025,53 +1100,106 @@
       });
     })();
 
-    /* Forgot Password */
-    (function () {
-      var link = document.getElementById('forgot-password-link');
-      if (!link) return;
-      link.addEventListener('click', function (e) {
-        e.preventDefault();
-        var email = document.getElementById('login-email');
-        var emailVal = email ? email.value.trim() : '';
-        if (!emailVal) {
-          var toast = document.getElementById('auth-toast');
-          var msg = document.getElementById('auth-toast-msg');
-          if (toast && msg) {
-            msg.textContent = 'Enter your email address above, then click "Forgot password?" to reset it.';
-            toast.style.display = 'flex';
-            setTimeout(function () { toast.style.display = 'none'; }, 4000);
-          }
-          if (email) email.focus();
+    /* Forgot Password is now handled in login.js */
+  </script>
+
+  <!-- Parallax Scroll: Only on Create Account, right side moves faster to meet left at bottom -->
+  <script>
+    (function() {
+      var hero = document.querySelector('.login-hero');
+      var formPanel = document.querySelector('.login-form-panel');
+      var tabRegister = document.getElementById('tab-register');
+      if (!hero || !formPanel || !tabRegister) return;
+
+      // Add hardware acceleration to both panels
+      hero.style.willChange = 'transform';
+      formPanel.style.willChange = 'transform';
+
+      var cachedL = 0;
+      var cachedR = 0;
+
+      function updateHeights() {
+        // Reset transforms temporarily to read natural layout heights
+        hero.style.transform = 'none';
+        formPanel.style.transform = 'none';
+        
+        cachedL = hero.offsetHeight;
+        cachedR = formPanel.offsetHeight;
+      }
+
+      var ticking = false;
+
+      function applyParallax() {
+        // Only apply parallax if "Create Account" tab is active
+        var isCreateAccountActive = tabRegister.classList.contains('active');
+        if (!isCreateAccountActive) {
+          hero.style.transform = 'none';
+          formPanel.style.transform = 'none';
+          ticking = false;
           return;
         }
-        var client = window.CampusLink && window.CampusLink.supabase;
-        if (client && client.auth && client.auth.resetPasswordForEmail) {
-          client.auth.resetPasswordForEmail(emailVal, {
-            redirectTo: window.location.origin + '/login.html'
-          }).then(function (res) {
-            var toast = document.getElementById('auth-toast');
-            var msg = document.getElementById('auth-toast-msg');
-            if (res.error) {
-              if (toast && msg) {
-                msg.textContent = res.error.message || 'Could not send reset email.';
-                toast.style.display = 'flex';
-                setTimeout(function () { toast.style.display = 'none'; }, 4000);
-              }
-            } else {
-              if (toast && msg) {
-                toast.style.background = 'rgba(0,98,227,0.1)';
-                toast.style.borderColor = 'rgba(0,98,227,0.3)';
-                var icon = toast.querySelector('.auth-toast-icon');
-                if (icon) { icon.textContent = '✓'; icon.style.color = '#b0c6ff'; }
-                msg.style.color = '#b0c6ff';
-                msg.textContent = 'Password reset email sent to ' + emailVal;
-                toast.style.display = 'flex';
-                setTimeout(function () { toast.style.display = 'none'; }, 5000);
-              }
-            }
-          });
+
+        if (!cachedL || !cachedR) {
+          updateHeights();
         }
+
+        var scrollY = window.scrollY || window.pageYOffset;
+        var maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+
+        if (maxScroll <= 0) {
+          hero.style.transform = 'none';
+          formPanel.style.transform = 'none';
+          ticking = false;
+          return;
+        }
+
+        // Percentage of page scrolled (0 to 1)
+        var scrollFraction = Math.min(1, Math.max(0, scrollY / maxScroll));
+
+        // In Create Account, the form panel (Right) is taller.
+        // To avoid empty space at the bottom of the page:
+        // - Right panel (taller) scrolls normally at 1x.
+        // - Left panel (shorter/hero) scrolls slower by translating DOWN.
+        if (cachedR > cachedL) {
+          var diff = cachedR - cachedL;
+          hero.style.transform = 'translateY(' + (scrollFraction * diff) + 'px)';
+          formPanel.style.transform = 'none';
+        } else {
+          hero.style.transform = 'none';
+          formPanel.style.transform = 'none';
+        }
+
+        ticking = false;
+      }
+
+      // Invalidate heights on window resize
+      window.addEventListener('resize', function() {
+        updateHeights();
+        applyParallax();
       });
+
+      // Update immediately when user clicks tabs or toggle links (which change heights)
+      document.querySelectorAll('.auth-tab-btn, #switch-to-register, #switch-to-login').forEach(function(el) {
+        el.addEventListener('click', function() {
+          setTimeout(function() {
+            updateHeights();
+            applyParallax();
+          }, 150); // slight delay to allow CSS transitions to finish and DOM to update layout
+        });
+      });
+
+      window.addEventListener('scroll', function() {
+        if (!ticking) {
+          requestAnimationFrame(applyParallax);
+          ticking = true;
+        }
+      }, { passive: true });
+
+      // Initial layout measure and alignment
+      setTimeout(function() {
+        updateHeights();
+        applyParallax();
+      }, 200);
     })();
   </script>
 

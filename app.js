@@ -414,7 +414,8 @@
   // --- Format Content with Clickable Mention Links ---
   function formatContentWithMentions(content, mentions) {
     if (!content) return '';
-    let formatted = content;
+    const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+    let formatted = escape(content);
     if (!mentions || mentions.length === 0) return formatted;
 
     const sortedMentions = [...mentions].sort((a, b) => {
@@ -427,14 +428,15 @@
       const name = mention.profiles?.full_name || mention.schools?.name;
       if (!name) return;
 
-      const mentionText = `@${name}`;
+      const escapedName = escape(name);
       const url = mention.mentioned_user_id 
         ? `profile.html?id=${mention.mentioned_user_id}` 
         : `school-profile.html?id=${mention.mentioned_school_id}`;
 
-      const escapedMentionText = mentionText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const rawMentionText = `@${name}`;
+      const escapedMentionText = escape(rawMentionText).replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
       const regex = new RegExp(escapedMentionText, 'g');
-      formatted = formatted.replace(regex, `<a href="${url}" class="mention-link" style="color: #0066c8; font-weight: 700; text-decoration: none;">@${name}</a>`);
+      formatted = formatted.replace(regex, `<a href="${url}" class="mention-link" style="color: #0066c8; font-weight: 700; text-decoration: none;">@${escapedName}</a>`);
     });
 
     return formatted;
@@ -1734,7 +1736,8 @@
       
       const type = postAsSelect ? postAsSelect.value : 'personal';
       const topic = postTopicSelectEl ? postTopicSelectEl.value : 'general';
-      const content = newForm.querySelector('#post-content-textarea').value.trim();
+      const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+      const content = sanitize(newForm.querySelector('#post-content-textarea').value);
 
       if (!content) return;
 
@@ -2827,6 +2830,10 @@
       return;
     }
 
+    const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+    const cleanContent = sanitize(content);
+    if (!cleanContent) return;
+
     const submitBtn = inputField.nextElementSibling;
     try {
       if (submitBtn) submitBtn.disabled = true;
@@ -2836,7 +2843,7 @@
         .insert({
           post_id: postId,
           user_id: currentUser.id,
-          content: content
+          content: cleanContent
         })
         .select('id')
         .single();
@@ -2845,7 +2852,7 @@
 
       // Save mentions
       const finalMentions = (inputField.selectedMentions || []).filter(m => {
-        return content.includes(`@${m.name}`);
+        return cleanContent.includes(`@${m.name}`);
       });
 
       for (const mention of finalMentions) {

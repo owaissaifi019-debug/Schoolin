@@ -17,6 +17,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const toastMsg = document.getElementById('auth-toast-msg');
   const toastClose = document.getElementById('auth-toast-close');
 
+  // Forgot & Verify References
+  const forgotForm = document.getElementById('forgot-form');
+  const verifyWindow = document.getElementById('verify-email-window');
+  const forgotPasswordLink = document.getElementById('forgot-password-link');
+  const forgotBackToLogin = document.getElementById('forgot-back-to-login');
+  const verifyBackToLogin = document.getElementById('verify-back-to-login');
+  const btnResendVerification = document.getElementById('btn-resend-verification');
+  const verifyEmailAddress = document.getElementById('verify-email-address');
+
   // ── Toast ───────────────────────────────────────────────
   function showToast(message) {
     if (toastMsg && toast) {
@@ -28,6 +37,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         toast.classList.remove('show');
         setTimeout(() => { toast.style.display = 'none'; }, 300);
       }, 5000);
+    }
+  }
+
+  // Robust Error Message Extractor
+  function getErrorMessage(err, defaultMsg) {
+    if (!err) return defaultMsg;
+
+    // Check for network/fetch errors
+    if (err.name === 'AuthRetryableFetchError' || 
+        err.message === 'Failed to fetch' || 
+        (err.message && err.message.toLowerCase().includes('fetch')) ||
+        (err.stack && err.stack.includes('FetchError'))) {
+      return 'Network connection error: Supabase is unreachable. Please check your internet connection or disable any ad-blockers.';
+    }
+
+    if (typeof err === 'string') {
+      try {
+        const parsed = JSON.parse(err);
+        return getErrorMessage(parsed, defaultMsg);
+      } catch (e) {
+        return err;
+      }
+    }
+    if (err.message) {
+      return getErrorMessage(err.message, defaultMsg);
+    }
+    if (err.error_description) return err.error_description;
+    if (err.error) return getErrorMessage(err.error, defaultMsg);
+    
+    try {
+      const str = JSON.stringify(err);
+      if (str === '{}' || str === '' || str === '[]') return defaultMsg;
+      return str;
+    } catch (e) {
+      return defaultMsg;
     }
   }
 
@@ -60,32 +104,86 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // ── Tab Switching ───────────────────────────────────────
-  function showTab(tab) {
-    if (tab === 'login') {
+  // ── Tab / View Switching ────────────────────────────────
+  function switchView(viewName) {
+    clearAllErrors();
+    const tabToggle = document.querySelector('.auth-tab-toggle');
+    
+    // Hide all views first
+    loginForm.style.display = 'none';
+    loginForm.classList.remove('active');
+    registerForm.style.display = 'none';
+    registerForm.classList.remove('active');
+    if (forgotForm) { forgotForm.style.display = 'none'; forgotForm.classList.remove('active'); }
+    if (verifyWindow) { verifyWindow.style.display = 'none'; verifyWindow.classList.remove('active'); }
+    successState.style.display = 'none';
+    
+    if (viewName === 'login') {
+      loginForm.style.display = 'block';
+      loginForm.classList.add('active');
+      if (tabToggle) tabToggle.style.display = 'flex';
       tabLogin.classList.add('active');
       tabRegister.classList.remove('active');
-      loginForm.classList.add('active');
-      registerForm.classList.remove('active');
-      indicator.style.transform = 'translateX(0)';
-    } else {
+      if (indicator) indicator.style.transform = 'translateX(0)';
+    } else if (viewName === 'register') {
+      registerForm.style.display = 'block';
+      registerForm.classList.add('active');
+      if (tabToggle) tabToggle.style.display = 'flex';
       tabRegister.classList.add('active');
       tabLogin.classList.remove('active');
-      registerForm.classList.add('active');
-      loginForm.classList.remove('active');
-      indicator.style.transform = 'translateX(100%)';
+      if (indicator) indicator.style.transform = 'translateX(100%)';
+    } else if (viewName === 'forgot') {
+      if (forgotForm) {
+        forgotForm.style.display = 'block';
+        forgotForm.classList.add('active');
+      }
+      if (tabToggle) tabToggle.style.display = 'none';
+    } else if (viewName === 'verify') {
+      if (verifyWindow) {
+        verifyWindow.style.display = 'block';
+        verifyWindow.classList.add('active');
+      }
+      if (tabToggle) tabToggle.style.display = 'none';
     }
-    clearAllErrors();
   }
 
-  tabLogin.addEventListener('click', () => showTab('login'));
-  tabRegister.addEventListener('click', () => showTab('register'));
-  switchToRegister.addEventListener('click', (e) => { e.preventDefault(); showTab('register'); });
-  switchToLogin.addEventListener('click', (e) => { e.preventDefault(); showTab('login'); });
+  tabLogin.addEventListener('click', () => switchView('login'));
+  tabRegister.addEventListener('click', () => switchView('register'));
+  switchToRegister.addEventListener('click', (e) => { e.preventDefault(); switchView('register'); });
+  switchToLogin.addEventListener('click', (e) => { e.preventDefault(); switchView('login'); });
+  
+  if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Pre-fill email if typed
+      const typedEmail = document.getElementById('login-email')?.value.trim();
+      const forgotEmailInput = document.getElementById('forgot-email');
+      if (typedEmail && forgotEmailInput) {
+        forgotEmailInput.value = typedEmail;
+      }
+      switchView('forgot');
+    });
+  }
+  
+  if (forgotBackToLogin) {
+    forgotBackToLogin.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchView('login');
+    });
+  }
+  
+  if (verifyBackToLogin) {
+    verifyBackToLogin.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchView('login');
+    });
+  }
 
   // Check URL hash for initial tab
   if (window.location.hash === '#register') {
-    showTab('register');
+    switchView('register');
+  } else {
+    switchView('login');
   }
 
   // ── Error Helpers ───────────────────────────────────────
@@ -315,13 +413,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }, 1500);
     } catch (error) {
       setLoading('btn-login', false);
-      let msg = error.message || 'Login failed. Please check your credentials.';
+      let msg = getErrorMessage(error, 'Login failed. Please check your credentials.');
 
       if (msg === 'Failed to fetch' || msg.toLowerCase().includes('fetch')) {
         msg = 'Connection error. Please configure your actual Supabase URL and Anon Key in supabase.js.';
         showToast(msg);
       } else if (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('verify') || msg.toLowerCase().includes('verification')) {
-        showError('login-email', 'Please verify your email address. Check your inbox for a confirmation link.');
+        if (verifyEmailAddress) verifyEmailAddress.textContent = email;
+        switchView('verify');
       } else if (msg.toLowerCase().includes('email')) {
         showError('login-email', msg);
       } else if (msg.toLowerCase().includes('password') || msg.toLowerCase().includes('credentials')) {
@@ -379,13 +478,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       const typeLabel = auth.getUserTypeLabel(userType);
 
       if (result.emailConfirmationRequired) {
-        document.getElementById('success-title').textContent = 'Verification Email Sent';
-        document.getElementById('success-message').innerHTML = `
-          Account created as <strong>${typeLabel}</strong>! We've sent a verification email to <strong>${email}</strong>.<br><br>
-          Please check your inbox and click the verification link to activate your account.<br><br>
-          <a href="login.html" class="btn btn-secondary" style="display: inline-block; margin-top: 15px; width: auto; padding: 8px 16px;">Return to Sign In</a>
-        `;
+        if (verifyEmailAddress) verifyEmailAddress.textContent = email;
+        switchView('verify');
       } else {
+        registerForm.style.display = 'none';
+        document.querySelector('.auth-tab-toggle').style.display = 'none';
+        successState.style.display = 'flex';
         document.getElementById('success-title').textContent = 'Account Created!';
         document.getElementById('success-message').textContent = `Welcome, ${fullName}! You've joined CampusLink as a ${typeLabel}. Redirecting...`;
 
@@ -394,8 +492,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 2000);
       }
     } catch (error) {
+      console.error('Registration error:', error);
       setLoading('btn-register', false);
-      let msg = error.message || 'Registration failed. Please try again.';
+      let msg = getErrorMessage(error, 'Registration failed. Please try again.');
 
       if (msg === 'Failed to fetch' || msg.toLowerCase().includes('fetch')) {
         msg = 'Connection error. Please configure your actual Supabase URL and Anon Key in supabase.js.';
@@ -409,5 +508,82 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
   });
+
+  // ── Forgot Password Form Submit ──────────────────────────
+  if (forgotForm) {
+    forgotForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAllErrors();
+
+      const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+      const validateEmail = window.CampusLink?.security?.validateEmail || (s => null);
+
+      const email = sanitize(document.getElementById('forgot-email').value);
+      const emailErr = validateEmail(email);
+      if (emailErr) {
+        showError('forgot-email', emailErr);
+        return;
+      }
+
+      setLoading('btn-forgot-submit', true);
+
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/login.html'
+        });
+
+        if (error) throw error;
+
+        showToast('Password reset link sent! Please check your email.');
+        setTimeout(() => {
+          switchView('login');
+        }, 2500);
+      } catch (err) {
+        console.error('Forgot password error:', err);
+        showError('forgot-email', getErrorMessage(err, 'Could not send reset link. Please check your email address.'));
+      } finally {
+        setLoading('btn-forgot-submit', false);
+      }
+    });
+  }
+
+  // ── Resend Email Verification ────────────────────────────
+  if (btnResendVerification) {
+    btnResendVerification.addEventListener('click', async () => {
+      const email = verifyEmailAddress ? verifyEmailAddress.textContent.trim() : '';
+      if (!email) {
+        showToast('No email address found to verify.');
+        return;
+      }
+
+      setLoading('btn-resend-verification', true);
+
+      try {
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email: email,
+          options: {
+            emailRedirectTo: window.location.origin + '/login.html'
+          }
+        });
+
+        if (error) throw error;
+
+        showToast('Verification email resent successfully!');
+      } catch (err) {
+        console.error('Resend verification error:', err);
+        showToast(getErrorMessage(err, 'Failed to resend verification email.'));
+      } finally {
+        setLoading('btn-resend-verification', false);
+      }
+    });
+  }
+
+  // Run on page load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    // If DOMContentLoaded fired already, init()
+  }
 
 });

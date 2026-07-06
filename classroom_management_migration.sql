@@ -74,25 +74,32 @@ ALTER TABLE public.classroom_students ENABLE ROW LEVEL SECURITY;
 -- ── RLS Policies ──
 
 -- Everyone can read academic sessions & classrooms
+DROP POLICY IF EXISTS "Academic sessions are viewable by everyone" ON public.academic_years;
 CREATE POLICY "Academic sessions are viewable by everyone" ON public.academic_years FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Classrooms are viewable by everyone" ON public.classrooms;
 CREATE POLICY "Classrooms are viewable by everyone" ON public.classrooms FOR SELECT USING (true);
 
 -- School admins can manage academic years
+DROP POLICY IF EXISTS "School admins can manage academic years" ON public.academic_years;
 CREATE POLICY "School admins can manage academic years" ON public.academic_years
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.schools WHERE schools.id = academic_years.school_id AND schools.admin_user_id = auth.uid())
   );
 
 -- School admins can manage classrooms
+DROP POLICY IF EXISTS "School admins can manage classrooms" ON public.classrooms;
 CREATE POLICY "School admins can manage classrooms" ON public.classrooms
   FOR ALL USING (
     EXISTS (SELECT 1 FROM public.schools WHERE schools.id = classrooms.school_id AND schools.admin_user_id = auth.uid())
   );
 
 -- Teacher assignments are viewable by everyone in the school (teachers, admins, students)
+DROP POLICY IF EXISTS "Teacher assignments are viewable by everyone" ON public.classroom_teacher_assignments;
 CREATE POLICY "Teacher assignments are viewable by everyone" ON public.classroom_teacher_assignments FOR SELECT USING (true);
 
 -- School admins can manage teacher assignments
+DROP POLICY IF EXISTS "School admins can manage teacher assignments" ON public.classroom_teacher_assignments;
 CREATE POLICY "School admins can manage teacher assignments" ON public.classroom_teacher_assignments
   FOR ALL USING (
     EXISTS (
@@ -104,9 +111,11 @@ CREATE POLICY "School admins can manage teacher assignments" ON public.classroom
   );
 
 -- Subject teachers mapping viewable by everyone
+DROP POLICY IF EXISTS "Subject teachers are viewable by everyone" ON public.classroom_subject_teachers;
 CREATE POLICY "Subject teachers are viewable by everyone" ON public.classroom_subject_teachers FOR SELECT USING (true);
 
 -- School admins can manage subject teachers
+DROP POLICY IF EXISTS "School admins can manage subject teachers" ON public.classroom_subject_teachers;
 CREATE POLICY "School admins can manage subject teachers" ON public.classroom_subject_teachers
   FOR ALL USING (
     EXISTS (
@@ -118,9 +127,11 @@ CREATE POLICY "School admins can manage subject teachers" ON public.classroom_su
   );
 
 -- Classroom students viewable by everyone
+DROP POLICY IF EXISTS "Classroom students are viewable by everyone" ON public.classroom_students;
 CREATE POLICY "Classroom students are viewable by everyone" ON public.classroom_students FOR SELECT USING (true);
 
 -- School admins can manage classroom students
+DROP POLICY IF EXISTS "School admins can manage classroom students" ON public.classroom_students;
 CREATE POLICY "School admins can manage classroom students" ON public.classroom_students
   FOR ALL USING (
     EXISTS (

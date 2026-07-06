@@ -445,6 +445,20 @@
               </div>
             </section>
 
+            <!-- Experience Section (LinkedIn-style) -->
+            <section class="profile-section" id="section-experience-card" style="display:none;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0;">
+                <h2 class="section-title" style="margin-bottom:0;">Experience</h2>
+                <button id="exp-add-inline-btn" class="exp-add-btn" style="display:none;" title="Add Experience">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+              </div>
+              <div id="profile-experience-list" class="experience-timeline">
+                <!-- Experience cards injected here -->
+                <p class="empty-section-msg">No experience added yet.</p>
+              </div>
+            </section>
+
             <!-- Recent Activity Section (Mobile only) -->
             <section class="profile-section recent-activity-section" id="recent-activity-section">
               <h2 class="section-title">Recent Activity</h2>
@@ -559,6 +573,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h4"/></svg>
           <span>Certificates</span>
         </button>
+        <button class="epm-tab" data-tab="tab-experience">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+          <span>Experience</span>
+        </button>
       </div>
 
       <!-- Form Content -->
@@ -670,6 +688,73 @@
                 <!-- Dynamically populated -->
               </ul>
             </div>
+          </div>
+
+          <!-- Tab 5: Experience -->
+          <div class="tab-pane" id="tab-experience">
+            <div class="epm-section-title">
+              <h3>Experience</h3>
+              <p>Add work, internship, volunteer, or academic experience (LinkedIn-style).</p>
+            </div>
+
+            <!-- Add Entry Form -->
+            <div class="exp-form-card" id="exp-add-form-area">
+              <div class="epm-field-row">
+                <div class="epm-field">
+                  <label for="exp-title">Title / Position <span class="epm-required">*</span></label>
+                  <input type="text" id="exp-title" class="epm-input" placeholder="e.g. Software Intern, Head Boy">
+                </div>
+                <div class="epm-field">
+                  <label for="exp-type">Type</label>
+                  <select id="exp-type" class="epm-input">
+                    <option value="work">Work / Job</option>
+                    <option value="internship">Internship</option>
+                    <option value="volunteer">Volunteer</option>
+                    <option value="education">Education / Course</option>
+                    <option value="project">Project</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div class="epm-field-row">
+                <div class="epm-field">
+                  <label for="exp-company">Company / Organisation / School</label>
+                  <input type="text" id="exp-company" class="epm-input" placeholder="e.g. Google, Delhi Public School">
+                </div>
+                <div class="epm-field">
+                  <label for="exp-location">Location</label>
+                  <input type="text" id="exp-location" class="epm-input" placeholder="e.g. Remote, New Delhi">
+                </div>
+              </div>
+              <div class="epm-field-row">
+                <div class="epm-field">
+                  <label for="exp-start">Start Date</label>
+                  <input type="month" id="exp-start" class="epm-input">
+                </div>
+                <div class="epm-field">
+                  <label for="exp-end">End Date</label>
+                  <input type="month" id="exp-end" class="epm-input">
+                </div>
+              </div>
+              <div class="epm-field" style="margin-top:2px;">
+                <label class="exp-current-label">
+                  <input type="checkbox" id="exp-current"> &nbsp;I currently work / study here
+                </label>
+              </div>
+              <div class="epm-field">
+                <label for="exp-description">Description</label>
+                <textarea id="exp-description" rows="3" class="epm-input epm-textarea" placeholder="Briefly describe your role, responsibilities, or what you learned..."></textarea>
+              </div>
+              <button type="button" id="exp-add-entry-btn" class="epm-add-btn" style="margin-top:6px; width:100%; justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Add Entry</span>
+              </button>
+            </div>
+
+            <!-- Editable List -->
+            <ul class="exp-editable-list" id="experience-editable-list">
+              <!-- Populated dynamically -->
+            </ul>
           </div>
 
         </div>

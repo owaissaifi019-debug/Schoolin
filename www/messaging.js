@@ -356,7 +356,11 @@
       let lastMsgTime = '';
       if (conv.messages && conv.messages.length > 0) {
         const lastMsg = conv.messages[conv.messages.length - 1];
-        lastMsgText = lastMsg.message.startsWith('[Inquiry:') ? lastMsg.message.substring(lastMsg.message.indexOf(']') + 2) : lastMsg.message;
+        let rawText = lastMsg.message.startsWith('[Inquiry:') ? lastMsg.message.substring(lastMsg.message.indexOf(']') + 2) : lastMsg.message;
+        // Sanitize: strip HTML tags and collapse whitespace
+        rawText = rawText.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        // Truncate to 80 chars for sidebar preview
+        lastMsgText = rawText.length > 80 ? rawText.substring(0, 80) + '…' : rawText;
         
         const msgDate = new Date(lastMsg.created_at);
         const today = new Date();
@@ -434,7 +438,7 @@
             <span class="conversation-name">${other.name}${verificationBadgeHtml}</span>
             <span class="conversation-time">${lastMsgTime}</span>
           </div>
-          <p class="conversation-last-msg">${lastMsgText}</p>
+          <p class="conversation-last-msg" data-last-msg></p>
           <div class="conversation-badges-row">
             ${categoryBadgeHtml}
             ${statusBadge}
@@ -444,6 +448,9 @@
       `;
 
       item.addEventListener('click', () => selectConversation(conv.id));
+      // Safely set last message preview text via textContent (prevents XSS / raw code display)
+      const lastMsgEl = item.querySelector('[data-last-msg]');
+      if (lastMsgEl) lastMsgEl.textContent = lastMsgText;
       conversationList.appendChild(item);
     });
   }
