@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnResendVerification = document.getElementById('btn-resend-verification');
   const verifyEmailAddress = document.getElementById('verify-email-address');
 
+  // Update Password References
+  const updatePasswordForm = document.getElementById('update-password-form');
+
   // ── Toast ───────────────────────────────────────────────
   function showToast(message) {
     if (toastMsg && toast) {
@@ -90,9 +93,14 @@ document.addEventListener('DOMContentLoaded', async () => {
      return;
   }
 
-  // If already logged in, redirect
+  // Check URL hash/params for password recovery flow
+  const isRecovery = window.location.hash.includes('type=recovery') || 
+                     window.location.hash.includes('recovery') || 
+                     window.location.search.includes('type=recovery');
+
+  // If already logged in, redirect (skip if in password recovery flow)
   const existingSession = await auth.getSession();
-  if (existingSession) {
+  if (existingSession && !isRecovery) {
     const role = await auth.getUserRole();
     if (role === 'school_admin') {
       window.location.href = 'dashboard.html';
@@ -116,6 +124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     registerForm.classList.remove('active');
     if (forgotForm) { forgotForm.style.display = 'none'; forgotForm.classList.remove('active'); }
     if (verifyWindow) { verifyWindow.style.display = 'none'; verifyWindow.classList.remove('active'); }
+    if (updatePasswordForm) { updatePasswordForm.style.display = 'none'; updatePasswordForm.classList.remove('active'); }
     successState.style.display = 'none';
     
     if (viewName === 'login') {
@@ -142,6 +151,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (verifyWindow) {
         verifyWindow.style.display = 'block';
         verifyWindow.classList.add('active');
+      }
+      if (tabToggle) tabToggle.style.display = 'none';
+    } else if (viewName === 'update') {
+      if (updatePasswordForm) {
+        updatePasswordForm.style.display = 'block';
+        updatePasswordForm.classList.add('active');
       }
       if (tabToggle) tabToggle.style.display = 'none';
     }
@@ -179,8 +194,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Check URL hash for initial tab
-  if (window.location.hash === '#register') {
+  // Check URL hash for initial tab or recovery flow
+  if (isRecovery) {
+    // Clear hash parameters to clean URL bar but maintain session
+    try {
+      history.replaceState(null, null, ' ');
+    } catch (e) {
+      window.location.hash = '';
+    }
+    switchView('update');
+  } else if (window.location.hash === '#register') {
     switchView('register');
   } else {
     switchView('login');
@@ -575,6 +598,68 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast(getErrorMessage(err, 'Failed to resend verification email.'));
       } finally {
         setLoading('btn-resend-verification', false);
+      }
+    });
+  }
+
+  // ── Update Password Form Submit ──────────────────────────
+  if (updatePasswordForm) {
+    updatePasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAllErrors();
+
+      const newPassword = document.getElementById('update-password').value;
+      const confirmPassword = document.getElementById('update-confirm-password').value;
+
+      let hasError = false;
+      if (!newPassword) {
+        showError('update-password', 'Password is required');
+        hasError = true;
+      } else if (newPassword.length < 6) {
+        showError('update-password', 'Password must be at least 6 characters');
+        hasError = true;
+      }
+
+      if (newPassword !== confirmPassword) {
+        showError('update-confirm-password', 'Passwords do not match');
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      setLoading('btn-update-password-submit', true);
+
+      try {
+        const { error } = await supabase.auth.updateUser({
+          password: newPassword
+        });
+
+        if (error) throw error;
+
+        // Show success toast and redirect
+        showToast('Password updated successfully! Redirecting...');
+        
+        // Fetch profile to redirect correctly
+        const user = await auth.getUser();
+        let redirectPage = 'index.html';
+        if (user) {
+          const profile = await auth.getProfile(user.id);
+          const platformRole = profile?.platform_role || 'user';
+          if (platformRole === 'super_admin') {
+            redirectPage = 'admin/index.html';
+          } else if (platformRole === 'school_admin') {
+            redirectPage = 'dashboard.html';
+          }
+        }
+        
+        setTimeout(() => {
+          window.location.href = redirectPage;
+        }, 2000);
+      } catch (err) {
+        console.error('Update password error:', err);
+        showError('update-password', getErrorMessage(err, 'Could not update password. Please try again.'));
+      } finally {
+        setLoading('btn-update-password-submit', false);
       }
     });
   }
