@@ -95,13 +95,42 @@
       try {
         const session = await auth.getSession();
         if (session && session.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
+          let profile = null;
+          try {
+            const { data } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .maybeSingle();
+            profile = data;
+          } catch (e) {
+            console.warn('Error fetching profile from Supabase:', e);
+          }
 
-          if (profile && profile.user_type === 'teacher') {
+          if (!profile) {
+            const stored = localStorage.getItem('campuslink_profile');
+            if (stored) {
+              try {
+                profile = JSON.parse(stored);
+              } catch (e) {}
+            }
+          }
+
+          if (profile) {
+            const userType = profile.user_type || profile.userType || 'student';
+            const platformRole = profile.platform_role || profile.platformRole || 'user';
+            
+            const isTeacher = userType === 'teacher';
+            const isAdmin = platformRole === 'school_admin' || platformRole === 'super_admin' || userType === 'school_representative';
+
+            if (!isTeacher && !isAdmin) {
+              alert('Access Denied: You do not have access to the Teacher Classroom Workspace.');
+              window.location.replace('index.html');
+              return;
+            }
+          }
+
+          if (profile && (profile.user_type === 'teacher' || profile.userType === 'teacher')) {
             // Get teacher verification status from teachers table
             const { data: dbTeacher } = await supabase
               .from('teachers')

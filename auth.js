@@ -329,12 +329,18 @@
         let classroomHref = 'classroom.html';
         let label = 'Classroom';
         let isVerifiedTeacher = true; // default for non-teachers
+        let lockedTitle = 'Join a school to access Classrooms.';
 
-        if (userType === 'teacher') {
+        const isDisallowedRole = (userType === 'student' || userType === 'parent' || userType === 'alumni');
+
+        if (isDisallowedRole) {
+          isVerifiedTeacher = false;
+        } else if (userType === 'teacher') {
           isVerifiedTeacher = false; // default to false for teachers
-          
+          let isVerifiedStatus = false;
+          let assignedClassroomId = null;
+
           // 1. Query teacher profile from database
-          let dbTeacher = null;
           try {
             const { data, error } = await supabase
               .from('teachers')
@@ -342,15 +348,13 @@
               .eq('user_id', profile.id)
               .maybeSingle();
             if (!error && data) {
-              dbTeacher = data;
-              isVerifiedTeacher = dbTeacher.verification_status === 'verified';
+              isVerifiedStatus = data.verification_status === 'verified';
             }
           } catch (e) {
             console.warn('Error fetching teacher info:', e);
           }
 
-          // 2. Query assigned classroom from classrooms table in database
-          let assignedClassroom = null;
+          // 2. Query assigned classroom from classrooms table in database (Class Teacher)
           try {
             const { data, error } = await supabase
               .from('classrooms')
@@ -359,19 +363,31 @@
               .eq('is_archived', false)
               .maybeSingle();
             if (!error && data) {
-              assignedClassroom = data;
+              assignedClassroomId = data.id;
             }
           } catch (e) {
             console.warn('Error fetching assigned classroom:', e);
           }
 
-          if (assignedClassroom) {
-            isVerifiedTeacher = true; // If a class is assigned, teacher is authorized to access
-            classroomHref = `classroom.html?classroom=${assignedClassroom.id}`;
+          // 3. Query assigned classrooms where they are Subject Teacher
+          if (!assignedClassroomId) {
+            try {
+              const { data, error } = await supabase
+                .from('classroom_subject_teachers')
+                .select('classroom_id')
+                .eq('teacher_id', profile.id)
+                .limit(1)
+                .maybeSingle();
+              if (!error && data) {
+                assignedClassroomId = data.classroom_id;
+              }
+            } catch (e) {
+              console.warn('Error fetching assigned subject classroom:', e);
+            }
           }
 
           // Fallback to local storage if DB query yielded nothing
-          if (!assignedClassroom) {
+          if (!assignedClassroomId) {
             const displayName = profile?.full_name || user.user_metadata?.full_name || user.email || 'teacher';
             const teachersRaw = localStorage.getItem('campuslink_teachers');
             const teachers = teachersRaw ? JSON.parse(teachersRaw) : [];
@@ -381,23 +397,41 @@
             );
 
             if (matchingTeacher) {
-              if (matchingTeacher.verificationStatus === 'verified') {
-                isVerifiedTeacher = true;
-              }
+              isVerifiedStatus = matchingTeacher.verificationStatus === 'verified';
               const classroomsRaw = localStorage.getItem('campuslink_classrooms');
               const classrooms = classroomsRaw ? JSON.parse(classroomsRaw) : [];
               const assignedClassroomLocal = classrooms.find(cr => cr.classTeacherId === matchingTeacher.id);
               if (assignedClassroomLocal) {
-                classroomHref = `classroom.html?classroom=${assignedClassroomLocal.id}`;
+                assignedClassroomId = assignedClassroomLocal.id;
+              } else {
+                const subjectsRaw = localStorage.getItem('campuslink_classroom_subjects');
+                const subjects = subjectsRaw ? JSON.parse(subjectsRaw) : [];
+                const assignedSubLocal = subjects.find(cs => cs.teacherId === matchingTeacher.id && cs.status === 'active');
+                if (assignedSubLocal) {
+                  assignedClassroomId = assignedSubLocal.classroomId;
+                }
               }
             } else if (profile?.school_id || (displayName && displayName.toLowerCase() === 'teacher')) {
-              isVerifiedTeacher = true;
+              isVerifiedStatus = true;
               const classroomsRaw = localStorage.getItem('campuslink_classrooms');
               const classrooms = classroomsRaw ? JSON.parse(classroomsRaw) : [];
               const assignedClassroomLocal = classrooms[0];
               if (assignedClassroomLocal) {
-                classroomHref = `classroom.html?classroom=${assignedClassroomLocal.id}`;
+                assignedClassroomId = assignedClassroomLocal.id;
               }
+            }
+          }
+
+          if (isVerifiedStatus && assignedClassroomId) {
+            isVerifiedTeacher = true;
+            classroomHref = `classroom.html?classroom=${assignedClassroomId}`;
+          } else {
+            isVerifiedTeacher = false;
+            classroomHref = '#';
+            if (isVerifiedStatus && !assignedClassroomId) {
+              lockedTitle = 'Waiting for classroom assignment from admin.';
+            } else {
+              lockedTitle = 'Join a school to access Classrooms.';
             }
           }
         }
@@ -405,7 +439,10 @@
         const navLinkItem = document.getElementById('nav-classroom-item');
         const unverifiedNotice = document.getElementById('nav-classroom-unverified');
 
-        if (userType === 'teacher' && !isVerifiedTeacher) {
+        if (isDisallowedRole) {
+          if (navLinkItem) navLinkItem.remove();
+          if (unverifiedNotice) unverifiedNotice.remove();
+        } else if (userType === 'teacher' && !isVerifiedTeacher) {
           if (navLinkItem) navLinkItem.remove();
 
           if (!unverifiedNotice) {
@@ -415,7 +452,7 @@
               noticeLi.id = 'nav-classroom-unverified';
               noticeLi.className = 'member-only nav-classroom-item';
               noticeLi.style.cssText = 'display: inline-flex !important; opacity: 0.5;';
-              noticeLi.title = 'Join a school to access Classrooms.';
+              noticeLi.title = lockedTitle;
               noticeLi.innerHTML = `
                 <a href="schools.html" id="nav-classroom-link-unverified" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--text-muted); position: relative;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 3px;">
@@ -430,6 +467,7 @@
             }
           } else {
             unverifiedNotice.style.setProperty('display', 'inline-flex', 'important');
+            unverifiedNotice.title = lockedTitle;
           }
         } else {
           if (unverifiedNotice) unverifiedNotice.remove();
@@ -591,13 +629,20 @@
 
           const meMenuClassroom = document.getElementById('me-menu-classroom');
           if (meMenuClassroom) {
-            if (userType === 'teacher' && !isVerifiedTeacher) {
+            if (isDisallowedRole) {
               meMenuClassroom.style.display = 'none';
-              if (!document.getElementById('me-menu-classroom-unverified-notice')) {
+              const notice = document.getElementById('me-menu-classroom-unverified-notice');
+              if (notice) notice.remove();
+            } else if (userType === 'teacher' && !isVerifiedTeacher) {
+              meMenuClassroom.style.display = 'none';
+              const existingNotice = document.getElementById('me-menu-classroom-unverified-notice');
+              if (existingNotice) {
+                existingNotice.innerHTML = `<span>⚠️</span> ${lockedTitle}`;
+              } else {
                 const notice = document.createElement('div');
                 notice.id = 'me-menu-classroom-unverified-notice';
                 notice.style.cssText = 'background: #FFFBEB; border: 1px dashed #F59E0B; border-radius: 8px; padding: 10px; margin: 8px; font-size: 0.75rem; color: #B45309; font-weight: 600; text-align: center; display: flex; align-items: center; gap: 6px; justify-content: center;';
-                notice.innerHTML = '<span>⚠️</span> Join a school to access Classrooms.';
+                notice.innerHTML = `<span>⚠️</span> ${lockedTitle}`;
                 meMenuClassroom.parentNode.insertBefore(notice, meMenuClassroom);
               }
             } else {

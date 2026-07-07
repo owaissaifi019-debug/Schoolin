@@ -214,11 +214,65 @@
         });
       }
 
-      // Report User item
+      // Report User item & Modal Setup
       const ddReport = document.getElementById('dropdown-report-btn');
+      const reportUserModal = document.getElementById('report-user-modal');
+      const reportUserForm = document.getElementById('report-user-form');
+      const reportUserCancel = document.getElementById('report-user-modal-cancel');
+      const reportUserClose = document.getElementById('report-user-modal-close');
+      const reportUserReasonSelect = document.getElementById('report-user-reason-select');
+      const reportUserDetailsTextarea = document.getElementById('report-user-details-textarea');
+      const reportUserDetailsRequired = document.getElementById('report-user-details-required');
+
+      function closeReportUserModal() {
+        if (reportUserModal) {
+          reportUserModal.classList.remove('active');
+          reportUserModal.style.display = 'none';
+        }
+        if (reportUserForm) reportUserForm.reset();
+        if (reportUserDetailsTextarea) reportUserDetailsTextarea.required = false;
+        if (reportUserDetailsRequired) reportUserDetailsRequired.style.display = 'none';
+        document.body.style.overflow = 'auto';
+      }
+
+      if (reportUserReasonSelect && reportUserDetailsTextarea && reportUserDetailsRequired) {
+        reportUserReasonSelect.addEventListener('change', () => {
+          if (reportUserReasonSelect.value === 'Other') {
+            reportUserDetailsTextarea.required = true;
+            reportUserDetailsRequired.style.display = 'inline';
+          } else {
+            reportUserDetailsTextarea.required = false;
+            reportUserDetailsRequired.style.display = 'none';
+          }
+        });
+      }
+
+      if (reportUserCancel) reportUserCancel.addEventListener('click', closeReportUserModal);
+      if (reportUserClose) reportUserClose.addEventListener('click', closeReportUserModal);
+      if (reportUserModal) {
+        reportUserModal.addEventListener('click', (e) => {
+          if (e.target === reportUserModal) closeReportUserModal();
+        });
+      }
+
       if (ddReport) {
-        ddReport.addEventListener('click', async () => {
+        ddReport.addEventListener('click', () => {
           closeDropdown();
+          if (!currentUser) {
+            showToast('You must be logged in to report a user.', 'error');
+            return;
+          }
+          if (reportUserModal) {
+            reportUserModal.classList.add('active');
+            reportUserModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+          }
+        });
+      }
+
+      if (reportUserForm) {
+        reportUserForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
           if (!currentUser) {
             showToast('You must be logged in to report a user.', 'error');
             return;
@@ -226,16 +280,20 @@
           const sb = getSupabase();
           if (!sb) return;
 
+          const reason = reportUserReasonSelect ? reportUserReasonSelect.value : 'Inappropriate profile / behavior';
+          const details = reportUserDetailsTextarea ? reportUserDetailsTextarea.value : 'Reported from profile dropdown menu';
+
           try {
             const { error } = await sb.from('user_reports').insert({
               reported_user_id: profileId,
               reporter_id: currentUser.id,
-              reason: 'Inappropriate profile / behavior',
-              details: 'Reported from profile dropdown menu'
+              reason: reason,
+              details: details || 'No additional details provided.'
             });
 
             if (error) throw error;
-            showToast('Report submitted. Our team will review it shortly.');
+            showToast('User report submitted. Our team will review it shortly.');
+            closeReportUserModal();
           } catch (err) {
             console.error('Failed to submit user report:', err);
             showToast('Failed to submit report: ' + err.message, 'error');

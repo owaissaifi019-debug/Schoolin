@@ -326,59 +326,146 @@
         const profile = await getProfile(user.id);
         const userType = profile?.user_type || user.user_metadata?.user_type || 'student';
 
-        let classroomHref = 'dashboard.html';
+        let classroomHref = 'classroom.html';
         let label = 'Classroom';
+        let isVerifiedTeacher = true; // default for non-teachers
+        let lockedTitle = 'Join a school to access Classrooms.';
 
-        if (userType === 'teacher') {
+        const isDisallowedRole = (userType === 'student' || userType === 'parent' || userType === 'alumni');
+
+        if (isDisallowedRole) {
+          isVerifiedTeacher = false;
+        } else if (userType === 'teacher') {
+          isVerifiedTeacher = false; // default to false for teachers
+          let isVerifiedStatus = false;
+          let assignedClassroomId = null;
+
+          const displayName = profile?.full_name || user.user_metadata?.full_name || user.email || 'teacher';
           const teachersRaw = localStorage.getItem('campuslink_teachers');
           const teachers = teachersRaw ? JSON.parse(teachersRaw) : [];
-          const displayName = profile?.full_name || user.user_metadata?.full_name || user.email || 'teacher';
           const matchingTeacher = teachers.find(t => 
             t.fullName.toLowerCase() === displayName?.toLowerCase() || 
             t.email?.toLowerCase() === user.email?.toLowerCase()
           );
 
           if (matchingTeacher) {
+            isVerifiedStatus = matchingTeacher.verificationStatus === 'verified';
             const classroomsRaw = localStorage.getItem('campuslink_classrooms');
             const classrooms = classroomsRaw ? JSON.parse(classroomsRaw) : [];
-            const assignedClassroom = classrooms.find(cr => cr.classTeacherId === matchingTeacher.id);
-
-            if (assignedClassroom) {
+            const assignedClassroomLocal = classrooms.find(cr => cr.classTeacherId === matchingTeacher.id);
+            if (assignedClassroomLocal) {
+              assignedClassroomId = assignedClassroomLocal.id;
               const classesRaw = localStorage.getItem('campuslink_classes');
               const classes = classesRaw ? JSON.parse(classesRaw) : [];
-              const cls = classes.find(c => c.id === assignedClassroom.classId);
+              const cls = classes.find(c => c.id === assignedClassroomLocal.classId);
               const className = cls ? cls.name : 'Class';
-              
-              label = `Classroom (${className}-${assignedClassroom.sectionId})`;
-              classroomHref = `dashboard.html?classroom=${assignedClassroom.id}`;
+              label = `Classroom (${className}-${assignedClassroomLocal.sectionId})`;
+            } else {
+              const subjectsRaw = localStorage.getItem('campuslink_classroom_subjects');
+              const subjects = subjectsRaw ? JSON.parse(subjectsRaw) : [];
+              const assignedSubLocal = subjects.find(cs => cs.teacherId === matchingTeacher.id && cs.status === 'active');
+              if (assignedSubLocal) {
+                assignedClassroomId = assignedSubLocal.classroomId;
+                const cr = classrooms.find(c => c.id === assignedSubLocal.classroomId);
+                const classesRaw = localStorage.getItem('campuslink_classes');
+                const classes = classesRaw ? JSON.parse(classesRaw) : [];
+                const cls = cr ? classes.find(c => c.id === cr.classId) : null;
+                const className = cls ? cls.name : 'Class';
+                const sectionId = cr ? (cr.sectionId || cr.section || 'A') : 'A';
+                label = `Classroom (${className}-${sectionId})`;
+              }
+            }
+          } else if (profile?.school_id || (displayName && displayName.toLowerCase() === 'teacher')) {
+            isVerifiedStatus = true;
+            const classroomsRaw = localStorage.getItem('campuslink_classrooms');
+            const classrooms = classroomsRaw ? JSON.parse(classroomsRaw) : [];
+            const assignedClassroomLocal = classrooms[0];
+            if (assignedClassroomLocal) {
+              assignedClassroomId = assignedClassroomLocal.id;
+              const classesRaw = localStorage.getItem('campuslink_classes');
+              const classes = classesRaw ? JSON.parse(classesRaw) : [];
+              const cls = classes.find(c => c.id === assignedClassroomLocal.classId);
+              const className = cls ? cls.name : 'Class';
+              label = `Classroom (${className}-${assignedClassroomLocal.sectionId})`;
+            }
+          }
+
+          if (isVerifiedStatus && assignedClassroomId) {
+            isVerifiedTeacher = true;
+            classroomHref = `classroom.html?classroom=${assignedClassroomId}`;
+          } else {
+            isVerifiedTeacher = false;
+            classroomHref = '#';
+            if (isVerifiedStatus && !assignedClassroomId) {
+              lockedTitle = 'Waiting for classroom assignment from admin.';
+            } else {
+              lockedTitle = 'Join a school to access Classrooms.';
             }
           }
         }
 
         const navLinkItem = document.getElementById('nav-classroom-item');
-        if (!navLinkItem) {
-          const msgItem = document.querySelector('.nav-msg-item');
-          if (msgItem) {
-            const classroomLi = document.createElement('li');
-            classroomLi.id = 'nav-classroom-item';
-            classroomLi.className = 'member-only nav-classroom-item';
-            classroomLi.innerHTML = `
-              <a href="${classroomHref}" id="nav-classroom-link">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 3px;">
-                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
-                </svg>
-                <span>${label}</span>
-              </a>
-            `;
-            msgItem.parentNode.insertBefore(classroomLi, msgItem.nextSibling);
+        const unverifiedNotice = document.getElementById('nav-classroom-unverified');
+
+        if (isDisallowedRole) {
+          if (navLinkItem) navLinkItem.remove();
+          if (unverifiedNotice) unverifiedNotice.remove();
+        } else if (userType === 'teacher' && !isVerifiedTeacher) {
+          if (navLinkItem) navLinkItem.remove();
+
+          if (!unverifiedNotice) {
+            const msgItem = document.querySelector('.nav-msg-item');
+            if (msgItem) {
+              const noticeLi = document.createElement('li');
+              noticeLi.id = 'nav-classroom-unverified';
+              noticeLi.className = 'member-only nav-classroom-item';
+              noticeLi.style.cssText = 'display: inline-flex !important; opacity: 0.5;';
+              noticeLi.title = lockedTitle;
+              noticeLi.innerHTML = `
+                <a href="schools.html" id="nav-classroom-link-unverified" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--text-muted); position: relative;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 3px;">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
+                  </svg>
+                  <span style="position: absolute; top: -5px; right: -5px; font-size: 0.65rem; background: var(--border-color); padding: 1px 3px; border-radius: 4px; border: 1px solid var(--white); line-height: 1;">🔒</span>
+                  <span style="font-size: 0.72rem; font-weight: 600;">Classroom</span>
+                </a>
+              `;
+              msgItem.parentNode.insertBefore(noticeLi, msgItem.nextSibling);
+            }
+          } else {
+            unverifiedNotice.style.setProperty('display', 'inline-flex', 'important');
+            unverifiedNotice.title = lockedTitle;
           }
         } else {
-          const a = document.getElementById('nav-classroom-link');
-          if (a) {
-            a.href = classroomHref;
-            const span = a.querySelector('span');
-            if (span) span.textContent = label;
+          if (unverifiedNotice) unverifiedNotice.remove();
+
+          if (!navLinkItem) {
+            const msgItem = document.querySelector('.nav-msg-item');
+            if (msgItem) {
+              const classroomLi = document.createElement('li');
+              classroomLi.id = 'nav-classroom-item';
+              classroomLi.className = 'member-only nav-classroom-item';
+              classroomLi.style.cssText = 'display: inline-flex !important;';
+              classroomLi.innerHTML = `
+                <a href="${classroomHref}" id="nav-classroom-link">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 3px;">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
+                  </svg>
+                  <span>${label}</span>
+                </a>
+              `;
+              msgItem.parentNode.insertBefore(classroomLi, msgItem.nextSibling);
+            }
+          } else {
+            navLinkItem.style.setProperty('display', 'inline-flex', 'important');
+            const a = document.getElementById('nav-classroom-link');
+            if (a) {
+              a.href = classroomHref;
+              const span = a.querySelector('span');
+              if (span) span.textContent = label;
+            }
           }
         }
 
@@ -548,6 +635,31 @@
                   }
                 }
               });
+            }
+          }
+
+          const meMenuClassroom = document.getElementById('me-menu-classroom');
+          if (meMenuClassroom) {
+            if (isDisallowedRole) {
+              meMenuClassroom.style.display = 'none';
+              const notice = document.getElementById('me-menu-classroom-unverified-notice');
+              if (notice) notice.remove();
+            } else if (userType === 'teacher' && !isVerifiedTeacher) {
+              meMenuClassroom.style.display = 'none';
+              const existingNotice = document.getElementById('me-menu-classroom-unverified-notice');
+              if (existingNotice) {
+                existingNotice.innerHTML = `<span>⚠️</span> ${lockedTitle}`;
+              } else {
+                const notice = document.createElement('div');
+                notice.id = 'me-menu-classroom-unverified-notice';
+                notice.style.cssText = 'background: #FFFBEB; border: 1px dashed #F59E0B; border-radius: 8px; padding: 10px; margin: 8px; font-size: 0.75rem; color: #B45309; font-weight: 600; text-align: center; display: flex; align-items: center; gap: 6px; justify-content: center;';
+                notice.innerHTML = `<span>⚠️</span> ${lockedTitle}`;
+                meMenuClassroom.parentNode.insertBefore(notice, meMenuClassroom);
+              }
+            } else {
+              meMenuClassroom.style.display = 'flex';
+              const notice = document.getElementById('me-menu-classroom-unverified-notice');
+              if (notice) notice.remove();
             }
           }
 
