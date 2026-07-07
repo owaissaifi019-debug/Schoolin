@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>
+    if (window.location.hash.includes('recovery') || window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) {
+      sessionStorage.setItem('is_recovery_flow', 'true');
+    }
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login | CampusLink</title>
   <meta name="description" content="Login or create your account on CampusLink — India's premier school networking platform for students, teachers, parents, alumni, and schools.">

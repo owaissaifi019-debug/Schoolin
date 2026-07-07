@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <script>
     (function() {
+      // Check for recovery hash parameters before Supabase script clears them
+      if (window.location.hash.includes('recovery') || window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) {
+        sessionStorage.setItem('is_recovery_flow', 'true');
+      }
+
       const savedTheme = localStorage.getItem('campuslink-theme');
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       const currentTheme = savedTheme || systemTheme;

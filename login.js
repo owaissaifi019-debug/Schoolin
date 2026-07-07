@@ -93,8 +93,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // Check URL hash/params for password recovery flow
-  const isRecovery = window.location.hash.includes('type=recovery') || 
+  // Check URL hash/params or sessionStorage for password recovery flow
+  const isRecovery = sessionStorage.getItem('is_recovery_flow') === 'true' ||
+                     window.location.hash.includes('type=recovery') || 
                      window.location.hash.includes('recovery') || 
                      window.location.search.includes('type=recovery');
 
@@ -196,6 +197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Check URL hash for initial tab or recovery flow
   if (isRecovery) {
+    sessionStorage.removeItem('is_recovery_flow');
     // Clear hash parameters to clean URL bar but maintain session
     try {
       history.replaceState(null, null, ' ');
