@@ -112,6 +112,19 @@
     const sb = getClient();
     if (!sb) return;
 
+    // Clear all profile cache from sessionStorage
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith(PROFILE_CACHE_KEY)) {
+          sessionStorage.removeItem(key);
+          i--; // adjust index since we removed a key
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to clear cached profiles:', e);
+    }
+
     await sb.auth.signOut();
     window.location.href = AUTH_REDIRECT_HOME;
   }
@@ -236,8 +249,22 @@
     });
   }
 
+  const PROFILE_CACHE_KEY = 'campuslink_cached_profile_';
+
   // ── Get Role/Profile helpers ─────────────────────────────
   async function getProfile(userId) {
+    if (!userId) return null;
+
+    // Check sessionStorage cache first
+    try {
+      const cached = sessionStorage.getItem(PROFILE_CACHE_KEY + userId);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached profile:', e);
+    }
+
     const sb = getClient();
     if (!sb) return null;
     const { data, error } = await sb
@@ -249,6 +276,16 @@
       console.warn('Could not fetch user profile:', error.message);
       return null;
     }
+
+    // Save to sessionStorage cache
+    if (data) {
+      try {
+        sessionStorage.setItem(PROFILE_CACHE_KEY + userId, JSON.stringify(data));
+      } catch (e) {
+        console.warn('Failed to cache profile in sessionStorage:', e);
+      }
+    }
+
     return data;
   }
 

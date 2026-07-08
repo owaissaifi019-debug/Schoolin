@@ -73,12 +73,16 @@ ALTER TABLE public.classroom_students ENABLE ROW LEVEL SECURITY;
 
 -- ── RLS Policies ──
 
--- Everyone can read academic sessions & classrooms
+-- Everyone can read academic sessions & classrooms (restricted to their school)
 DROP POLICY IF EXISTS "Academic sessions are viewable by everyone" ON public.academic_years;
-CREATE POLICY "Academic sessions are viewable by everyone" ON public.academic_years FOR SELECT USING (true);
+CREATE POLICY "Academic sessions are viewable by everyone" ON public.academic_years FOR SELECT USING (
+  school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+);
 
 DROP POLICY IF EXISTS "Classrooms are viewable by everyone" ON public.classrooms;
-CREATE POLICY "Classrooms are viewable by everyone" ON public.classrooms FOR SELECT USING (true);
+CREATE POLICY "Classrooms are viewable by everyone" ON public.classrooms FOR SELECT USING (
+  school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+);
 
 -- School admins can manage academic years
 DROP POLICY IF EXISTS "School admins can manage academic years" ON public.academic_years;
@@ -94,9 +98,15 @@ CREATE POLICY "School admins can manage classrooms" ON public.classrooms
     EXISTS (SELECT 1 FROM public.schools WHERE schools.id = classrooms.school_id AND schools.admin_user_id = auth.uid())
   );
 
--- Teacher assignments are viewable by everyone in the school (teachers, admins, students)
+-- Teacher assignments are viewable by everyone in the school (restricted to their school)
 DROP POLICY IF EXISTS "Teacher assignments are viewable by everyone" ON public.classroom_teacher_assignments;
-CREATE POLICY "Teacher assignments are viewable by everyone" ON public.classroom_teacher_assignments FOR SELECT USING (true);
+CREATE POLICY "Teacher assignments are viewable by everyone" ON public.classroom_teacher_assignments FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.classrooms c
+    WHERE c.id = classroom_teacher_assignments.classroom_id
+      AND c.school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+  )
+);
 
 -- School admins can manage teacher assignments
 DROP POLICY IF EXISTS "School admins can manage teacher assignments" ON public.classroom_teacher_assignments;
@@ -110,9 +120,15 @@ CREATE POLICY "School admins can manage teacher assignments" ON public.classroom
     )
   );
 
--- Subject teachers mapping viewable by everyone
+-- Subject teachers mapping viewable by everyone (restricted to their school)
 DROP POLICY IF EXISTS "Subject teachers are viewable by everyone" ON public.classroom_subject_teachers;
-CREATE POLICY "Subject teachers are viewable by everyone" ON public.classroom_subject_teachers FOR SELECT USING (true);
+CREATE POLICY "Subject teachers are viewable by everyone" ON public.classroom_subject_teachers FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.classrooms c
+    WHERE c.id = classroom_subject_teachers.classroom_id
+      AND c.school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+  )
+);
 
 -- School admins can manage subject teachers
 DROP POLICY IF EXISTS "School admins can manage subject teachers" ON public.classroom_subject_teachers;
@@ -126,9 +142,15 @@ CREATE POLICY "School admins can manage subject teachers" ON public.classroom_su
     )
   );
 
--- Classroom students viewable by everyone
+-- Classroom students viewable by everyone (restricted to their school)
 DROP POLICY IF EXISTS "Classroom students are viewable by everyone" ON public.classroom_students;
-CREATE POLICY "Classroom students are viewable by everyone" ON public.classroom_students FOR SELECT USING (true);
+CREATE POLICY "Classroom students are viewable by everyone" ON public.classroom_students FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.classrooms c
+    WHERE c.id = classroom_students.classroom_id
+      AND c.school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+  )
+);
 
 -- School admins can manage classroom students
 DROP POLICY IF EXISTS "School admins can manage classroom students" ON public.classroom_students;
@@ -141,3 +163,4 @@ CREATE POLICY "School admins can manage classroom students" ON public.classroom_
         AND s.admin_user_id = auth.uid()
     )
   );
+

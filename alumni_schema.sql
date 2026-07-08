@@ -134,7 +134,10 @@ CREATE POLICY "School admins manage alumni invites"
 -- Alumni can read invite links (to validate on join)
 DROP POLICY IF EXISTS "Anyone can read alumni invite codes" ON public.alumni_invites;
 CREATE POLICY "Anyone can read alumni invite codes"
-    ON public.alumni_invites FOR SELECT USING (true);
+    ON public.alumni_invites FOR SELECT USING (
+        school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+        OR auth.role() = 'anon'
+    );
 
 -- Verify
 SELECT policyname, tablename, cmd FROM pg_policies

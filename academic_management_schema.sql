@@ -122,7 +122,9 @@ ALTER TABLE public.subject_classes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "School Admins can select academic years" ON public.academic_years;
 DROP POLICY IF EXISTS "Academic years are viewable by everyone" ON public.academic_years;
 CREATE POLICY "Academic years are viewable by everyone" ON public.academic_years
-    FOR SELECT USING (true);
+    FOR SELECT USING (
+        school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+    );
 
 DROP POLICY IF EXISTS "School Admins can insert academic years" ON public.academic_years;
 CREATE POLICY "School Admins can insert academic years" ON public.academic_years
@@ -150,7 +152,9 @@ CREATE POLICY "School Admins can delete academic years" ON public.academic_years
 DROP POLICY IF EXISTS "School Admins can select classes" ON public.classes;
 DROP POLICY IF EXISTS "Classes are viewable by everyone" ON public.classes;
 CREATE POLICY "Classes are viewable by everyone" ON public.classes
-    FOR SELECT USING (true);
+    FOR SELECT USING (
+        school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+    );
 
 DROP POLICY IF EXISTS "School Admins can insert classes" ON public.classes;
 CREATE POLICY "School Admins can insert classes" ON public.classes
@@ -178,7 +182,9 @@ CREATE POLICY "School Admins can delete classes" ON public.classes
 DROP POLICY IF EXISTS "School Admins can select subjects" ON public.subjects;
 DROP POLICY IF EXISTS "Subjects are viewable by everyone" ON public.subjects;
 CREATE POLICY "Subjects are viewable by everyone" ON public.subjects
-    FOR SELECT USING (true);
+    FOR SELECT USING (
+        school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+    );
 
 DROP POLICY IF EXISTS "School Admins can insert subjects" ON public.subjects;
 CREATE POLICY "School Admins can insert subjects" ON public.subjects
@@ -204,12 +210,36 @@ CREATE POLICY "School Admins can delete subjects" ON public.subjects
 -- 5. Subject Classes Policies
 DROP POLICY IF EXISTS "Subject classes are viewable by everyone" ON public.subject_classes;
 CREATE POLICY "Subject classes are viewable by everyone" ON public.subject_classes
-    FOR SELECT USING (true);
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.classes
+            WHERE classes.id = class_id
+              AND classes.school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+        )
+    );
 
 DROP POLICY IF EXISTS "School Admins can insert subject_classes" ON public.subject_classes;
 CREATE POLICY "School Admins can insert subject_classes" ON public.subject_classes
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT TO authenticated WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.classes
+            WHERE classes.id = class_id
+              AND (
+                  EXISTS (SELECT 1 FROM public.schools WHERE id = classes.school_id AND admin_user_id = auth.uid())
+                  OR EXISTS (SELECT 1 FROM public.school_members WHERE school_id = classes.school_id AND user_id = auth.uid() AND role IN ('admin', 'owner', 'school_admin', 'school_representative'))
+              )
+        )
+    );
 
 DROP POLICY IF EXISTS "School Admins can delete subject_classes" ON public.subject_classes;
 CREATE POLICY "School Admins can delete subject_classes" ON public.subject_classes
-    FOR DELETE USING (true);
+    FOR DELETE TO authenticated USING (
+        EXISTS (
+            SELECT 1 FROM public.classes
+            WHERE classes.id = class_id
+              AND (
+                  EXISTS (SELECT 1 FROM public.schools WHERE id = classes.school_id AND admin_user_id = auth.uid())
+                  OR EXISTS (SELECT 1 FROM public.school_members WHERE school_id = classes.school_id AND user_id = auth.uid() AND role IN ('admin', 'owner', 'school_admin', 'school_representative'))
+              )
+        )
+    );

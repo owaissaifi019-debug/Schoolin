@@ -54,15 +54,21 @@
   }
   function saveStored(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
 
+  function getProfile() {
+    try { return JSON.parse(localStorage.getItem('campuslink_profile')) || {}; } catch(e) { return {}; }
+  }
+
   function loadDependencies() {
-    academicYears = getStored('campuslink_academic_years', DEFAULT_YEARS);
-    if (!academicYears || academicYears.length === 0) academicYears = DEFAULT_YEARS;
+    const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
 
-    classes = getStored('campuslink_classes', DEFAULT_CLASSES);
-    if (!classes || classes.length === 0) classes = DEFAULT_CLASSES;
+    academicYears = getStored('campuslink_academic_years', isLiveMode ? [] : DEFAULT_YEARS);
+    if (!isLiveMode && (!academicYears || academicYears.length === 0)) academicYears = DEFAULT_YEARS;
 
-    students = getStored('campuslink_students', DEFAULT_STUDENTS);
-    if (!students || students.length === 0) students = DEFAULT_STUDENTS;
+    classes = getStored('campuslink_classes', isLiveMode ? [] : DEFAULT_CLASSES);
+    if (!isLiveMode && (!classes || classes.length === 0)) classes = DEFAULT_CLASSES;
+
+    students = getStored('campuslink_students', isLiveMode ? [] : DEFAULT_STUDENTS);
+    if (!isLiveMode && (!students || students.length === 0)) students = DEFAULT_STUDENTS;
 
     invites = getStored('campuslink_invites', DEFAULT_INVITES);
     if (!localStorage.getItem('campuslink_invites_cleaned_v3')) {
@@ -71,6 +77,66 @@
       localStorage.setItem('campuslink_invites_cleaned_v3', 'true');
     }
     if (!invites) invites = [];
+  }
+
+  // ─── Supabase Synchronizer ────────────────────────────────────────────────
+  async function syncStudentsFromSupabase() {
+    const supabase = window.CampusLink?.supabase;
+    const auth = window.CampusLink?.auth;
+    if (!supabase || !auth) return;
+
+    try {
+      const user = await auth.getUser();
+      if (!user) return;
+      const school = await auth.getSchoolForUser(user.id);
+      if (!school) return;
+      const schoolId = school.id;
+
+      const { data: dbStudents, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('school_id', schoolId);
+
+      if (error) {
+        console.warn('Error fetching students from Supabase:', error);
+        return;
+      }
+
+      if (dbStudents) {
+        students = dbStudents.map(s => ({
+          id: s.id,
+          schoolId: s.school_id,
+          academicYearId: s.academic_year_id,
+          classId: s.class_id,
+          sectionId: s.section_id || 'A',
+          username: s.username,
+          campuslinkId: s.campuslink_id || ('CL-STU-' + s.id.substring(0, 6).toUpperCase()),
+          admissionNumber: s.admission_number || '',
+          rollNumber: s.roll_number || '',
+          fullName: s.full_name,
+          email: s.email || '',
+          phone: s.phone || '',
+          gender: s.gender || 'Male',
+          dateOfBirth: s.date_of_birth || '',
+          bloodGroup: s.blood_group || '',
+          religion: s.religion || '',
+          nationality: s.nationality || 'Indian',
+          address: s.address || '',
+          emergencyContact: s.emergency_contact || '',
+          guardianName: s.guardian_name || '',
+          guardianId: s.guardian_id || null,
+          transportId: s.transport_id || null,
+          house: s.house || '',
+          status: s.status || 'pending',
+          admissionDate: s.admission_date || '',
+          createdAt: s.created_at,
+          updatedAt: s.updated_at
+        }));
+        saveStored('campuslink_students', students);
+      }
+    } catch (err) {
+      console.warn('syncStudentsFromSupabase exception:', err);
+    }
   }
 
   // ─── Resolver Helpers ──────────────────────────────────────────────────────
@@ -1110,6 +1176,15 @@
     loadDependencies();
     populateFilters();
     renderActiveSubpanel();
+
+    // Call Supabase sync asynchronously in live mode
+    const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
+    if (isLiveMode) {
+      syncStudentsFromSupabase().then(() => {
+        renderActiveSubpanel();
+        populateFilters();
+      });
+    }
 
     var addBtn = document.getElementById('btn-add-student');
     if (addBtn) addBtn.onclick = function() { openAddEditModal(); };

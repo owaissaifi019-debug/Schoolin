@@ -804,8 +804,22 @@ function initEventDetail() {
           
           // Validate UUID
           if (!targetEventId || targetEventId.toString().length <= 8) {
-            // Mock event - fetch first real event for UUID
-            const { data: dbEvents } = await supabase.from('events').select('id, school_id').limit(1);
+            // Mock event - fetch first real event for UUID belonging to user's school
+            let userSchoolId = null;
+            if (currentUser) {
+              const { data: prof } = await supabase
+                .from('profiles')
+                .select('school_id')
+                .eq('id', currentUser.id)
+                .maybeSingle();
+              if (prof) userSchoolId = prof.school_id;
+            }
+            
+            let query = supabase.from('events').select('id, school_id');
+            if (userSchoolId) {
+              query = query.eq('school_id', userSchoolId);
+            }
+            const { data: dbEvents } = await query.limit(1);
             if (dbEvents && dbEvents.length > 0) {
               targetEventId = dbEvents[0].id;
               targetSchoolId = dbEvents[0].school_id;

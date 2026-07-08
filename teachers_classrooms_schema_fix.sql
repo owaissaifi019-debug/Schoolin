@@ -215,10 +215,12 @@ ALTER TABLE public.classrooms     ENABLE ROW LEVEL SECURITY;
 
 -- ── STEP 9: RLS Policies ─────────────────────────────────────
 
--- academic_years: public read
+-- academic_years: public read (restricted to user's school)
 DROP POLICY IF EXISTS "Academic sessions are viewable by everyone" ON public.academic_years;
 CREATE POLICY "Academic sessions are viewable by everyone"
-  ON public.academic_years FOR SELECT USING (true);
+  ON public.academic_years FOR SELECT USING (
+    school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+  );
 
 -- academic_years: admin write (checks both admin_user_id AND school_members)
 DROP POLICY IF EXISTS "School admins can manage academic years" ON public.academic_years;
@@ -243,10 +245,12 @@ CREATE POLICY "School admins can manage academic years"
                  AND school_members.role IN ('admin','owner','school_admin','school_representative'))
   );
 
--- classrooms: public read
+-- classrooms: public read (restricted to user's school)
 DROP POLICY IF EXISTS "Classrooms are viewable by everyone" ON public.classrooms;
 CREATE POLICY "Classrooms are viewable by everyone"
-  ON public.classrooms FOR SELECT USING (true);
+  ON public.classrooms FOR SELECT USING (
+    school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+  );
 
 -- classrooms: admin write (same dual-check)
 DROP POLICY IF EXISTS "School admins can manage classrooms" ON public.classrooms;

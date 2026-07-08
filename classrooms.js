@@ -219,13 +219,21 @@
   // ── Global Database Synchronization ──
   async function syncAllFromSupabase() {
     const supabase = window.CampusLink?.supabase;
-    if (!supabase) return;
+    const auth = window.CampusLink?.auth;
+    if (!supabase || !auth) return;
 
     try {
+      const user = await auth.getUser();
+      if (!user) return;
+      const school = await auth.getSchoolForUser(user.id);
+      if (!school) return;
+      const schoolId = school.id;
+
       // 1. Fetch Academic Years
       const { data: dbYears } = await supabase
         .from('academic_years')
-        .select('*');
+        .select('*')
+        .eq('school_id', schoolId);
       if (dbYears) {
         academicYears = dbYears.map(y => ({
           id: y.id,
@@ -242,7 +250,8 @@
       // 2. Fetch Classes
       const { data: dbClasses } = await supabase
         .from('classes')
-        .select('*');
+        .select('*')
+        .eq('school_id', schoolId);
       if (dbClasses) {
         classes = dbClasses.map(c => ({
           id: c.id,
@@ -254,13 +263,15 @@
         saveState('campuslink_classes', classes);
       }
 
-      // 3. Fetch Teachers and Profiles (to map profile ID to full name)
+      // 3. Fetch Teachers and Profiles (strictly filtered by school_id)
       const { data: dbTeachers } = await supabase
         .from('teachers')
-        .select('*');
+        .select('*')
+        .eq('school_id', schoolId);
       const { data: dbProfiles } = await supabase
         .from('profiles')
         .select('id, username, full_name, email')
+        .eq('school_id', schoolId)
         .eq('user_type', 'teacher');
 
       if (dbTeachers) {
@@ -292,10 +303,16 @@
       // 4. Fetch Classrooms
       const { data: dbClassrooms } = await supabase
         .from('classrooms')
-        .select('*');
+        .select('*')
+        .eq('school_id', schoolId);
+      
+      const mappedClassrooms = [];
+      const classroomIds = [];
+      
       if (dbClassrooms) {
-        const mappedClassrooms = [];
         for (const cr of dbClassrooms) {
+          classroomIds.push(cr.id);
+          
           // Fetch student count
           const { count: stdCount } = await supabase
             .from('classroom_students')
@@ -341,31 +358,44 @@
         }
         classrooms = mappedClassrooms;
         saveState('campuslink_classrooms', classrooms);
+      } else {
+        classrooms = [];
+        saveState('campuslink_classrooms', []);
       }
 
-      // 5. Fetch enrolled students
-      const { data: dbClassroomStudents } = await supabase
-        .from('classroom_students')
-        .select(`
-          classroom_id,
-          roll_number,
-          student:profiles!student_id(id, full_name, username, email)
-        `);
-      if (dbClassroomStudents) {
-        students = dbClassroomStudents.map((e, idx) => {
-          const classroomRow = dbClassrooms?.find(cr => cr.id === e.classroom_id);
-          return {
-            id: e.student ? e.student.id : ('st-' + idx),
-            classId: classroomRow ? classroomRow.class_id : '',
-            sectionId: classroomRow ? (classroomRow.section || 'A') : 'A',
-            fullName: e.student ? e.student.full_name : 'Student',
-            rollNumber: e.roll_number || (idx + 1),
-            admissionNumber: e.student ? e.student.username : '–',
-            email: e.student ? e.student.email : '',
-            status: 'active'
-          };
-        });
-        saveState('campuslink_students', students);
+      // 5. Fetch enrolled students (only for classrooms in this school)
+      if (classroomIds.length > 0) {
+        const { data: dbClassroomStudents } = await supabase
+          .from('classroom_students')
+          .select(`
+            classroom_id,
+            roll_number,
+            student:profiles!student_id(id, full_name, username, email)
+          `)
+          .in('classroom_id', classroomIds);
+          
+        if (dbClassroomStudents) {
+          students = dbClassroomStudents.map((e, idx) => {
+            const classroomRow = dbClassrooms?.find(cr => cr.id === e.classroom_id);
+            return {
+              id: e.student ? e.student.id : ('st-' + idx),
+              classId: classroomRow ? classroomRow.class_id : '',
+              sectionId: classroomRow ? (classroomRow.section || 'A') : 'A',
+              fullName: e.student ? e.student.full_name : 'Student',
+              rollNumber: e.roll_number || (idx + 1),
+              admissionNumber: e.student ? e.student.username : '–',
+              email: e.student ? e.student.email : '',
+              status: 'active'
+            };
+          });
+          saveState('campuslink_students', students);
+        } else {
+          students = [];
+          saveState('campuslink_students', []);
+        }
+      } else {
+        students = [];
+        saveState('campuslink_students', []);
       }
 
       // Trigger re-render to update the tables with fresh database values
@@ -386,12 +416,15 @@
       localStorage.removeItem('campuslink_classroom_subjects');
     }
 
-    academicYears = getStoredData('campuslink_academic_years', DEFAULT_YEARS);
-    classes = getStoredData('campuslink_classes', DEFAULT_CLASSES);
-    teachers = getStoredData('campuslink_teachers', DEFAULT_TEACHERS);
-    subjects = getStoredData('campuslink_subjects', DEFAULT_SUBJECTS);
-    classrooms = getStoredData('campuslink_classrooms', DEFAULT_CLASSROOMS);
-    classroomSubjects = getStoredData('campuslink_classroom_subjects', DEFAULT_CLASSROOM_SUBJECTS);
+    // Determine if we are in live database mode
+    const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
+
+    academicYears = getStoredData('campuslink_academic_years', isLiveMode ? [] : DEFAULT_YEARS);
+    classes = getStoredData('campuslink_classes', isLiveMode ? [] : DEFAULT_CLASSES);
+    teachers = getStoredData('campuslink_teachers', isLiveMode ? [] : DEFAULT_TEACHERS);
+    subjects = getStoredData('campuslink_subjects', isLiveMode ? [] : DEFAULT_SUBJECTS);
+    classrooms = getStoredData('campuslink_classrooms', isLiveMode ? [] : DEFAULT_CLASSROOMS);
+    classroomSubjects = getStoredData('campuslink_classroom_subjects', isLiveMode ? [] : DEFAULT_CLASSROOM_SUBJECTS);
     students = getStoredData('campuslink_students', []);
   }
 

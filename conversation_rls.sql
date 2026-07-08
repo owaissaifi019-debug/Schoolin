@@ -53,7 +53,7 @@ CREATE POLICY school_rep_conversations ON conversations
       SELECT 1 FROM profiles 
       WHERE profiles.id = auth.uid() 
         AND profiles.user_type = 'school_representative' 
-        AND profiles.id = conversations.school_id
+        AND profiles.school_id = conversations.school_id
     )
   );
 
@@ -79,7 +79,7 @@ CREATE POLICY school_rep_members ON conversation_members
           SELECT 1 FROM profiles 
           WHERE profiles.id = auth.uid() 
             AND profiles.user_type = 'school_representative' 
-            AND profiles.id = conversations.school_id
+            AND profiles.school_id = conversations.school_id
         )
     )
   );
@@ -106,7 +106,7 @@ CREATE POLICY school_rep_messages ON messages
           SELECT 1 FROM profiles 
           WHERE profiles.id = auth.uid() 
             AND profiles.user_type = 'school_representative' 
-            AND profiles.id = conversations.school_id
+            AND profiles.school_id = conversations.school_id
         )
     )
   );
@@ -181,7 +181,7 @@ CREATE POLICY school_rep_settings ON conversation_settings
           SELECT 1 FROM profiles 
           WHERE profiles.id = auth.uid() 
             AND profiles.user_type = 'school_representative' 
-            AND profiles.id = conversations.school_id
+            AND profiles.school_id = conversations.school_id
         )
     )
   );

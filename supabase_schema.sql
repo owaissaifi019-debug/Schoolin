@@ -140,10 +140,13 @@ CREATE POLICY "Super admins can delete any school"
 
 -- ── Events Policies ──
 
--- Anyone can read events
+-- Anyone can read events (restricted to own school)
+DROP POLICY IF EXISTS "Events are viewable by everyone" ON events;
 CREATE POLICY "Events are viewable by everyone"
   ON events FOR SELECT
-  USING (true);
+  USING (
+    school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+  );
 
 -- School admins can insert events for their own school
 CREATE POLICY "School admins can create events"
@@ -297,10 +300,15 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Enable RLS on profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Profiles Policies
+-- Profiles Policies (restricted to own school or self or super admin)
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Profiles are viewable by everyone"
   ON public.profiles FOR SELECT
-  USING (true);
+  USING (
+    school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+    OR auth.uid() = id
+    OR platform_role = 'super_admin'
+  );
 
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT

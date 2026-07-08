@@ -11,13 +11,110 @@
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../style.css?v=1.1">
   <link rel="stylesheet" href="../admin.css?v=1.0">
+  <style>
+    body:not(.auth-passed) .dashboard-layout,
+    body:not(.auth-passed) .admin-sidebar-overlay {
+      display: none !important;
+    }
+
+    /* Premium loading overlay styling */
+    .auth-loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #ffffff; /* Clean white background */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100000;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+    
+    .auth-loading-overlay.fade-out {
+      opacity: 0;
+      visibility: hidden;
+    }
+    
+    .auth-loading-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+    
+    .logo-animation-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .loading-logo-text {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--primary, #0056B3) !important;
+      letter-spacing: -1.2px;
+      display: flex;
+      align-items: center;
+      line-height: 1;
+      user-select: none;
+    }
+    
+    .loading-dots {
+      display: inline-flex;
+      margin-left: 2.5px;
+      gap: 1.5px;
+      align-self: flex-end;
+      margin-bottom: 7px;
+    }
+    
+    .loading-dots span {
+      width: 7px;
+      height: 7px;
+      background-color: var(--accent, #00d2c4) !important;
+      display: inline-block;
+      border-radius: 1.5px; /* Subtle rounded square dot to match logo */
+      animation: dotPulse 1.4s infinite both;
+    }
+    
+    .loading-dots span:nth-child(1) {
+      animation-delay: 0s;
+    }
+    .loading-dots span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .loading-dots span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    
+    @keyframes dotPulse {
+      0%, 100% {
+        opacity: 0.15;
+        transform: scale(0.75);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.15);
+      }
+    }
+  </style>
 </head>
 <body style="overflow: hidden;" class="super-admin-body">
 
   <!-- Auth Loading Overlay -->
   <div class="auth-loading-overlay" id="auth-loading-overlay">
-    <div class="auth-loading-spinner"></div>
-    <span class="auth-loading-text">Verifying administrator credentials...</span>
+    <div class="auth-loading-card">
+      <div class="logo-animation-container">
+        <div class="loading-logo-text">CampusLink<span class="loading-dots"><span></span><span></span><span></span></span></div>
+      </div>
+    </div>
   </div>
 
   <!-- Sidebar Overlay (mobile backdrop) -->
@@ -117,6 +214,14 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           </span>
           User Reports
+        </a>
+        <!-- School Admin - Community -->
+        <div id="school-admin-community-header" style="font-size: 0.65rem; color: #64748B; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 10px 16px; display: none;">Community</div>
+        <a class="dashboard-nav-link" data-tab="alumni" id="tab-link-alumni" style="display: none;">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path></svg>
+          </span>
+          Alumni
         </a>
         <a class="dashboard-nav-link" data-tab="profile" id="tab-link-profile" style="display: none;">
           <span class="icon">
@@ -858,6 +963,284 @@
           </div>
         </section>
 
+        <!-- ================= ALUMNI TAB ================= -->
+        <section id="alumni-tab" class="dashboard-tab-panel">
+          <div class="dash-table-card admin-table-section" style="padding: 24px;">
+            
+            <!-- Alumni Sub-navigation Tabs -->
+            <div class="alumni-sub-tabs-container">
+              <div class="alumni-sub-tabs">
+                <button class="alumni-sub-tab-btn active" data-subtab="alumni-overview">
+                  <span>📊</span> Overview
+                </button>
+                <button class="alumni-sub-tab-btn" data-subtab="alumni-batches">
+                  <span>🎓</span> Graduation Batches
+                </button>
+                <button class="alumni-sub-tab-btn" data-subtab="alumni-invites">
+                  <span>🔗</span> Invite Links
+                </button>
+                <button class="alumni-sub-tab-btn" data-subtab="alumni-requests">
+                  <span>📩</span> Pending Requests 
+                  <span id="alumni-req-count-badge" class="badge-count-red" style="display: none;">0</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Subtab 1: Overview & Statistics -->
+            <div id="alumni-overview-subtab" class="alumni-sub-panel active">
+              <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 20px;">Alumni Statistics</h3>
+              <div class="dashboard-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div class="dash-stat-card" style="background: var(--white); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <h4 style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Total Alumni</h4>
+                    <span id="alumni-stat-total" style="font-size: 1.8rem; font-weight: 800; color: var(--dark-bg);">0</span>
+                  </div>
+                  <div class="dash-stat-icon" style="font-size: 1.8rem;">🎓</div>
+                </div>
+                <div class="dash-stat-card" style="background: var(--white); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <h4 style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Total Batches</h4>
+                    <span id="alumni-stat-batches" style="font-size: 1.8rem; font-weight: 800; color: var(--dark-bg);">0</span>
+                  </div>
+                  <div class="dash-stat-icon" style="font-size: 1.8rem;">📂</div>
+                </div>
+                <div class="dash-stat-card" style="background: var(--white); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <h4 style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Pending Requests</h4>
+                    <span id="alumni-stat-pending" style="font-size: 1.8rem; font-weight: 800; color: var(--dark-bg);">0</span>
+                  </div>
+                  <div class="dash-stat-icon" style="font-size: 1.8rem;">📩</div>
+                </div>
+                <div class="dash-stat-card" style="background: var(--white); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <h4 style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Most Active Batch</h4>
+                    <span id="alumni-stat-active-batch" style="font-size: 1.1rem; font-weight: 800; color: var(--dark-bg); word-break: break-all;">None</span>
+                  </div>
+                  <div class="dash-stat-icon" style="font-size: 1.8rem;">🔥</div>
+                </div>
+                <div class="dash-stat-card" style="background: var(--white); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <h4 style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Newest Batch</h4>
+                    <span id="alumni-stat-newest-batch" style="font-size: 1.1rem; font-weight: 800; color: var(--dark-bg); word-break: break-all;">None</span>
+                  </div>
+                  <div class="dash-stat-icon" style="font-size: 1.8rem;">✨</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subtab 2: Graduation Batches -->
+            <div id="alumni-batches-subtab" class="alumni-sub-panel">
+              <div class="dash-card-header" style="padding: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); margin-bottom: 20px;">
+                <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin: 0;">Graduation Batches</h3>
+                <button class="btn btn-primary" id="btn-create-alumni-batch">+ Create Batch</button>
+              </div>
+              <div class="dash-table-wrapper">
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Passing Year</th>
+                      <th>Department</th>
+                      <th>Program</th>
+                      <th>Member Count</th>
+                      <th>Invite Status</th>
+                      <th>Created Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="alumni-batches-tbody">
+                    <tr>
+                      <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        Loading batches...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Subtab 3: Invite Links -->
+            <div id="alumni-invites-subtab" class="alumni-sub-panel">
+              <div class="dash-card-header" style="padding: 0 0 20px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 20px;">
+                <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin: 0;">Alumni Invite Links</h3>
+              </div>
+              <div class="dash-table-wrapper">
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Invite Code</th>
+                      <th>Graduation Year</th>
+                      <th>Department / Program</th>
+                      <th>Status</th>
+                      <th>Uses</th>
+                      <th>Expiry</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="alumni-invites-tbody">
+                    <tr>
+                      <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        Loading invite links...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Subtab 4: Pending Requests -->
+            <div id="alumni-requests-subtab" class="alumni-sub-panel">
+              <div class="dash-card-header" style="padding: 0 0 20px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 20px;">
+                <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin: 0;">Pending Alumni Requests</h3>
+              </div>
+              <div class="dash-table-wrapper">
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Full Name</th>
+                      <th>Username</th>
+                      <th>Email</th>
+                      <th>Graduation Details</th>
+                      <th>Submitted Date</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="alumni-requests-tbody">
+                    <tr>
+                      <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        Loading requests...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- --- Create Alumni Batch Modal --- -->
+        <div class="modal-overlay" id="create-alumni-batch-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 999; backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+          <div class="modal-content" style="max-width: 500px; width: 100%; padding: 32px; border-radius: var(--radius-lg); background-color: var(--white); box-shadow: var(--shadow-lg); position: relative; max-height: 90vh; overflow-y: auto;">
+            <button class="modal-close-btn" id="create-batch-modal-close" style="font-size: 1.75rem; border: none; background: transparent; cursor: pointer; position: absolute; right: 20px; top: 15px; color: var(--text-muted);">&times;</button>
+            <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">Create Graduation Batch</h3>
+            
+            <form id="create-alumni-batch-form">
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Passing Year *</label>
+                <input type="number" id="create-batch-year" min="1900" max="2100" placeholder="e.g. 2024" required style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem;">
+              </div>
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Department (Optional)</label>
+                <input type="text" id="create-batch-dept" placeholder="e.g. Science, Commerce, Engineering" style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem;">
+              </div>
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Program (Optional)</label>
+                <input type="text" id="create-batch-prog" placeholder="e.g. Class XII, B.Tech, MBA" style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem;">
+              </div>
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Description (Optional)</label>
+                <textarea id="create-batch-desc" placeholder="A brief description for this graduating batch..." style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; min-height: 80px; resize: vertical; font-family: inherit;"></textarea>
+              </div>
+              <div class="form-group" style="margin-bottom: 24px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Cover Image URL (Optional)</label>
+                <input type="text" id="create-batch-cover" placeholder="e.g. https://example.com/banner.jpg" style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem;">
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-create-batch" style="padding: 10px 20px;">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">Create Batch</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- --- Edit Alumni Batch Modal --- -->
+        <div class="modal-overlay" id="edit-alumni-batch-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 999; backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+          <div class="modal-content" style="max-width: 500px; width: 100%; padding: 32px; border-radius: var(--radius-lg); background-color: var(--white); box-shadow: var(--shadow-lg); position: relative; max-height: 90vh; overflow-y: auto;">
+            <button class="modal-close-btn" id="edit-batch-modal-close" style="font-size: 1.75rem; border: none; background: transparent; cursor: pointer; position: absolute; right: 20px; top: 15px; color: var(--text-muted);">&times;</button>
+            <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">Edit Batch</h3>
+            
+            <form id="edit-alumni-batch-form">
+              <input type="hidden" id="edit-batch-id">
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Passing Year *</label>
+                <input type="number" id="edit-batch-year" min="1900" max="2100" required style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem;">
+              </div>
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Department (Optional)</label>
+                <input type="text" id="edit-batch-dept" style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem;">
+              </div>
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Program (Optional)</label>
+                <input type="text" id="edit-batch-prog" style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem;">
+              </div>
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Description (Optional)</label>
+                <textarea id="edit-batch-desc" style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; min-height: 80px; resize: vertical; font-family: inherit;"></textarea>
+              </div>
+              <div class="form-group" style="margin-bottom: 24px;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">Cover Image URL (Optional)</label>
+                <input type="text" id="edit-batch-cover" style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem;">
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-edit-batch" style="padding: 10px 20px;">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- --- QR Code Display Modal --- -->
+        <div class="modal-overlay" id="alumni-qr-code-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 999; backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+          <div class="modal-content" style="max-width: 400px; width: 100%; padding: 32px; border-radius: var(--radius-lg); background-color: var(--white); box-shadow: var(--shadow-lg); position: relative; text-align: center;">
+            <button class="modal-close-btn" id="qr-modal-close" style="font-size: 1.75rem; border: none; background: transparent; cursor: pointer; position: absolute; right: 20px; top: 15px; color: var(--text-muted);">&times;</button>
+            <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 12px;" id="qr-modal-title">Invite Link QR Code</h3>
+            <p id="qr-modal-subtitle" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 20px;">Scan this code to request to join this alumni batch.</p>
+            
+            <div class="alumni-qr-modal-body">
+              <img src="" id="qr-modal-img" class="alumni-qr-code-img" alt="QR Code">
+              <div style="font-size: 0.76rem; font-weight: 500; color: var(--text-muted); background: #f8fafc; padding: 8px 12px; border-radius: 4px; border: 1px solid #e2e8f0; width: 100%; word-break: break-all;" id="qr-modal-url">...</div>
+              
+              <div class="alumni-qr-actions">
+                <button class="btn btn-secondary" id="btn-download-qr" style="padding: 8px 14px; font-size: 0.8rem;">📥 Download</button>
+                <button class="btn btn-secondary" id="btn-print-qr" style="padding: 8px 14px; font-size: 0.8rem;">🖨️ Print</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- --- View Batch Members Modal --- -->
+        <div class="modal-overlay" id="view-alumni-members-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 999; backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+          <div class="modal-content" style="max-width: 600px; width: 100%; padding: 32px; border-radius: var(--radius-lg); background-color: var(--white); box-shadow: var(--shadow-lg); position: relative; max-height: 90vh; overflow-y: auto;">
+            <button class="modal-close-btn" id="view-members-modal-close" style="font-size: 1.75rem; border: none; background: transparent; cursor: pointer; position: absolute; right: 20px; top: 15px; color: var(--text-muted);">&times;</button>
+            <h3 style="font-size: 1.25rem; color: var(--dark-bg); margin-bottom: 6px;" id="view-members-title">Batch Members</h3>
+            <p id="view-members-subtitle" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">Showing all alumni registered in this batch.</p>
+            
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+              <input type="text" id="batch-member-search" placeholder="Search batch members..." style="width: 100%; padding: 8px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.85rem;">
+            </div>
+
+            <div style="max-height: 400px; overflow-y: auto;">
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Joined Date</th>
+                  </tr>
+                </thead>
+                <tbody id="batch-members-tbody">
+                  <tr>
+                    <td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No members joined yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+
       </div>
     </main>
   </div>
@@ -974,8 +1357,7 @@
   <script src="../supabase.js"></script>
   <script src="../auth.js"></script>
 
-  <!-- Admin JavaScript Code -->
-  <script src="admin.js"></script>
+  <script src="admin.js?v=2.4"></script>
 
   <!-- Mobile Sidebar Toggle -->
   <script>

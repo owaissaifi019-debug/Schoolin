@@ -558,56 +558,158 @@
 
         <!-- Tab 5: Community -->
         <div class="profile-tab-panel" id="panel-community">
-          <h2>Community Members</h2>
-          <p style="color: var(--text-muted); margin-bottom: 30px;">
-            Verified teachers, faculty, alumni, staff, and students associated with this institution.
-          </p>
+          
+          <!-- MAIN COMMUNITY VIEW -->
+          <div id="cm-main-view">
+            <h2>Community Members</h2>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">
+              Verified teachers, faculty, alumni, staff, and students associated with this institution.
+            </p>
 
-          <!-- Teachers & Faculty Section -->
-          <div class="cm-section" id="cm-section-faculty" style="margin-bottom: 32px; display: none;">
-            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>👨‍🏫</span> Teachers & Faculty
-            </h3>
-            <div class="cm-member-grid" id="cm-grid-faculty">
+            <!-- Accordion Sections -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+
+              <!-- Teachers & Faculty Accordion -->
+              <div class="cm-accordion" id="cm-acc-faculty">
+                <button class="cm-acc-header" onclick="toggleCmAccordion('faculty')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:0.95rem;color:var(--dark-bg);text-align:left;transition:all 0.2s;box-shadow:var(--shadow-sm);">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.3rem;">👨‍🏫</span>
+                    <span>Teachers &amp; Faculty</span>
+                    <span id="cm-count-faculty" style="background:var(--primary-light);color:var(--primary);font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:99px;">—</span>
+                  </div>
+                  <span id="cm-chevron-faculty" style="color:var(--text-muted);font-size:1rem;transition:transform 0.25s;">▶</span>
+                </button>
+                <div id="cm-body-faculty" style="display:none;padding:20px;border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--white);">
+                  <div class="cm-member-grid" id="cm-grid-faculty">
+                    <!-- Dynamic member cards -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Students Accordion -->
+              <div class="cm-accordion" id="cm-acc-students">
+                <button class="cm-acc-header" onclick="toggleCmAccordion('students')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:0.95rem;color:var(--dark-bg);text-align:left;transition:all 0.2s;box-shadow:var(--shadow-sm);">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.3rem;">📚</span>
+                    <span>Students</span>
+                    <span id="cm-count-students" style="background:rgba(16,185,129,0.1);color:#10B981;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:99px;">—</span>
+                  </div>
+                  <span id="cm-chevron-students" style="color:var(--text-muted);font-size:1rem;transition:transform 0.25s;">▶</span>
+                </button>
+                <div id="cm-body-students" style="display:none;padding:20px;border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--white);">
+                  <div class="cm-member-grid" id="cm-grid-students">
+                    <!-- Dynamic member cards -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Alumni Accordion -->
+              <div class="cm-accordion" id="cm-acc-alumni">
+                <button class="cm-acc-header" onclick="toggleCmAccordion('alumni')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:0.95rem;color:var(--dark-bg);text-align:left;transition:all 0.2s;box-shadow:var(--shadow-sm);">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.3rem;">🎓</span>
+                    <span>Alumni</span>
+                    <span id="cm-count-alumni" style="background:rgba(139,92,246,0.12);color:#8B5CF6;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:99px;">—</span>
+                  </div>
+                  <span id="cm-chevron-alumni" style="color:var(--text-muted);font-size:1rem;transition:transform 0.25s;">▶</span>
+                </button>
+                <div id="cm-body-alumni" style="display:none;border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--white);overflow:hidden;">
+                  <!-- Batch list inside alumni accordion -->
+                  <div id="cm-grid-alumni" style="display:flex;flex-direction:column;gap:0;">
+                    <!-- Dynamic batch year cards -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Staff (hidden by default, shown only if data exists) -->
+              <div class="cm-accordion" id="cm-acc-staff" style="display:none;">
+                <button class="cm-acc-header" onclick="toggleCmAccordion('staff')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:0.95rem;color:var(--dark-bg);text-align:left;transition:all 0.2s;box-shadow:var(--shadow-sm);">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.3rem;">🏅</span>
+                    <span>Staff</span>
+                    <span id="cm-count-staff" style="background:rgba(245,158,11,0.12);color:#D97706;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:99px;">—</span>
+                  </div>
+                  <span id="cm-chevron-staff" style="color:var(--text-muted);font-size:1rem;transition:transform 0.25s;">▶</span>
+                </button>
+                <div id="cm-body-staff" style="display:none;padding:20px;border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--white);">
+                  <div class="cm-member-grid" id="cm-grid-staff">
+                    <!-- Dynamic member cards -->
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- end accordion stack -->
+
+            <!-- Empty State -->
+            <div id="cm-empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted); display: none;">
+              <p style="font-size: 1.1rem; margin-bottom: 4px;">No community members yet.</p>
+              <p style="font-size: 0.88rem;">This school has not assigned any verified members.</p>
+            </div>
+
+            <!-- Keep hidden section refs for JS compat -->
+            <div id="cm-section-faculty" style="display:none;"></div>
+            <div id="cm-section-alumni" style="display:none;"></div>
+            <div id="cm-section-staff" style="display:none;"></div>
+            <div id="cm-section-students" style="display:none;"></div>
+          </div><!-- end cm-main-view -->
+
+          <!-- BATCH DETAILS PAGE VIEW -->
+          <div id="cm-batch-view" style="display: none;">
+            <button id="btn-back-to-community" style="background: none; border: none; color: var(--primary); font-weight: 700; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-bottom: 24px; padding: 0;">
+              ← Back to Community
+            </button>
+            
+            <!-- Batch Cover Banner -->
+            <div id="batch-banner" style="position: relative; border-radius: var(--radius-lg); height: 180px; overflow: hidden; margin-bottom: 24px; display: flex; flex-direction: column; justify-content: flex-end; padding: 24px; background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+              <div id="batch-banner-img" style="position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0.35;"></div>
+              <div style="position: relative; z-index: 2;">
+                <span id="batch-badge" style="background: var(--primary); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; margin-bottom: 8px;">Batch Year</span>
+                <h2 id="batch-title" style="font-size: 1.75rem; font-weight: 800; color: white; margin: 0; line-height: 1.2;">Batch of 2024</h2>
+                <p id="batch-subtitle" style="font-size: 0.88rem; color: rgba(255, 255, 255, 0.75); margin-top: 4px; margin-bottom: 0;">Science Department</p>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <p id="batch-description" style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 24px; display: none;"></p>
+
+            <!-- Statistics Dashboard Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; margin-bottom: 30px;">
+              <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 4px;">👥</div>
+                <div id="batch-stat-members" style="font-size: 1.2rem; font-weight: 800; color: var(--dark-bg);">0</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Members</div>
+              </div>
+              <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 4px;">👨‍💼</div>
+                <div id="batch-stat-reps" style="font-size: 1.2rem; font-weight: 800; color: var(--dark-bg);">0</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Reps</div>
+              </div>
+              <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 4px;">⭐️</div>
+                <div id="batch-stat-contributors" style="font-size: 1.2rem; font-weight: 800; color: var(--dark-bg);">0</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Top Contributors</div>
+              </div>
+              <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 4px;">✨</div>
+                <div id="batch-stat-recent" style="font-size: 1.2rem; font-weight: 800; color: var(--dark-bg);">0</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Recent Joins</div>
+              </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div style="margin-bottom: 24px; max-width: 400px;">
+              <input type="text" id="batch-members-search-input" placeholder="Search batch by name, username, department..." style="width: 100%; padding: 10px 16px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: white; transition: border-color 0.2s;">
+            </div>
+
+            <!-- Batch Members List -->
+            <div class="cm-member-grid" id="cm-grid-batch-members">
               <!-- Dynamic member cards -->
+            </div>
+            <div id="cm-batch-members-empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted); display: none;">
+              <p style="font-size: 1.05rem;">No batch members found matching your search.</p>
             </div>
           </div>
 
-          <!-- Alumni Section -->
-          <div class="cm-section" id="cm-section-alumni" style="margin-bottom: 32px; display: none;">
-            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>🎓</span> Alumni
-            </h3>
-            <div class="cm-member-grid" id="cm-grid-alumni">
-              <!-- Dynamic member cards -->
-            </div>
-          </div>
-
-          <!-- Staff Section -->
-          <div class="cm-section" id="cm-section-staff" style="margin-bottom: 32px; display: none;">
-            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>🏅</span> Staff
-            </h3>
-            <div class="cm-member-grid" id="cm-grid-staff">
-              <!-- Dynamic member cards -->
-            </div>
-          </div>
-
-          <!-- Students Section -->
-          <div class="cm-section" id="cm-section-students" style="margin-bottom: 32px; display: none;">
-            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>📚</span> Students
-            </h3>
-            <div class="cm-member-grid" id="cm-grid-students">
-              <!-- Dynamic member cards -->
-            </div>
-          </div>
-
-          <!-- Empty State -->
-          <div id="cm-empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-            <p style="font-size: 1.1rem; margin-bottom: 4px;">No community members yet.</p>
-            <p style="font-size: 0.88rem;">This school has not assigned any verified members.</p>
-          </div>
         </div>
       </main>
     </div>
@@ -1039,6 +1141,6 @@
   <script src="mobile-nav.js"></script>
 
   <!-- Page JS Script -->
-  <script src="school-profile.js?v=2.0"></script>
+  <script src="school-profile.js?v=4.0"></script>
 </body>
 </html>

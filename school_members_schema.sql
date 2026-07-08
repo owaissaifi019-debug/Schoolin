@@ -21,10 +21,12 @@ ALTER TABLE public.school_members ENABLE ROW LEVEL SECURITY;
 
 -- ── RLS Policies ──
 
--- Anyone can read members (public profiles)
+-- School members are viewable by users associated with the same school
 CREATE POLICY "School members are viewable by everyone"
   ON public.school_members FOR SELECT
-  USING (true);
+  USING (
+    school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+  );
 
 -- School admin can add members
 CREATE POLICY "School admins can add members"

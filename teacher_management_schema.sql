@@ -207,7 +207,10 @@ ALTER TABLE public.teacher_invitations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can validate teacher invitations" ON public.teacher_invitations;
 CREATE POLICY "Public can validate teacher invitations" 
   ON public.teacher_invitations FOR SELECT 
-  USING (true);
+  USING (
+    school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
+    OR auth.role() = 'anon'
+  );
 
 DROP POLICY IF EXISTS "Admins can manage teacher invitations" ON public.teacher_invitations;
 CREATE POLICY "Admins can manage teacher invitations" 

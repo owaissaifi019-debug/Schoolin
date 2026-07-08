@@ -63,12 +63,77 @@
       currentUser = await auth.getUser();
     }
 
+    const cacheKeyProfiles = 'campuslink_cached_net_profiles';
+    const cacheKeyFollows = 'campuslink_cached_net_follows';
+    const cacheKeyConns = 'campuslink_cached_net_conns';
+    const cacheKeyAccConns = 'campuslink_cached_net_acc_conns';
+    
+    let hasCache = false;
+    try {
+      const cP = sessionStorage.getItem(cacheKeyProfiles);
+      const cF = sessionStorage.getItem(cacheKeyFollows);
+      const cC = sessionStorage.getItem(cacheKeyConns);
+      const cAC = sessionStorage.getItem(cacheKeyAccConns);
+      
+      if (cP && cF && cC && cAC) {
+        allProfiles = JSON.parse(cP);
+        
+        const fData = JSON.parse(cF);
+        userFollows.users = new Set(fData.users);
+        userFollows.schools = new Set(fData.schools);
+        
+        const cData = JSON.parse(cC);
+        userConnections.incoming = new Set(cData.incoming);
+        userConnections.outgoing = new Set(cData.outgoing);
+        userConnections.connected = new Set(cData.connected);
+        
+        allAcceptedConnections = JSON.parse(cAC);
+        
+        if (currentUser) {
+          currentUserProfile = allProfiles.find(p => p.id === currentUser.id);
+        }
+        
+        const connTab = document.getElementById('net-tab-connections');
+        if (connTab && currentUser) connTab.style.display = 'inline-flex';
+        
+        initManageNetworkToggle();
+        updateNetworkStats();
+        renderPendingRequests();
+        renderCards();
+        if (currentUser) {
+          initSuggestedTabs();
+          renderSuggestedConnections();
+        }
+        hasCache = true;
+        console.log('[Net Cache] Instant SWR render completed.');
+      }
+    } catch (e) {
+      console.warn('Failed to restore network cache:', e);
+    }
+
     await Promise.all([
       loadProfiles(),
       loadFollows(),
       loadConnections(),
       loadAllAcceptedConnections()
     ]);
+
+    // Save to cache
+    try {
+      sessionStorage.setItem(cacheKeyProfiles, JSON.stringify(allProfiles.slice(0, 50)));
+      sessionStorage.setItem(cacheKeyFollows, JSON.stringify({
+        users: Array.from(userFollows.users),
+        schools: Array.from(userFollows.schools)
+      }));
+      sessionStorage.setItem(cacheKeyConns, JSON.stringify({
+        incoming: Array.from(userConnections.incoming),
+        outgoing: Array.from(userConnections.outgoing),
+        connected: Array.from(userConnections.connected)
+      }));
+      sessionStorage.setItem(cacheKeyAccConns, JSON.stringify(allAcceptedConnections.slice(0, 50)));
+    } catch (e) {
+      console.warn('Failed to write network cache:', e);
+    }
 
     if (currentUser) {
       currentUserProfile = allProfiles.find(p => p.id === currentUser.id);
@@ -89,17 +154,24 @@
       connTab.style.display = 'inline-flex';
     }
 
-    initManageNetworkToggle();
+    if (!hasCache) {
+      initManageNetworkToggle();
+    }
     await loadSchoolsSuggestions();
     updateNetworkStats();
 
     renderPendingRequests();
     renderCards();
     if (currentUser) {
-      initSuggestedTabs();
+      if (!hasCache) {
+        initSuggestedTabs();
+      }
       renderSuggestedConnections();
     }
-    setupEventListeners();
+    
+    if (!hasCache) {
+      setupEventListeners();
+    }
   }
 
   /* --- Manage My Network Collapsible Panel --- */

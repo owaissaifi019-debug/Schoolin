@@ -8,35 +8,110 @@ document.addEventListener('DOMContentLoaded', async () => {
   const supabase = window.CampusLink && window.CampusLink.supabase;
   let session = null;
 
-  if (auth) {
+  // Enforce body hidden status until auth checks successfully pass
+  document.body.classList.remove('auth-passed');
+
+  if (!auth || !supabase) {
+    // Fail-safe redirect if security scripts failed to load
+    console.error('[Security Guard] Critical security modules not found. Redirecting to login.');
+    window.location.href = 'login.html';
+    return;
+  }
+
+  try {
     session = await auth.getSession();
-    /*
-    if (!session) {
-      // Not authenticated — redirect to login
-      window.location.href = 'login.html';
+    if (!session || !session.user) {
+      console.warn('[Security Guard] Unauthenticated access attempt. Redirecting to login.');
+      window.location.href = 'login.html?redirect=dashboard.html';
       return;
     }
-    */
 
-    // Role-based authorization: redirect super_admin and block visitors
+    // Resolve user role
     const role = await auth.getUserRole();
     if (role === 'super_admin') {
+      // Super admins belong to the Super Admin Console
       window.location.href = 'admin/index.html';
       return;
-    } else if (role === 'user' && !window.location.pathname.includes('classroom.html')) {
-      alert('Access Denied: Members do not have access to the School Admin Dashboard.');
+    } else if (role !== 'school_admin') {
+      console.warn('[Security Guard] Unauthorized role access attempt:', role);
+      alert('Access Denied: You do not have permission to access the School Admin Dashboard.');
       window.location.href = 'index.html';
       return;
     }
 
-    // Authenticated — hide loading overlay
-    if (authOverlay) {
-      authOverlay.classList.add('fade-out');
-      setTimeout(() => { authOverlay.style.display = 'none'; }, 400);
+    // Verify school association for school_admin
+    const school = await auth.getSchoolForUser(session.user.id);
+    if (!school) {
+      console.warn('[Security Guard] Administrator account has no associated school record.');
+      alert('Access Denied: No school associated with this administrator account.');
+      window.location.href = 'index.html';
+      return;
     }
-  } else {
-    // Auth module not loaded — hide overlay anyway (dev mode)
-    if (authOverlay) authOverlay.style.display = 'none';
+
+    window.hideAuthOverlayTransition = function() {
+      const authOverlay = document.getElementById('auth-loading-overlay');
+      const sidebarLogo = document.querySelector('.dashboard-sidebar .logo-brand-wrapper');
+      const loadingTextEl = document.querySelector('.loading-logo-text');
+      const loaderCard = document.querySelector('.auth-loading-card');
+
+      // A. Reveal dashboard content first so the browser can calculate its layout & positions
+      document.body.classList.add('auth-passed');
+
+      if (sidebarLogo && loadingTextEl && window.getComputedStyle(sidebarLogo.closest('.dashboard-sidebar')).display !== 'none') {
+        const startRect = loadingTextEl.getBoundingClientRect();
+        const targetRect = sidebarLogo.getBoundingClientRect();
+
+        const deltaX = targetRect.left - startRect.left;
+        const deltaY = targetRect.top - startRect.top;
+        
+        const startFontSize = parseFloat(window.getComputedStyle(loadingTextEl).fontSize) || 35;
+        const targetFontSize = parseFloat(window.getComputedStyle(sidebarLogo.querySelector('.logo') || sidebarLogo).fontSize) || 21;
+        const scale = targetFontSize / startFontSize;
+
+        // B. Temporarily hide sidebar logo so there are no duplicate overlapping logos during transition
+        sidebarLogo.style.opacity = '0';
+
+        if (loaderCard) {
+          const sub = loaderCard.querySelector('.auth-loading-text');
+          const bar = loaderCard.querySelector('.auth-loading-bar-wrapper');
+          if (sub) sub.style.opacity = '0';
+          if (bar) bar.style.opacity = '0';
+        }
+
+        const dotsEl = loadingTextEl.querySelector('.loading-dots');
+        if (dotsEl) {
+          dotsEl.style.transition = 'opacity 0.3s ease';
+          dotsEl.style.opacity = '0';
+        }
+
+        if (authOverlay) {
+          authOverlay.style.transition = 'background-color 0.8s cubic-bezier(0.25, 1, 0.5, 1)';
+          authOverlay.style.backgroundColor = 'transparent';
+        }
+
+        // C. Animate text position & scale
+        loadingTextEl.style.transition = 'transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.8s ease';
+        loadingTextEl.style.transformOrigin = 'top left';
+        loadingTextEl.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${scale})`;
+
+        setTimeout(() => {
+          sidebarLogo.style.opacity = '';
+          if (authOverlay) authOverlay.remove();
+        }, 850);
+      } else {
+        if (authOverlay) {
+          authOverlay.classList.add('fade-out');
+          setTimeout(() => { authOverlay.remove(); }, 400);
+        }
+      }
+    };
+
+    // Passed all authentication and authorization checks! Reveal page via flying transition.
+    window.hideAuthOverlayTransition();
+  } catch (err) {
+    console.error('[Security Guard] Error during session/role validation:', err);
+    window.location.href = 'login.html';
+    return;
   }
 
   // ── Logout Button ──────────────────────────────────────
@@ -466,17 +541,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalRegistrations = registrations.length;
     const totalAdmissions = admissions.filter(a => a.schoolName === profile.name).length;
     
-    // Get actual student count from localStorage or default
+    // Determine if we are in live database mode
+    const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
+    
+    // Get actual student count from localStorage filtered by school_id
     let totalStudents = 0;
     try {
       const storedStus = localStorage.getItem('campuslink_students');
       if (storedStus) {
-        totalStudents = JSON.parse(storedStus).length;
+        const parsed = JSON.parse(storedStus);
+        totalStudents = parsed.filter(s => s.schoolId === profile.id || s.school_id === profile.id).length;
       } else {
-        totalStudents = 10;
+        totalStudents = isLiveMode ? 0 : 10;
       }
     } catch (e) {
-      totalStudents = 10;
+      totalStudents = isLiveMode ? 0 : 10;
     }
     
     const totalApplications = admissionApplications.length;
@@ -3088,10 +3167,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   ];
 
-  let academicYears = loadAcademicState('campuslink_academic_years', defaultYears);
-  let classes = loadAcademicState('campuslink_classes', defaultClasses);
-  let subjects = loadAcademicState('campuslink_subjects', defaultSubjects);
-  let teachers = loadAcademicState('campuslink_teachers', defaultTeachers);
+  // Determine if we are in live database mode
+  const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
+
+  let academicYears = loadAcademicState('campuslink_academic_years', isLiveMode ? [] : defaultYears);
+  let classes = loadAcademicState('campuslink_classes', isLiveMode ? [] : defaultClasses);
+  let subjects = loadAcademicState('campuslink_subjects', isLiveMode ? [] : defaultSubjects);
+  let teachers = loadAcademicState('campuslink_teachers', isLiveMode ? [] : defaultTeachers);
 
   // Sync Teachers from Supabase preserving all details
   async function syncTeachersFromSupabase() {
@@ -3106,10 +3188,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tErr) throw tErr;
       if (!dbTeachers) return;
 
-      // 2. Fetch profiles to get user IDs / link matching username
+      // 2. Fetch profiles to get user IDs / link matching username (strictly filtered by school_id)
       const { data: dbProfiles, error: pErr } = await supabase
         .from('profiles')
         .select('id, username, full_name, email')
+        .eq('school_id', profile.id)
         .eq('user_type', 'teacher');
         
       // 3. Fetch classrooms for the school (to map class teacher)
@@ -3118,10 +3201,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         .select('*')
         .eq('school_id', profile.id);
         
-      // 4. Fetch subject teachers for mapping subject assignments
+      // 4. Fetch subject teachers for mapping subject assignments (only for classrooms in this school)
+      const classroomIds = dbClassrooms ? dbClassrooms.map(c => c.id) : [];
       const { data: dbSubjectTeachers } = await supabase
         .from('classroom_subject_teachers')
-        .select('*');
+        .select('*')
+        .in('classroom_id', classroomIds.length > 0 ? classroomIds : ['00000000-0000-0000-0000-000000000000']);
 
       const mappedTeachers = dbTeachers.map(t => {
         const prof = dbProfiles ? dbProfiles.find(p => p.id === t.user_id || (p.username && p.username.toLowerCase() === t.username.toLowerCase())) : null;
@@ -3238,11 +3323,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         .eq('school_id', profile.id);
         
       if (!cErr && dbClasses) {
-        // Fetch all teacher profiles to map classTeacher name!
+        // Fetch teacher profiles strictly belonging to this school
         const { data: dbTeachers, error: tErr } = await supabase
           .from('profiles')
           .select('id, full_name')
-          .eq('role', 'teacher');
+          .eq('school_id', profile.id)
+          .eq('user_type', 'teacher');
         
         const teacherMap = {};
         if (!tErr && dbTeachers) {
@@ -3274,10 +3360,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         .eq('school_id', profile.id);
 
       if (!sErr && dbSubjects) {
-        // Fetch many-to-many relationship for class applicability
+        // Fetch class applicability mapping filtered by school classes
+        const classIds = dbClasses.map(c => c.id);
         const { data: dbApplicability, error: aErr } = await supabase
           .from('subject_classes')
-          .select('*');
+          .select('*')
+          .in('class_id', classIds.length > 0 ? classIds : ['00000000-0000-0000-0000-000000000000']);
 
         const applicabilityMap = {};
         if (!aErr && dbApplicability) {
@@ -6247,6 +6335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 (function() {
   let alumniList = [];
   let alumniInvites = [];
+  let alumniRequests = [];
   let alumniCurrentSubtab = 'all-alumni';
   let alumniInitialized = false;
 
@@ -6254,7 +6343,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function loadAlumni() {
     try {
       const raw = localStorage.getItem('campuslink_alumni');
-      alumniList = raw ? JSON.parse(raw) : [];
+      let list = raw ? JSON.parse(raw) : [];
+      const profile = getProfile();
+      const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
+      if (isLiveMode && profile && profile.id) {
+        list = list.filter(a => a.schoolId === profile.id || a.school_id === profile.id);
+      }
+      alumniList = list;
     } catch(e) { alumniList = []; }
   }
   function saveAlumni() {
@@ -6263,15 +6358,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   function loadAlumniInvites() {
     try {
       const raw = localStorage.getItem('campuslink_alumni_invites');
-      alumniInvites = raw ? JSON.parse(raw) : [];
+      let list = raw ? JSON.parse(raw) : [];
+      const profile = getProfile();
+      const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
+      if (isLiveMode && profile && profile.id) {
+        list = list.filter(i => i.schoolId === profile.id || i.school_id === profile.id);
+      }
+      alumniInvites = list;
     } catch(e) { alumniInvites = []; }
   }
   function saveAlumniInvites() {
     localStorage.setItem('campuslink_alumni_invites', JSON.stringify(alumniInvites));
   }
+  function loadAlumniRequests() {
+    try {
+      const raw = localStorage.getItem('campuslink_alumni_requests');
+      let list = raw ? JSON.parse(raw) : [];
+      const profile = getProfile();
+      const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
+      if (isLiveMode && profile && profile.id) {
+        list = list.filter(r => r.schoolId === profile.id || r.school_id === profile.id);
+      }
+      alumniRequests = list;
+    } catch(e) { alumniRequests = []; }
+  }
+  function saveAlumniRequests() {
+    localStorage.setItem('campuslink_alumni_requests', JSON.stringify(alumniRequests));
+  }
+
 
   function getProfile() {
-    try { return JSON.parse(localStorage.getItem('campuslink_school_profile')) || {}; } catch(e) { return {}; }
+    try { return JSON.parse(localStorage.getItem('campuslink_profile')) || {}; } catch(e) { return {}; }
   }
 
   function generateAlumniCode() {
@@ -6295,21 +6412,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const profile = getProfile();
     if (!sb || !profile || !profile.id || profile.id === 'super-admin-global') return;
     try {
-      const { data: rows, error } = await sb.from('alumni').select('*').eq('school_id', profile.id);
+      const { data: rows, error } = await sb
+        .from('profiles')
+        .select('*')
+        .eq('school_id', profile.id)
+        .eq('user_type', 'alumni');
       if (error) { console.warn('Alumni Supabase sync error:', error); return; }
-      if (rows && rows.length > 0) {
+      if (rows) {
         alumniList = rows.map(r => ({
           id: r.id,
           schoolId: r.school_id,
-          userId: r.user_id,
-          campuslinkId: r.employee_id || ('CL-ALM-' + r.id.substring(0, 6).toUpperCase()),
+          userId: r.id,
+          campuslinkId: r.campuslink_id || ('CL-ALM-' + r.id.substring(0, 6).toUpperCase()),
           fullName: r.full_name || '',
           username: r.username || '',
           email: r.email || '',
           phone: r.phone || '',
           gender: r.gender || '',
-          graduatingYear: r.graduating_year || null,
-          graduatingClass: r.graduating_class || '',
+          graduatingYear: r.passing_year || null,
+          graduatingClass: r.department || '',
           section: r.section || '',
           admissionNumber: r.admission_number || '',
           rollNumber: r.roll_number || '',
@@ -6317,8 +6438,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           currentOccupation: r.current_occupation || '',
           currentLocation: r.current_location || '',
           achievements: r.achievements || '',
-          status: r.status || 'verified',
-          verificationStatus: r.verification_status || 'verified',
+          status: 'verified',
+          verificationStatus: 'verified',
           createdAt: r.created_at || new Date().toISOString()
         }));
         saveAlumni();
@@ -6331,21 +6452,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     const profile = getProfile();
     if (!sb || !profile || !profile.id) return;
     try {
-      const { data: rows } = await sb.from('alumni_invites').select('*').eq('school_id', profile.id);
+      // Join alumni_batches so we can show passing_year / program in the table
+      const { data: rows, error } = await sb
+        .from('alumni_invites')
+        .select('*, alumni_batches(passing_year, program)')
+        .eq('school_id', profile.id);
+      if (error) { console.warn('syncAlumniInvitesFromSupabase error:', error); return; }
       if (rows && rows.length > 0) {
+        // DB has records — overwrite local cache with authoritative data
         alumniInvites = rows.map(r => ({
-          id: r.id,
+          id: r.id,                                              // real DB UUID
           schoolId: r.school_id,
           inviteCode: r.invite_code,
-          graduatingYear: r.graduating_year,
-          graduatingClass: r.graduating_class || '',
+          batchId: r.batch_id || null,
+          graduatingYear: r.alumni_batches?.passing_year || null, // resolved via JOIN
+          graduatingClass: r.alumni_batches?.program || '',        // resolved via JOIN
           status: r.status || 'active',
           usesCount: r.uses_count || 0,
           createdAt: r.created_at || new Date().toISOString()
         }));
         saveAlumniInvites();
+      } else if (rows && rows.length === 0 && alumniInvites.length === 0) {
+        // DB confirmed empty and local is also empty — keep in sync
+        saveAlumniInvites();
       }
+      // If rows === [] but local has items: DB insert likely failed due to RLS.
+      // Do NOT overwrite localStorage — local items are preserved until RLS is fixed.
     } catch(err) { console.warn('syncAlumniInvitesFromSupabase error:', err); }
+  }
+
+  async function syncAlumniRequestsFromSupabase() {
+    const sb = window.CampusLink && window.CampusLink.supabase;
+    const profile = getProfile();
+    if (!sb || !profile || !profile.id) return;
+    try {
+      const { data: rows, error } = await sb.from('alumni_requests').select('*').eq('school_id', profile.id);
+      if (error) { console.warn('Alumni requests Supabase sync error:', error); return; }
+      if (rows && rows.length > 0) {
+        // DB has records — overwrite local with authoritative data
+        alumniRequests = rows;
+        saveAlumniRequests();
+      } else if (rows && rows.length === 0 && alumniRequests.length === 0) {
+        // Both empty — stay in sync
+        saveAlumniRequests();
+      }
+      // rows=[] but local has items → preserve local (INSERT may have failed due to RLS)
+    } catch(err) { console.warn('syncAlumniRequestsFromSupabase error:', err); }
   }
 
   // ── Populate Filters ───────────────────────────────────────────
@@ -6491,19 +6643,33 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    // Compute live usedBy from local requests
+    let allReqs = [...alumniRequests];
+    try {
+      const localR = JSON.parse(localStorage.getItem('campuslink_alumni_requests') || '[]');
+      localR.forEach(lr => { if (!allReqs.find(r => r.id === lr.id)) allReqs.push(lr); });
+    } catch(e) {}
+
     tbody.innerHTML = filtered.map(i => {
       const statusBg = i.status === 'active' ? 'status-approved' : 'status-rejected';
       const inviteUrl = `${window.location.origin}/join-alumni.html?code=${i.inviteCode}`;
+      const usedCount = allReqs.filter(r => 
+        r.invite_code === i.inviteCode || 
+        r.inviteCode === i.inviteCode || 
+        r.invite_id === i.id || 
+        r.inviteId === i.id
+      ).length;
       return `<tr>
         <td style="font-size:0.88rem;font-weight:600;">${formatYear(i.graduatingYear)}</td>
         <td style="font-size:0.82rem;">${i.graduatingClass || '—'}</td>
         <td><code style="font-size:0.82rem;background:var(--bg-secondary);padding:3px 8px;border-radius:4px;">${i.inviteCode}</code></td>
         <td><span class="badge-status ${statusBg}" style="text-transform:capitalize;font-size:0.73rem;">${i.status}</span></td>
-        <td style="font-size:0.82rem;">${i.usesCount || 0}</td>
+        <td style="font-size:0.82rem;font-weight:700;color:${usedCount > 0 ? 'var(--primary)' : 'var(--text-muted)'}">${usedCount}</td>
         <td style="font-size:0.82rem;">${i.createdAt ? new Date(i.createdAt).toLocaleDateString() : '—'}</td>
         <td>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <button onclick="navigator.clipboard.writeText('${inviteUrl}').then(()=>alert('Link copied!'))" style="padding:4px 10px;font-size:0.75rem;border-radius:4px;background:var(--primary-light);color:var(--primary);border:none;cursor:pointer;font-weight:600;">📋 Copy</button>
+            <button onclick="openAlumniQRModal('${i.inviteCode}', '${i.graduatingYear || ''}')" style="padding:4px 10px;font-size:0.75rem;border-radius:4px;background:var(--primary-light);color:var(--primary);border:none;cursor:pointer;font-weight:600;">📱 QR Code</button>
             <button onclick="toggleAlumniInvite('${i.id}')" style="padding:4px 10px;font-size:0.75rem;border-radius:4px;background:rgba(245,158,11,0.1);color:#D97706;border:none;cursor:pointer;font-weight:600;">${i.status === 'active' ? '🔒 Disable' : '🔓 Enable'}</button>
             <button onclick="deleteAlumniInvite('${i.id}')" style="padding:4px 10px;font-size:0.75rem;border-radius:4px;background:rgba(239,68,68,0.1);color:#EF4444;border:none;cursor:pointer;font-weight:600;">🗑</button>
           </div>
@@ -6545,6 +6711,192 @@ document.addEventListener('DOMContentLoaded', async () => {
     }).join('');
   }
 
+  // ── Render Pending Requests Panel ─────────────────────────────
+  function renderAlumniRequestsPanel() {
+    const tbody = document.getElementById('alumni-requests-tbody');
+    const countEl = document.getElementById('alumni-requests-count');
+    if (!tbody) return;
+
+    const profile = getProfile();
+    // Merge Supabase + localStorage requests
+    let requests = [...alumniRequests];
+    try {
+      const local = JSON.parse(localStorage.getItem('campuslink_alumni_requests') || '[]');
+      local.forEach(lr => {
+        if (!requests.find(r => r.id === lr.id)) requests.push(lr);
+      });
+    } catch(e) {}
+
+    // Filter to this school
+    if (profile && profile.id) {
+      requests = requests.filter(r => r.school_id === profile.id || r.schoolId === profile.id);
+    }
+
+    const pending = requests.filter(r => r.status === 'pending' || r.status === 'info_requested');
+    const all = requests;
+
+    if (countEl) countEl.textContent = `${pending.length} request${pending.length !== 1 ? 's' : ''} pending (${all.length} total)`;
+
+    if (all.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">No alumni joining requests yet.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = all.map(r => {
+      const name = r.full_name || r.fullName || '—';
+      const username = r.username || '—';
+      const email = r.email || '—';
+      const year = r.passing_year || r.graduatingYear || '—';
+      const dept = r.department || r.graduatingClass || r.program || '—';
+      const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : (r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—');
+      const status = r.status || 'pending';
+
+      let statusHtml;
+      if (status === 'approved') statusHtml = `<span style="background:rgba(16,185,129,0.1);color:#10B981;padding:3px 10px;border-radius:99px;font-size:0.73rem;font-weight:700;">Approved</span>`;
+      else if (status === 'rejected') statusHtml = `<span style="background:rgba(239,68,68,0.1);color:#EF4444;padding:3px 10px;border-radius:99px;font-size:0.73rem;font-weight:700;">Rejected</span>`;
+      else statusHtml = `<span style="background:rgba(245,158,11,0.1);color:#D97706;padding:3px 10px;border-radius:99px;font-size:0.73rem;font-weight:700;">Pending</span>`;
+
+      const isPending = status === 'pending' || status === 'info_requested';
+      const actions = isPending
+        ? `<button onclick="dashApproveAlumniReq('${r.id}')"
+             style="padding:4px 10px;font-size:0.73rem;border-radius:4px;background:rgba(16,185,129,0.1);color:#10B981;border:none;cursor:pointer;font-weight:700;">✓ Approve</button>
+           <button onclick="dashRejectAlumniReq('${r.id}')"
+             style="padding:4px 10px;font-size:0.73rem;border-radius:4px;background:rgba(239,68,68,0.1);color:#EF4444;border:none;cursor:pointer;font-weight:700;">✕ Reject</button>`
+        : `<span style="font-size:0.78rem;color:var(--text-muted);">Done</span>`;
+
+      const initials = name.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
+      const colors = ['#6366F1','#8B5CF6','#EC4899','#3B82F6','#10B981'];
+      const color = colors[name.charCodeAt(0) % colors.length];
+
+      return `<tr style="border-bottom:1px solid var(--border-color);">
+        <td style="padding:12px 20px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.75rem;flex-shrink:0;">${initials}</div>
+            <div><div style="font-weight:700;font-size:0.88rem;">${name}</div><div style="font-size:0.75rem;color:var(--text-muted);">@${username}</div></div>
+          </div>
+        </td>
+        <td style="padding:12px 20px;font-size:0.82rem;">${email}</td>
+        <td style="padding:12px 20px;font-size:0.88rem;font-weight:600;">${year}</td>
+        <td style="padding:12px 20px;font-size:0.82rem;">${dept}</td>
+        <td style="padding:12px 20px;font-size:0.82rem;">${date}</td>
+        <td style="padding:12px 20px;">${statusHtml}</td>
+        <td style="padding:12px 20px;text-align:right;"><div style="display:flex;gap:6px;justify-content:flex-end;">${actions}</div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  window.dashApproveAlumniReq = function(reqId) {
+    const sb = window.CampusLink && window.CampusLink.supabase;
+
+    if (sb) {
+      // ── Live Supabase mode ──────────────────────────────────────
+      sb.from('alumni_requests')
+        .update({ status: 'approved' })
+        .eq('id', reqId)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error approving alumni request:', error);
+            alert('Failed to approve request: ' + error.message);
+          } else {
+            syncAlumniRequestsFromSupabase().then(() => {
+              syncAlumniFromSupabase().then(() => {
+                renderAlumni();
+                alert('✅ Alumni request approved!');
+              });
+            });
+          }
+        });
+      return;
+    }
+
+    let requests = [];
+    try { requests = JSON.parse(localStorage.getItem('campuslink_alumni_requests') || '[]'); } catch(e) {}
+    const req = requests.find(r => r.id === reqId);
+    if (!req) { alert('Request not found.'); return; }
+    req.status = 'approved';
+    localStorage.setItem('campuslink_alumni_requests', JSON.stringify(requests));
+
+    // Increment usesCount of the invitation link in localStorage
+    if (req.invite_id) {
+      let localInvites = [];
+      try { localInvites = JSON.parse(localStorage.getItem('campuslink_alumni_invites') || '[]'); } catch(e) {}
+      const invite = localInvites.find(i => i.id === req.invite_id || i.inviteCode === req.invite_id);
+      if (invite) {
+        invite.usesCount = (invite.usesCount || 0) + 1;
+        invite.uses_count = (invite.uses_count || 0) + 1;
+        localStorage.setItem('campuslink_alumni_invites', JSON.stringify(localInvites));
+      }
+    }
+
+    // Add to alumni list
+    let localAlumni = [];
+    try { localAlumni = JSON.parse(localStorage.getItem('campuslink_alumni') || '[]'); } catch(e) {}
+    if (!localAlumni.find(a => a.username === req.username)) {
+      localAlumni.push({
+        id: req.user_id || req.userId || ('alm_' + Date.now()),
+        schoolId: req.school_id || req.schoolId,
+        userId: req.user_id || req.userId,
+        campuslinkId: 'CL-ALM-' + Math.floor(1000 + Math.random() * 9000),
+        fullName: req.full_name || req.fullName || '',
+        username: req.username || '',
+        email: req.email || '',
+        phone: '',
+        gender: '',
+        graduatingYear: req.passing_year || req.graduatingYear || null,
+        graduatingClass: req.department || req.graduatingClass || 'General',
+        section: '',
+        admissionNumber: '',
+        rollNumber: '',
+        dateOfBirth: '',
+        currentOccupation: '',
+        currentLocation: '',
+        achievements: '',
+        status: 'verified',
+        verificationStatus: 'verified',
+        createdAt: new Date().toISOString()
+      });
+      localStorage.setItem('campuslink_alumni', JSON.stringify(localAlumni));
+      loadAlumni();
+    }
+    alumniRequests = requests;
+    renderAlumni();
+    alert('✅ Alumni request approved!');
+  };
+
+  window.dashRejectAlumniReq = function(reqId) {
+    if (!confirm('Reject this alumni joining request?')) return;
+    const sb = window.CampusLink && window.CampusLink.supabase;
+
+    if (sb) {
+      // ── Live Supabase mode ──────────────────────────────────────
+      sb.from('alumni_requests')
+        .update({ status: 'rejected' })
+        .eq('id', reqId)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error rejecting alumni request:', error);
+            alert('Failed to reject request: ' + error.message);
+          } else {
+            syncAlumniRequestsFromSupabase().then(() => {
+              renderAlumni();
+              alert('Alumni request rejected.');
+            });
+          }
+        });
+      return;
+    }
+
+    let requests = [];
+    try { requests = JSON.parse(localStorage.getItem('campuslink_alumni_requests') || '[]'); } catch(e) {}
+    const req = requests.find(r => r.id === reqId);
+    if (!req) { alert('Request not found.'); return; }
+    req.status = 'rejected';
+    localStorage.setItem('campuslink_alumni_requests', JSON.stringify(requests));
+    alumniRequests = requests;
+    renderAlumni();
+    alert('❌ Alumni request rejected.');
+  };
+
   // ── Master Render ──────────────────────────────────────────────
   function renderAlumni() {
     populateAlumniFilters();
@@ -6552,6 +6904,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (alumniCurrentSubtab === 'by-batch') renderByBatch();
     if (alumniCurrentSubtab === 'alumni-invite-links') renderAlumniInviteLinks();
     if (alumniCurrentSubtab === 'alumni-overview') renderAlumniOverview();
+    if (alumniCurrentSubtab === 'alumni-requests') renderAlumniRequestsPanel();
   }
 
   // ── View Modal ─────────────────────────────────────────────────
@@ -6759,15 +7112,203 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.insertAdjacentHTML('beforeend', html);
   }
 
+  window.openAlumniQRModal = function(code, yearText) {
+    const inviteUrl = `${window.location.origin}/join-alumni.html?code=${code}`;
+    const label     = yearText ? `Batch of ${yearText}` : 'All Years';
+    const qrApi     = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(inviteUrl)}`;
+
+    // Remove any existing instance
+    document.getElementById('alumni-qr-modal-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'alumni-qr-modal-overlay';
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:rgba(15,23,42,0.55);backdrop-filter:blur(4px);
+      z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;
+    `;
+
+    overlay.innerHTML = `
+      <div id="alumni-qr-modal-box" style="
+        background:var(--white);border-radius:20px;padding:0;max-width:420px;width:100%;
+        box-shadow:0 32px 80px rgba(0,0,0,0.22);overflow:hidden;
+        animation:qrSlideIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      ">
+        <style>
+          @keyframes qrSlideIn { from { transform:scale(0.88) translateY(16px); opacity:0; } to { transform:scale(1) translateY(0); opacity:1; } }
+        </style>
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#6366F1,#8B5CF6);padding:24px 24px 20px;position:relative;">
+          <button onclick="document.getElementById('alumni-qr-modal-overlay').remove()" style="
+            position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;
+            background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:1rem;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;line-height:1;
+          ">✕</button>
+          <div style="font-size:1.5rem;margin-bottom:6px;">📱</div>
+          <div style="color:#fff;font-size:1.05rem;font-weight:800;">Alumni Invite QR Code</div>
+          <div style="color:rgba(255,255,255,0.75);font-size:0.82rem;margin-top:2px;">${label} · ${code}</div>
+        </div>
+
+        <!-- QR Canvas Area -->
+        <div style="padding:24px;display:flex;flex-direction:column;align-items:center;gap:18px;">
+
+          <!-- QR image with loading state -->
+          <div id="alumni-qr-wrap" style="
+            width:220px;height:220px;border-radius:12px;border:2px solid var(--border-color);
+            background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;
+            overflow:hidden;position:relative;
+          ">
+            <div id="alumni-qr-spinner" style="font-size:2rem;animation:spin 1s linear infinite;">⟳</div>
+            <style>@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>
+            <canvas id="alumni-qr-canvas" style="display:none;width:220px;height:220px;border-radius:10px;"></canvas>
+          </div>
+
+          <!-- Invite URL -->
+          <div style="width:100%;">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Invite Link</div>
+            <div style="display:flex;gap:8px;">
+              <input id="alumni-qr-link-input" readonly value="${inviteUrl}" style="
+                flex:1;min-width:0;padding:9px 12px;border:1px solid var(--border-color);
+                border-radius:8px;font-size:0.75rem;background:var(--bg-secondary);
+                color:var(--text-main);font-family:monospace;outline:none;
+              ">
+              <button onclick="
+                navigator.clipboard.writeText('${inviteUrl}').then(()=>{
+                  this.textContent='✓ Copied';this.style.background='#10B981';
+                  setTimeout(()=>{this.textContent='Copy';this.style.background='var(--primary)';},2000);
+                });
+              " style="
+                padding:0 14px;background:var(--primary);color:#fff;border:none;
+                border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;
+              ">Copy</button>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="display:flex;gap:10px;width:100%;">
+            <button id="alumni-qr-download-btn" style="
+              flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-color);
+              background:var(--bg-secondary);color:var(--text-main);font-size:0.82rem;
+              font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+            ">⬇ Download QR</button>
+            <button onclick="document.getElementById('alumni-qr-modal-overlay').remove()" style="
+              flex:1;padding:10px;border-radius:10px;border:none;
+              background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;font-size:0.82rem;
+              font-weight:700;cursor:pointer;
+            ">Done</button>
+          </div>
+
+          <p style="font-size:0.72rem;color:var(--text-muted);text-align:center;margin:0;">
+            Alumni scan this code to open the invite registration page
+          </p>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close on backdrop click
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+    // Load QR image into canvas
+    const canvas  = document.getElementById('alumni-qr-canvas');
+    const spinner = document.getElementById('alumni-qr-spinner');
+    const dlBtn   = document.getElementById('alumni-qr-download-btn');
+    const ctx     = canvas.getContext('2d');
+    const img     = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function() {
+      canvas.width  = 220;
+      canvas.height = 220;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 220, 220);
+      ctx.drawImage(img, 0, 0, 220, 220);
+      spinner.style.display = 'none';
+      canvas.style.display  = 'block';
+
+      dlBtn.onclick = () => {
+        const a = document.createElement('a');
+        a.download = `AlumniQR_${code}_${label.replace(/\s+/g,'-')}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      };
+    };
+    img.onerror = function() {
+      spinner.textContent = '⚠';
+      spinner.style.animation = 'none';
+      spinner.style.fontSize = '1.4rem';
+      spinner.style.color = '#EF4444';
+      spinner.title = 'Could not load QR — check internet connection';
+    };
+    img.src = qrApi;
+  };
+
+
   window.createAlumniInviteLink = async function() {
     const year  = parseInt(document.getElementById('alumni-invite-year')?.value) || null;
     const cls   = document.getElementById('alumni-invite-class')?.value.trim() || '';
     const code  = generateAlumniCode();
     const profile = getProfile();
+    const sb = window.CampusLink && window.CampusLink.supabase;
+
+    let batchId = null;
+    if (sb && profile && profile.id && year) {
+      try {
+        // A. Resolve or create graduation batch
+        const { data: existingBatch } = await sb
+          .from('alumni_batches')
+          .select('id')
+          .eq('school_id', profile.id)
+          .eq('passing_year', year)
+          .maybeSingle();
+
+        if (existingBatch) {
+          batchId = existingBatch.id;
+        } else {
+          const { data: newBatch, error: bErr } = await sb
+            .from('alumni_batches')
+            .insert({
+              school_id: profile.id,
+              passing_year: year,
+              program: cls || null
+            })
+            .select('id')
+            .single();
+          if (!bErr && newBatch) {
+            batchId = newBatch.id;
+          }
+        }
+      } catch (batchErr) {
+        console.warn('Error resolving graduation batch:', batchErr);
+      }
+    }
+
+
+    // Save to Supabase and get the real DB-generated UUID back
+    let dbId = null;
+    if (sb && profile && profile.id) {
+      try {
+        const { data: inserted, error: insErr } = await sb
+          .from('alumni_invites')
+          .insert({
+            school_id: profile.id,
+            batch_id: batchId,
+            invite_code: code,
+            status: 'active'
+          })
+          .select('id')
+          .single();
+        if (!insErr && inserted) dbId = inserted.id;
+        else if (insErr) console.warn('Alumni invite DB error:', insErr);
+      } catch(dbErr) { 
+        console.warn('Alumni invite DB error:', dbErr); 
+      }
+    }
 
     const invite = {
-      id: 'ainv_' + Date.now(),
+      id: dbId || ('ainv_' + Date.now()), // prefer real DB UUID; fallback for offline mode
       schoolId: profile.id || '',
+      batchId: batchId,
       inviteCode: code,
       graduatingYear: year,
       graduatingClass: cls,
@@ -6776,20 +7317,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       createdAt: new Date().toISOString()
     };
 
-    // Save to Supabase
-    const sb = window.CampusLink && window.CampusLink.supabase;
-    if (sb && profile && profile.id) {
-      try {
-        await sb.from('alumni_invites').insert({
-          school_id: profile.id,
-          invite_code: code,
-          graduating_year: year,
-          graduating_class: cls || null,
-          status: 'active'
-        });
-      } catch(dbErr) { console.warn('Alumni invite DB error:', dbErr); }
-    }
-
     alumniInvites.unshift(invite);
     saveAlumniInvites();
     document.getElementById('alumni-invite-modal-overlay')?.remove();
@@ -6797,14 +7324,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inviteUrl = `${window.location.origin}/join-alumni.html?code=${code}`;
     const resultHtml = `
       <div id="alumni-invite-result-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:var(--white);border-radius:var(--radius-md);padding:28px;max-width:480px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.25);text-align:center;">
-          <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 16px;">🎓</div>
-          <h4 style="font-size:1.1rem;font-weight:800;margin:0 0 8px;">Alumni Invite Link Created!</h4>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 16px;">Share this link with alumni to let them register their profiles.</p>
-          <div style="background:var(--bg-secondary);border-radius:var(--radius-sm);padding:12px 16px;font-family:monospace;font-size:0.82rem;word-break:break-all;text-align:left;margin-bottom:16px;">${inviteUrl}</div>
-          <div style="display:flex;gap:12px;justify-content:center;">
-            <button onclick="navigator.clipboard.writeText('${inviteUrl}').then(()=>alert('Copied!'))" style="padding:10px 20px;border-radius:var(--radius-sm);border:none;background:var(--primary);color:#fff;font-size:0.85rem;cursor:pointer;font-weight:700;">📋 Copy Link</button>
-            <button onclick="document.getElementById('alumni-invite-result-overlay').remove();renderAlumniInviteLinks();" style="padding:10px 20px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--white);color:var(--text-main);font-size:0.85rem;cursor:pointer;font-weight:600;">Close</button>
+        <div style="background:var(--white);border-radius:var(--radius-md);padding:28px;max-width:480px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.25);text-align:center;display:flex;flex-direction:column;gap:18px;">
+          <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto;">🎓</div>
+          <div>
+            <h4 style="font-size:1.15rem;font-weight:800;margin:0 0 6px;color:var(--dark-bg);">Alumni Invite Link Created!</h4>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin:0;">Share this link with alumni to let them register their profiles.</p>
+          </div>
+          
+          <!-- Share Link Section -->
+          <div style="text-align:left;">
+            <label style="font-weight: 600; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform:uppercase; letter-spacing:0.05em;">Invite Link</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="success-alumni-invite-link" readonly style="flex-grow: 1; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.82rem; outline: none; background: var(--bg-secondary); color: var(--text-main); font-family: monospace;" value="${inviteUrl}">
+              <button onclick="navigator.clipboard.writeText('${inviteUrl}').then(()=>alert('Copied!'))" style="padding: 0 16px; font-size: 0.82rem; white-space: nowrap; font-weight: 600; background:var(--primary); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer;">Copy Link</button>
+            </div>
+          </div>
+
+          <!-- QR code placeholder panel -->
+          <div style="display: flex; align-items: center; gap: 16px; background: rgba(15,23,42,0.02); border: 1px solid var(--border-color); padding: 14px; border-radius: var(--radius-sm); text-align:left;">
+            <div style="width: 50px; height: 50px; border: 1.5px solid var(--border-color); background: #fff; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">📱</div>
+            <div style="flex-grow:1;">
+              <div style="font-size: 0.82rem; font-weight: 700; color: var(--dark-bg);">QR Code Invitation</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 6px;">Display on screen for instant scanning.</div>
+              <button type="button" onclick="openAlumniQRModal('${code}', '${year || ''}');" style="padding: 4px 10px; font-size: 0.72rem; border-radius: var(--radius-sm); font-weight: 600; border: 1px solid var(--border-color); background:var(--white); cursor:pointer; color:var(--text-main);">Show QR Code</button>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:center;margin-top:8px;">
+            <button onclick="document.getElementById('alumni-invite-result-overlay').remove();renderAlumniInviteLinks();" style="padding:10px 24px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--white);color:var(--text-main);font-size:0.85rem;cursor:pointer;font-weight:600;width:100%;">Close</button>
           </div>
         </div>
       </div>`;
@@ -6978,8 +7525,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     loadAlumni();
     loadAlumniInvites();
+    loadAlumniRequests();
     await syncAlumniFromSupabase();
     await syncAlumniInvitesFromSupabase();
+    await syncAlumniRequestsFromSupabase();
     renderAlumni();
   };
 

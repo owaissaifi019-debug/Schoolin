@@ -2031,3 +2031,96 @@ body.platform-android .mobile-fixed-header {
   color: #0066c8;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
+
+/* ── Alumni Dashboard Sub-navigation Styles ── */
+.alumni-sub-tabs-container {
+  display: flex;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.alumni-sub-tabs {
+  display: inline-flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 30px;
+  border: 1px solid #e2e8f0;
+  gap: 2px;
+  align-items: center;
+}
+
+.alumni-sub-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 !important;
+}
+
+.alumni-sub-tab-btn:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.alumni-sub-tab-btn.active {
+  background: #ffffff;
+  color: #0066c8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.alumni-sub-panel {
+  display: none;
+}
+
+.alumni-sub-panel.active {
+  display: block;
+}
+
+.badge-count-red {
+  background-color: var(--error);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  display: inline-block;
+  line-height: 1;
+}
+
+.alumni-qr-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  padding: 10px 0;
+}
+
+.alumni-qr-code-img {
+  width: 200px;
+  height: 200px;
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  background: white;
+  border-radius: var(--radius-md);
+}
+
+.alumni-qr-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+}
+

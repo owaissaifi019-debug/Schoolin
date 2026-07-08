@@ -1850,6 +1850,19 @@
     const feedContainer = document.getElementById('social-feed');
     if (!feedContainer) return;
 
+    // Check sessionStorage cache first for SWR (stale-while-revalidate) pattern
+    const cacheKey = `campuslink_cached_feed_${activeFeedFilter}_${activeTopicFilter || 'all'}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        console.log('[Feed Cache] Rendering cached posts instantly:', cachedData.length);
+        renderFeed(cachedData);
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached feed:', e);
+    }
+
     try {
       const { data: posts, error } = await supabase
         .from('posts')
@@ -2065,6 +2078,15 @@
           } catch (spErr) {
             console.warn('Could not load target post:', spErr);
           }
+        }
+      }
+
+      // Cache the loaded posts for SWR
+      if (filteredPosts) {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(filteredPosts.slice(0, 30)));
+        } catch (e) {
+          console.warn('Failed to save feed cache:', e);
         }
       }
 

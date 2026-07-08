@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join Alumni Community | CampusLink</title>
+  <meta name="description" content="Join your school's alumni network batch on CampusLink.">
+
+  <!-- Stitch Design Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --primary: #0062e3;
+      --primary-hover: #0052be;
+      --success: #10b981;
+      --error: #ef4444;
+      --white: #ffffff;
+      --text-muted: #8fa0dd;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --input-bg: rgba(255, 255, 255, 0.04);
+      --font-family: 'Manrope', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background: #000a1f;
+      color: #f7f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Atmospheric Background ── */
+    .login-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: #000a1f;
+      overflow: hidden;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+      animation: orbFloat 10s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 50vw; height: 50vw; background: rgba(0, 98, 227, 0.15); top: -10%; left: -10%; }
+    .orb-2 { width: 45vw; height: 45vw; background: rgba(16, 185, 129, 0.06); bottom: -10%; right: -10%; animation-delay: 3s; }
+
+    @keyframes orbFloat {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(3%, 4%) scale(1.05); }
+    }
+
+    /* ── Card Styles ── */
+    .join-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 16px;
+      padding: 36px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+      position: relative;
+    }
+
+    .brand-logo {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--white);
+      text-align: center;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .brand-logo span {
+      background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 8px;
+      color: var(--white);
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    /* ── Invite Metadata Tag ── */
+    .invite-badge {
+      background: rgba(0, 98, 227, 0.08);
+      border: 1px solid rgba(0, 98, 227, 0.2);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .invite-badge-school {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+
+    .invite-badge-details {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Forms and Inputs ── */
+    .form-group {
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .input-field {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 0.85rem;
+      color: var(--white);
+      outline: none;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .input-field:focus {
+      border-color: rgba(0, 98, 227, 0.5);
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 0 3px rgba(0, 98, 227, 0.15);
+    }
+
+    .input-field[readonly] {
+      background: rgba(255, 255, 255, 0.02);
+      color: #a1b0cb;
+      cursor: not-allowed;
+      border-color: rgba(255, 255, 255, 0.04);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--white);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--white);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* ── Screen States ── */
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    /* ── Success Check Animation ── */
+    .success-icon-box {
+      width: 64px;
+      height: 64px;
+      background: rgba(16, 185, 129, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px auto;
+      font-size: 2.2rem;
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .error-icon-box {
+      width: 64px;
+      height: 64px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px auto;
+      font-size: 2.2rem;
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border-left-color: var(--primary);
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .tab-toggle-container {
+      display: flex;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 24px;
+    }
+
+    .tab-toggle-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-toggle-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .error-msg {
+      color: var(--error);
+      font-size: 0.78rem;
+      margin-top: 4px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+
+  <div class="join-card">
+    
+    <div class="brand-logo">
+      <span>CampusLink</span>🎓
+    </div>
+
+    <!-- Screen 1: Loading/Resolving -->
+    <div id="screen-loading" class="screen active" style="text-align: center; padding: 20px 0;">
+      <div class="spinner"></div>
+      <p style="color: var(--text-muted); font-size: 0.88rem;">Resolving invitation details...</p>
+    </div>
+
+    <!-- Screen 2: Error Screen -->
+    <div id="screen-error" class="screen" style="text-align: center; padding: 10px 0;">
+      <div class="error-icon-box">⚠</div>
+      <h2 style="margin-bottom: 12px;">Invalid Invitation</h2>
+      <p id="error-message-text" style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 24px;">This invitation link is invalid, expired, or has been disabled by the School Administrator.</p>
+      <a href="index.html" class="btn btn-secondary" style="text-decoration: none;">Go to Homepage</a>
+    </div>
+
+    <!-- Screen 3: Onboarding Redirect Option (Sign In / Create Account) -->
+    <div id="screen-auth" class="screen">
+      <h2>Join Alumni Batch</h2>
+      <p class="subtitle">To request joining this alumni batch, please sign in or create a CampusLink account.</p>
+
+      <!-- Resolved Batch Metadata -->
+      <div class="invite-badge">
+        <div class="invite-badge-school" id="auth-invite-school">School Name</div>
+        <div class="invite-badge-details" id="auth-invite-details">Batch 2024 • Science</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
+        <button class="btn btn-primary" id="btn-signin-redirect" style="width: 100%;">Sign In</button>
+        <button class="btn btn-secondary" id="btn-signup-redirect" style="width: 100%;">Create Account</button>
+      </div>
+    </div>
+
+    <!-- Screen 4: Verify Email Alert -->
+    <div id="screen-verify-email" class="screen" style="text-align: center; padding: 10px 0;">
+      <div class="success-icon-box">📧</div>
+      <h2>Email Verification Sent</h2>
+      <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 24px;">We've sent a verification link to your email. Please verify your email first, then return here and refresh this page to complete your request.</p>
+      <button onclick="window.location.reload();" class="btn btn-primary">I've Verified My Email</button>
+    </div>
+
+    <!-- Screen 5: Confirm Request Submission -->
+    <div id="screen-confirm" class="screen">
+      <h2>Submit Joining Request</h2>
+      <p class="subtitle">You are logged in. Submit your request for approval by the School Admin.</p>
+
+      <div class="invite-badge">
+        <div class="invite-badge-school" id="confirm-invite-school">School Name</div>
+        <div class="invite-badge-details" id="confirm-invite-details">Batch 2024 • Science</div>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 6px;">Logged in as</div>
+        <div style="font-size: 1rem; font-weight: 700;" id="user-display-name">Rahul Sharma</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;" id="user-display-email">rahul@example.com</div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-submit-request">Submit Request</button>
+      <button class="btn btn-secondary" id="btn-logout" style="margin-top: 10px;">Sign Out</button>
+    </div>
+
+    <!-- Screen 6: Success Confirmation -->
+    <div id="screen-success" class="screen" style="text-align: center; padding: 10px 0;">
+      <div class="success-icon-box">✓</div>
+      <h2>Request Submitted!</h2>
+      <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 24px;">Your joining request has been successfully submitted to the School Admin. You will receive alumni access as soon as the administrator verifies your details.</p>
+      <a href="index.html" class="btn btn-primary" style="text-decoration: none;">Go to Dashboard</a>
+    </div>
+
+  </div>
+
+  <!-- Supabase Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+
+  <script>
+    // Global parameters
+    let resolvedSchool = null;
+    let resolvedBatch = null;
+    let resolvedInvite = null;
+    let currentUserSession = null;
+
+    // Read URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeParam = (urlParams.get('code') || '').trim();
+    const schoolParam = (urlParams.get('school') || '').trim();
+    const batchParam = (urlParams.get('batch') || '').trim();
+
+    window.onload = async function() {
+      // 1. Initialise Supabase Auth
+      const auth = window.CampusLink && window.CampusLink.auth;
+      if (auth) {
+        try {
+          const session = await auth.getSession();
+          if (session && session.user) {
+            const profile = await auth.getProfile(session.user.id);
+            currentUserSession = {
+              user: session.user,
+              profile: profile
+            };
+          }
+        } catch (e) {
+          console.warn("Failed retrieving user session:", e);
+        }
+      }
+
+      // 2. Resolve parameters to School & Batch
+      await resolveInvitationDetails();
+    };
+
+    async function resolveInvitationDetails() {
+      const sb = window.CampusLink && window.CampusLink.supabase;
+      if (!sb) {
+        showErrorScreen("Supabase client is not initialized.");
+        return;
+      }
+
+      try {
+        if (codeParam) {
+          // Resolve via Invite Code
+          const { data: invite, error: iErr } = await sb
+            .from('alumni_invites')
+            .select('*')
+            .eq('invite_code', codeParam)
+            .maybeSingle();
+
+          let resolvedFromLocal = false;
+
+          if (iErr) {
+            console.warn("Supabase invite query failed, trying local storage:", iErr);
+          }
+
+          let finalInvite = invite;
+
+          if (!finalInvite) {
+            // Check localStorage fallback for local/mock testing
+            let localInvites = [];
+            try { 
+              localInvites = JSON.parse(localStorage.getItem('campuslink_alumni_invites') || '[]'); 
+            } catch(e) {
+              console.warn("Failed to parse local invites:", e);
+            }
+            const foundLocal = localInvites.find(i => i.inviteCode === codeParam);
+            
+            if (foundLocal) {
+              resolvedInvite = {
+                id: foundLocal.id,
+                school_id: foundLocal.schoolId,
+                batch_id: null,
+                status: foundLocal.status,
+                invite_code: foundLocal.inviteCode
+              };
+              resolvedBatch = {
+                id: null,
+                passing_year: foundLocal.graduatingYear || 2025,
+                department: foundLocal.graduatingClass || 'General'
+              };
+              resolvedSchool = {
+                id: foundLocal.schoolId,
+                name: "Mock School Network"
+              };
+              resolvedFromLocal = true;
+            } else {
+              showErrorScreen("This invitation code is invalid.");
+              return;
+            }
+          }
+
+          if (!resolvedFromLocal) {
+            if (finalInvite.status !== 'active') {
+              showErrorScreen("This invitation link has been disabled.");
+              return;
+            }
+
+            if (finalInvite.expires_at && new Date(finalInvite.expires_at) < new Date()) {
+              showErrorScreen("This invitation link has expired.");
+              return;
+            }
+
+            resolvedInvite = finalInvite;
+
+            // Fetch batch
+            if (finalInvite.batch_id) {
+              const { data: batch, error: bErr } = await sb
+                .from('alumni_batches')
+                .select('*')
+                .eq('id', finalInvite.batch_id)
+                .single();
+              if (bErr) throw bErr;
+              resolvedBatch = batch;
+            } else {
+              resolvedBatch = {
+                id: null,
+                passing_year: 2025,
+                department: 'General'
+              };
+            }
+
+            // Fetch school
+            const { data: school, error: sErr } = await sb
+              .from('schools')
+              .select('id, name')
+              .eq('id', finalInvite.school_id)
+              .single();
+            if (sErr) throw sErr;
+            resolvedSchool = school;
+          }
+
+        } else if (schoolParam && batchParam) {
+          // Resolve via Direct Parameters
+          const { data: school, error: sErr } = await sb
+            .from('schools')
+            .select('id, name')
+            .eq('id', schoolParam)
+            .single();
+          if (sErr) throw sErr;
+          resolvedSchool = school;
+
+          const { data: batch, error: bErr } = await sb
+            .from('alumni_batches')
+            .select('*')
+            .eq('school_id', schoolParam)
+            .eq('passing_year', parseInt(batchParam))
+            .maybeSingle();
+          if (bErr) throw bErr;
+          if (!batch) {
+            showErrorScreen(`No graduation batch found for school in passing year ${batchParam}.`);
+            return;
+          }
+          resolvedBatch = batch;
+        } else {
+          showErrorScreen("No valid invitation code or school details were provided.");
+          return;
+        }
+
+        // Successfully resolved details! Check auth state next
+        proceedToOnboarding();
+
+      } catch (err) {
+        console.error("Failed to resolve invitation details:", err);
+        showErrorScreen(err.message || "An error occurred while resolving invitation details.");
+      }
+    }
+
+    function showErrorScreen(message) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('error-message-text').textContent = message;
+      document.getElementById('screen-error').classList.add('active');
+    }
+
+    function proceedToOnboarding() {
+      // Pre-fill text in screens
+      const deptText = [resolvedBatch.department, resolvedBatch.program].filter(Boolean).join(' • ') || 'Alumni Member';
+      const batchDetailsStr = `Batch of ${resolvedBatch.passing_year} ${deptText ? `(${deptText})` : ''}`;
+
+      document.getElementById('auth-invite-school').textContent = resolvedSchool.name;
+      document.getElementById('auth-invite-details').textContent = batchDetailsStr;
+
+      document.getElementById('confirm-invite-school').textContent = resolvedSchool.name;
+      document.getElementById('confirm-invite-details').textContent = batchDetailsStr;
+
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+      if (currentUserSession) {
+        // Logged in! Go directly to confirmation screen
+        const u = currentUserSession.user;
+        const p = currentUserSession.profile || {};
+        
+        document.getElementById('user-display-name').textContent = p.full_name || u.user_metadata?.full_name || 'Member';
+        document.getElementById('user-display-email').textContent = u.email;
+        
+        document.getElementById('screen-confirm').classList.add('active');
+      } else {
+        // Unauthenticated. Show forms
+        document.getElementById('screen-auth').classList.add('active');
+      }
+    }
+
+    // Redirect buttons click events
+    document.getElementById('btn-signin-redirect').onclick = function() {
+      window.location.href = 'login.html?redirect=join-alumni.html&role=alumni&code=' + encodeURIComponent(codeParam);
+    };
+
+    document.getElementById('btn-signup-redirect').onclick = function() {
+      window.location.href = 'login.html?redirect=join-alumni.html&role=alumni&code=' + encodeURIComponent(codeParam) + '#register';
+    };
+
+    function isValidUUID(str) {
+      if (!str) return false;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      return uuidRegex.test(str);
+    }
+
+    // Submit Request button
+    document.getElementById('btn-submit-request').addEventListener('click', async () => {
+      const sb = window.CampusLink && window.CampusLink.supabase;
+      if (!currentUserSession || !resolvedBatch || !resolvedSchool) return;
+
+      const u = currentUserSession.user;
+      const p = currentUserSession.profile || {};
+
+      const isMockMode = !sb || !isValidUUID(resolvedSchool.id) || (resolvedInvite && !isValidUUID(resolvedInvite.id));
+
+      try {
+        if (isMockMode) {
+          // A. Mock Local Storage Mode
+          let localRequests = [];
+          try { localRequests = JSON.parse(localStorage.getItem('campuslink_alumni_requests') || '[]'); } catch(e) {}
+          
+          const existingRequest = localRequests.find(r => r.batch_id === resolvedBatch.id && r.user_id === u.id);
+          if (existingRequest) {
+            if (existingRequest.status === 'approved') {
+              alert("Your request is already approved. You are a member of this alumni batch!");
+              window.location.href = 'index.html';
+            } else {
+              alert(`You have already submitted a request for this batch. Current status: ${existingRequest.status}`);
+              document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+              document.getElementById('screen-success').classList.add('active');
+            }
+            return;
+          }
+
+          localRequests.push({
+            id: 'areq_' + Date.now(),
+            school_id: resolvedSchool.id,
+            batch_id: resolvedBatch.id,
+            invite_id: resolvedInvite ? resolvedInvite.id : null,
+            invite_code: resolvedInvite ? (resolvedInvite.invite_code || resolvedInvite.inviteCode) : null,
+            user_id: u.id,
+            full_name: p.full_name || u.user_metadata?.full_name || 'Member',
+            email: u.email,
+            username: p.username || u.user_metadata?.username || u.email.split('@')[0],
+            passing_year: resolvedBatch.passing_year,
+            department: resolvedBatch.department || null,
+            program: resolvedBatch.program || null,
+            status: 'pending',
+            created_at: new Date().toISOString()
+          });
+
+          localStorage.setItem('campuslink_alumni_requests', JSON.stringify(localRequests));
+
+        } else {
+          // B. Real Supabase Database Mode
+
+          // ── Guard: user must not already belong to a different school ──
+          const { data: userProfile } = await sb
+            .from('profiles')
+            .select('school_id, user_type')
+            .eq('id', u.id)
+            .single();
+
+          if (userProfile && userProfile.school_id && userProfile.school_id !== resolvedSchool.id) {
+            alert('You are already a member of another school. You cannot join a second school with this link.');
+            return;
+          }
+
+          // Check if a request already exists for this batch
+          const { data: existingRequest } = await sb
+            .from('alumni_requests')
+            .select('id, status')
+            .eq('batch_id', resolvedBatch.id)
+            .eq('user_id', u.id)
+            .maybeSingle();
+
+          if (existingRequest) {
+            if (existingRequest.status === 'approved') {
+              alert("Your request is already approved. You are a member of this alumni batch!");
+              window.location.href = 'index.html';
+            } else {
+              alert(`You have already submitted a request for this batch. Current status: ${existingRequest.status}`);
+              document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+              document.getElementById('screen-success').classList.add('active');
+            }
+            return;
+          }
+
+          // Insert request
+          const { error } = await sb
+            .from('alumni_requests')
+            .insert({
+              school_id: resolvedSchool.id,
+              batch_id: resolvedBatch.id,
+              invite_id: resolvedInvite ? resolvedInvite.id : null,
+              user_id: u.id,
+              full_name: p.full_name || u.user_metadata?.full_name || 'Member',
+              email: u.email,
+              username: p.username || u.user_metadata?.username || u.email.split('@')[0],
+              passing_year: resolvedBatch.passing_year,
+              department: resolvedBatch.department || null,
+              program: resolvedBatch.program || null,
+              status: 'pending'
+            });
+
+          if (error) throw error;
+        }
+
+        // Proceed to success screen
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('screen-success').classList.add('active');
+
+      } catch (err) {
+        console.error("Failed submitting joining request", err);
+        alert("Failed to submit request: " + err.message);
+      }
+    });
+
+    // Logout button handler
+    document.getElementById('btn-logout').addEventListener('click', async () => {
+      const auth = window.CampusLink && window.CampusLink.auth;
+      if (auth) {
+        await auth.signOut();
+        currentUserSession = null;
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('screen-auth').classList.add('active');
+      }
+    });
+  </script>
+
+</body>
+</html>
