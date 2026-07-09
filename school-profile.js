@@ -589,7 +589,15 @@ function initSchoolProfile() {
       if (valSchType) valSchType.textContent = currentProfile.institution_type;
       if (labelSchBoard) labelSchBoard.textContent = 'Affiliated University';
       if (boardBadge) {
-        boardBadge.textContent = `${currentProfile.affiliated_university || 'Self'} Affiliated`;
+        const requiresUniv = ['Government College', 'Private College', 'Polytechnic'].includes(currentProfile.institution_type);
+        const value = currentProfile.affiliated_university || 'Self';
+        if (!requiresUniv && currentProfile.institution_type) {
+          boardBadge.textContent = currentProfile.institution_type;
+        } else if (value === 'Not University Affiliated' || value.includes('Self')) {
+          boardBadge.textContent = value;
+        } else {
+          boardBadge.textContent = `${value} Affiliated`;
+        }
       }
     } else {
       if (boardBadge) {

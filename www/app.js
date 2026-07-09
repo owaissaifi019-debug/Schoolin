@@ -1191,7 +1191,25 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isSchoolUser && p.schools) {
         const s = p.schools;
         const schoolName = s.name || 'My School';
-        const board = s.board || 'CBSE';
+        const isCollege = s.institution_type && s.institution_type !== 'school';
+        
+        let boardText = s.board || 'CBSE';
+        if (isCollege) {
+          const requiresUniv = ['Government College', 'Private College', 'Polytechnic'].includes(s.institution_type);
+          if (!requiresUniv && s.institution_type) {
+            boardText = s.institution_type;
+          } else {
+            const univ = s.affiliated_university || 'Self';
+            if (univ === 'Not University Affiliated' || univ.includes('Self')) {
+              boardText = univ;
+            } else {
+              boardText = `${univ} Affiliated`;
+            }
+          }
+        } else {
+          boardText = `${boardText} Affiliated`;
+        }
+
         const city = s.city || '';
         const colorClass = s.color_class || 'color-1';
         const profileUrl = `school-profile.html?id=${p.school_id}`;
@@ -1215,7 +1233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (s.verification_badge === 'blue') {
           badgeHtml = `
             <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
-              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239(1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
               <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
             </svg>`;
         }
@@ -1230,8 +1248,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <h3 class="profile-card-name">
                 <a href="${profileUrl}">${schoolName}${badgeHtml}</a>
               </h3>
-              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">Verified School</span>
-              <p class="profile-card-headline">${board} Affiliated ${city ? `• ${city}` : ''}</p>
+              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">${isCollege ? 'Verified College' : 'Verified School'}</span>
+              <p class="profile-card-headline">${boardText} ${city ? `• ${city}` : ''}</p>
               <p class="profile-card-school" style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); margin-top: 4px;">
                 👤 Admin: ${displayName}
               </p>
@@ -1581,12 +1599,24 @@ document.addEventListener('DOMContentLoaded', () => {
     activeShareUrl = shareUrl;
     sharePostModal.classList.add('active');
     document.body.style.overflow = 'hidden';
+    
+    // Hide mobile bottom navigation bar to avoid overlay collision
+    const mobileNav = document.getElementById('global-mobile-nav');
+    if (mobileNav) {
+      mobileNav.style.setProperty('display', 'none', 'important');
+    }
   }
 
   function closeSharePostModal() {
     if (!sharePostModal) return;
     sharePostModal.classList.remove('active');
     document.body.style.overflow = 'auto';
+    
+    // Restore mobile bottom navigation bar
+    const mobileNav = document.getElementById('global-mobile-nav');
+    if (mobileNav) {
+      mobileNav.style.removeProperty('display');
+    }
   }
 
   const shareModalClose = document.getElementById('share-modal-close');
@@ -2723,6 +2753,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const postId = e.currentTarget.getAttribute('data-post-id');
         const shareUrl = `${window.location.origin}${window.location.pathname}?post=${postId}`;
 
+        // 1. Try Capacitor Native Share Plugin (Mobile iOS/Android Apps)
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share) {
+          try {
+            await window.Capacitor.Plugins.Share.share({
+              title: 'CampusLink Post',
+              text: 'Check out this post on CampusLink:',
+              url: shareUrl
+            });
+            incrementShareCount(postId);
+            return;
+          } catch (err) {
+            console.warn('Capacitor share failed, trying Web Share API:', err);
+          }
+        }
+
+        // 2. Try Web Share API (HTTPS web view)
         if (navigator.share) {
           try {
             await navigator.share({
@@ -2736,6 +2782,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Web share cancelled or failed:', err);
           }
         } else {
+          // 3. Fallback to custom share modal (Desktop or Local HTTP testing)
           openShareModal(postId, shareUrl);
         }
       });

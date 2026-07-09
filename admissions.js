@@ -281,13 +281,19 @@ function initAdmissions() {
       const logoInfo = getSchoolLogoInfo(item.schoolName);
       const card = document.createElement('div');
       card.className = `admission-card-item status-${item.status}`;
+      
+      let boardText = `${item.board} Affiliated`;
+      if (item.board === 'Not University Affiliated' || item.board.includes('Self')) {
+        boardText = item.board;
+      }
+
       card.innerHTML = `
         <!-- Desktop Layout (dt-only) -->
         <div class="admission-card-content dt-only">
           <h3 class="admission-card-school"><a href="school-profile.html?id=${item.schoolId}">${item.schoolName}</a></h3>
           
           <div class="admission-card-badges-row">
-            <span class="badge badge-primary" style="margin-bottom: 0;">${item.board} Affiliated</span>
+            <span class="badge badge-primary" style="margin-bottom: 0;">${boardText}</span>
             <span class="badge badge-accent" style="margin-bottom: 0; background-color: #F1F5F9; color: var(--text-muted);">${item.city}</span>
             <span class="badge ${item.status === 'closing' ? 'badge-accent' : 'badge-primary'}" style="margin-bottom: 0; font-size: 0.7rem; font-weight: 700;">
               Admissions ${item.status.toUpperCase()}

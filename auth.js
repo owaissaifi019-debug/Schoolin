@@ -461,10 +461,11 @@
 
           if (isVerifiedStatus && assignedClassroomId) {
             isVerifiedTeacher = true;
-            classroomHref = `classroom.html?classroom=${assignedClassroomId}`;
+            // Redirect to classroom.html (Coming Soon page) instead of workspace query
+            classroomHref = 'classroom.html';
           } else {
             isVerifiedTeacher = false;
-            classroomHref = '#';
+            classroomHref = 'classroom.html'; // Always go to coming soon page
             if (isVerifiedStatus && !assignedClassroomId) {
               lockedTitle = 'Waiting for classroom assignment from admin.';
             } else {
@@ -488,16 +489,16 @@
               const noticeLi = document.createElement('li');
               noticeLi.id = 'nav-classroom-unverified';
               noticeLi.className = 'member-only nav-classroom-item';
-              noticeLi.style.cssText = 'display: inline-flex !important; opacity: 0.5;';
+              noticeLi.style.cssText = 'display: inline-flex !important; opacity: 0.7;';
               noticeLi.title = lockedTitle;
               noticeLi.innerHTML = `
-                <a href="schools.html" id="nav-classroom-link-unverified" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--text-muted); position: relative;">
+                <a href="${classroomHref}" id="nav-classroom-link-unverified" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--text-muted); position: relative;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 3px;">
                     <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
                     <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
                   </svg>
                   <span style="position: absolute; top: -5px; right: -5px; font-size: 0.65rem; background: var(--border-color); padding: 1px 3px; border-radius: 4px; border: 1px solid var(--white); line-height: 1;">🔒</span>
-                  <span style="font-size: 0.72rem; font-weight: 600;">Classroom</span>
+                  <span>Classroom</span>
                 </a>
               `;
               msgItem.parentNode.insertBefore(noticeLi, msgItem.nextSibling);

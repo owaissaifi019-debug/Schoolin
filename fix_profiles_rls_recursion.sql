@@ -24,11 +24,7 @@ $$ LANGUAGE sql;
 DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Profiles are viewable by everyone"
   ON public.profiles FOR SELECT
-  USING (
-    school_id = public.get_auth_school_id()
-    OR auth.uid() = id
-    OR public.is_super_admin()
-  );
+  USING (true);
 
 DROP POLICY IF EXISTS "Super admins can update any user profile" ON public.profiles;
 CREATE POLICY "Super admins can update any user profile"

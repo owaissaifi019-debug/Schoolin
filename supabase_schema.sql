@@ -301,15 +301,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Enable RLS on profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Profiles Policies (restricted to own school or self or super admin)
+-- Profiles Policies (viewable by everyone so posts and network connections work)
 DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Profiles are viewable by everyone"
   ON public.profiles FOR SELECT
-  USING (
-    school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid())
-    OR auth.uid() = id
-    OR platform_role = 'super_admin'
-  );
+  USING (true);
 
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT

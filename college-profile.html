@@ -46,7 +46,9 @@
         html = html.replaceAll('School Name', 'College Name');
         html = html.replaceAll('School Logo', 'College Logo');
         html = html.replaceAll('school-profile.html', 'college-profile.html');
-        html = html.replaceAll('school-admin-body', 'college-admin-body');
+        // NOTE: body class replacement on the HTML string is intentionally omitted —
+        // the <body> tag is stripped when injected via innerHTML into a div.
+        // school-admin-body is instead added directly to document.body below.
         html = html.replaceAll('Edit School', 'Edit College');
         html = html.replaceAll('Delhi Public School', 'Delhi Public College');
         html = html.replaceAll('Affiliation Board', 'Affiliated University');
@@ -70,9 +72,15 @@
         // Override dashboard script to our college wrapper
         html = html.replaceAll('school-profile.js?v=2.0', 'college-profile.js?v=2.0');
         
-        // Remove loader and inject
-        document.getElementById('loader-screen').remove();
+        // Inject HTML template first
         document.getElementById('college-profile-root').innerHTML = html;
+
+        // ── THE CRITICAL FIX ──────────────────────────────────────────────────────
+        // The <body> tag in the fetched HTML is stripped by innerHTML. We must add
+        // school-admin-body directly to document.body so all CSS layout rules apply.
+        // college-admin-body is already present (set in the static HTML file).
+        document.body.classList.add('school-admin-body');
+        // ─────────────────────────────────────────────────────────────────────────
         
         // Sequentially execute script tags
         const scriptElements = Array.from(document.getElementById('college-profile-root').querySelectorAll('script'));
@@ -80,7 +88,7 @@
           await new Promise((resolve) => {
             const newScript = document.createElement('script');
             if (script.src) {
-              if (script.src.includes('school-profile.js')) {
+              if (script.src.includes('school-profile.js') || script.src.includes('college-profile.js')) {
                 console.log('[College Profile Loader] Intercepting school-profile.js...');
                 fetch('school-profile.js')
                   .then(res => res.text())
@@ -145,6 +153,10 @@
         
         console.log('[College Profile Loader] All scripts executed. Dispatching DOMContentLoaded...');
         document.dispatchEvent(new Event('DOMContentLoaded'));
+        
+        // Remove the loader screen only after everything is initialized
+        const loader = document.getElementById('loader-screen');
+        if (loader) loader.remove();
       } catch (err) {
         console.error('[College Profile Loader] Error:', err);
         document.getElementById('loader-screen').innerHTML = `

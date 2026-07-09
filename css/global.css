@@ -353,3 +353,214 @@ button.theme-toggle-btn.dash-topbar-icon-btn {
 }
 
 
+
+/* ============================================================
+   VERIFIED BADGE — UNIVERSAL COLOR FIX
+   The badge SVG uses fill="currentColor", so it inherits the
+   text color of any ancestor (e.g. .post-author-name, anchor
+   tags, etc.). These rules use !important to guarantee the
+   correct colour regardless of where a badge is rendered:
+   posts, comments, networking cards, sidebar, messaging, etc.
+   ============================================================ */
+
+svg.verified-badge {
+  color: #1D9BF0 !important;  /* Twitter/X verified blue — default */
+}
+
+svg.verified-badge.gold {
+  color: #EAB308 !important;  /* Amber-500 — Gold Partner tick */
+}
+
+/* Preserve proper drop-shadow glow colours on hover */
+svg.verified-badge:hover {
+  filter: drop-shadow(0 0 5px rgba(29, 155, 240, 0.65)) !important;
+}
+svg.verified-badge.gold:hover {
+  filter: drop-shadow(0 0 5px rgba(234, 179, 8, 0.8)) !important;
+}
+
+
+/* ============================================================
+   COLLEGE ADMIN PORTAL — PREMIUM THEME OVERRIDES
+   Scoped to body.college-admin-body so it never bleeds into
+   the school portal. Inherits all structural layout from
+   body.school-admin-body (sidebar, topbar, grid, mobile).
+   ============================================================ */
+
+body.college-admin-body {
+  /* --- College Brand Colors: Indigo + Emerald --- */
+  --primary:         #4F46E5;  /* Indigo 600 */
+  --primary-rgb:     79, 70, 229;
+  --primary-hover:   #4338CA;  /* Indigo 700 */
+  --primary-light:   #EEF2FF;  /* Indigo 50 */
+
+  --accent:          #10B981;  /* Emerald 500 */
+  --accent-rgb:      16, 185, 129;
+  --accent-hover:    #059669;  /* Emerald 600 */
+  --accent-light:    #D1FAE5;  /* Emerald 50 */
+
+  --border-focus:    rgba(79, 70, 229, 0.4);
+
+  --shadow-glow:     0 0 20px rgba(79, 70, 229, 0.22);
+}
+
+/* --- College Active Sidebar Link --- */
+body.college-admin-body .dashboard-nav-link.active,
+body.college-admin-body .admin-sidebar-link.active {
+  background: linear-gradient(90deg, rgba(79, 70, 229, 0.18) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
+  color: var(--primary) !important;
+  border-left-color: var(--primary) !important;
+}
+
+/* --- College Logo Brand Text --- */
+body.college-admin-body .dashboard-sidebar .logo-brand-wrapper .logo,
+body.college-admin-body .mobile-school-name,
+body.college-admin-body .mobile-header-brand {
+  color: var(--primary) !important;
+}
+
+/* --- College Primary Buttons --- */
+body.college-admin-body .btn-primary,
+body.college-admin-body button[class*="btn-primary"] {
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;
+  border-color: #4338CA !important;
+}
+body.college-admin-body .btn-primary:hover {
+  background: linear-gradient(135deg, #4338CA 0%, #4F46E5 100%) !important;
+}
+
+/* --- College Accent / Badge Highlights --- */
+body.college-admin-body .badge-accent,
+body.college-admin-body .stat-icon,
+body.college-admin-body .overview-card-icon {
+  color: var(--accent) !important;
+}
+
+/* --- College Tab Active Underline --- */
+body.college-admin-body .tab-btn.active,
+body.college-admin-body .subtab-btn.active,
+body.college-admin-body .classroom-subtab-btn.active {
+  color: var(--primary) !important;
+  border-bottom-color: var(--primary) !important;
+}
+
+/* --- College Theme Toggle Hover --- */
+body.college-admin-body .me-menu-theme-toggle:hover {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+/* ── Dark Mode College Overrides ── */
+[data-theme="dark"] body.college-admin-body,
+body.college-admin-body[data-theme-scope="dark"] {
+  --primary-light: rgba(79, 70, 229, 0.2);
+  --accent-light:  rgba(16, 185, 129, 0.2);
+}
+
+[data-theme="dark"] body.college-admin-body .dashboard-nav-link.active,
+[data-theme="dark"] body.college-admin-body .admin-sidebar-link.active {
+  background: linear-gradient(90deg, rgba(79, 70, 229, 0.28) 0%, rgba(16, 185, 129, 0.12) 100%) !important;
+  color: #818CF8 !important; /* Indigo 400 – legible on dark bg */
+}
+
+[data-theme="dark"] body.college-admin-body .me-menu-theme-toggle:hover {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+
+
+/* ============================================================
+   PREMIUM SHARE MODAL STYLES
+   ============================================================ */
+
+.share-modal-card {
+  overflow: visible !important; /* Prevent scrollbar cutting off text */
+}
+
+.share-options-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.share-btn-item {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 72px;
+  transition: transform 0.2s ease;
+  outline: none;
+}
+
+.share-btn-item:hover {
+  transform: translateY(-3px);
+}
+
+.share-btn-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.share-btn-svg {
+  width: 24px;
+  height: 24px;
+  transition: transform 0.25s ease;
+}
+
+/* WhatsApp Styling */
+.whatsapp-glow {
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: #ffffff;
+}
+.share-btn-item:hover .whatsapp-glow {
+  box-shadow: 0 0 16px rgba(37, 211, 102, 0.45);
+}
+
+/* Telegram Styling */
+.telegram-glow {
+  background: linear-gradient(135deg, #0088cc 0%, #0077b5 100%);
+  color: #ffffff;
+}
+.share-btn-item:hover .telegram-glow {
+  box-shadow: 0 0 16px rgba(0, 136, 204, 0.45);
+}
+
+/* Email Styling */
+.email-glow {
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  color: #ffffff;
+}
+.share-btn-item:hover .email-glow {
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.45);
+}
+
+/* Copy Link Styling */
+.copy-glow {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  color: #ffffff;
+}
+.share-btn-item:hover .copy-glow {
+  box-shadow: 0 0 16px rgba(71, 85, 105, 0.45);
+}
+
+.share-btn-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+

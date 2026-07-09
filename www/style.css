@@ -12091,6 +12091,7 @@ html, body {
   /* Show specific items in mobile top header */
   .header-nav .nav-list > .mobile-search-item,
   .header-nav .nav-list > .nav-msg-item,
+  .header-nav .nav-list > .nav-classroom-item,
   .header-nav .nav-list > .nav-notif-item,
   .header-nav .nav-list > .nav-me-item {
     display: inline-flex !important;
@@ -12109,6 +12110,7 @@ html, body {
   /* Header action buttons – 44×44 minimum touch targets ── */
   .mobile-search-btn,
   .nav-msg-item a,
+  .nav-classroom-item a,
   .notif-bell-btn {
     background: none !important;
     border: none !important;
@@ -12130,12 +12132,14 @@ html, body {
   
   .mobile-search-btn:hover,
   .nav-msg-item a:hover,
+  .nav-classroom-item a:hover,
   .notif-bell-btn:hover {
     background-color: rgba(15, 23, 42, 0.05) !important;
   }
 
   .mobile-search-btn svg,
   .nav-msg-item a svg,
+  .nav-classroom-item a svg,
   .notif-bell-btn svg {
     width: 22px !important;
     height: 22px !important;
@@ -12146,7 +12150,8 @@ html, body {
   }
   
   .notif-bell-btn span,
-  .nav-msg-item a span {
+  .nav-msg-item a span,
+  .nav-classroom-item a span {
     display: none !important; /* Hide label text */
   }
 
@@ -15420,6 +15425,143 @@ header:not(.mobile-fixed-header):not(.dashboard-top-bar) .container {
 .mention-link:hover {
   text-decoration: underline !important;
 }
+
+
+
+/* ============================================================
+   PREMIUM SHARE MODAL STYLES
+   ============================================================ */
+
+.share-modal-card {
+  overflow: visible !important; /* Prevent scrollbar cutting off text */
+}
+
+.share-options-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.share-btn-item {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 72px;
+  transition: transform 0.2s ease;
+  outline: none;
+}
+
+.share-btn-item:hover {
+  transform: translateY(-3px);
+}
+
+.share-btn-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.share-btn-svg {
+  width: 24px;
+  height: 24px;
+  transition: transform 0.25s ease;
+}
+
+/* WhatsApp Styling */
+.whatsapp-glow {
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: #ffffff;
+}
+.share-btn-item:hover .whatsapp-glow {
+  box-shadow: 0 0 16px rgba(37, 211, 102, 0.45);
+}
+
+/* Telegram Styling */
+.telegram-glow {
+  background: linear-gradient(135deg, #0088cc 0%, #0077b5 100%);
+  color: #ffffff;
+}
+.share-btn-item:hover .telegram-glow {
+  box-shadow: 0 0 16px rgba(0, 136, 204, 0.45);
+}
+
+/* Email Styling */
+.email-glow {
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  color: #ffffff;
+}
+.share-btn-item:hover .email-glow {
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.45);
+}
+
+/* Copy Link Styling */
+.copy-glow {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  color: #ffffff;
+}
+.share-btn-item:hover .copy-glow {
+  box-shadow: 0 0 16px rgba(71, 85, 105, 0.45);
+}
+
+.share-btn-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.bottom-sheet-handle {
+  display: none;
+}
+
+/* --- Mobile Bottom Sheet Overrides --- */
+@media (max-width: 768px) {
+  #share-post-modal {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  #share-post-modal .share-modal-card {
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 16px 20px 42px 20px !important;
+    transform: translateY(100%) !important;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15) !important;
+    border: none !important;
+    border-top: 1px solid var(--border-color) !important;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  #share-post-modal.active .share-modal-card {
+    transform: translateY(0) !important;
+  }
+
+  .share-modal-card .bottom-sheet-handle {
+    display: block !important;
+    width: 44px;
+    height: 5px;
+    background-color: var(--text-muted);
+    opacity: 0.3;
+    border-radius: 3px;
+    margin: -4px auto 16px auto;
+  }
+}
+
+
 
 
 

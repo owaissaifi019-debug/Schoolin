@@ -1176,7 +1176,25 @@
       if (isSchoolUser && p.schools) {
         const s = p.schools;
         const schoolName = s.name || 'My School';
-        const board = s.board || 'CBSE';
+        const isCollege = s.institution_type && s.institution_type !== 'school';
+        
+        let boardText = s.board || 'CBSE';
+        if (isCollege) {
+          const requiresUniv = ['Government College', 'Private College', 'Polytechnic'].includes(s.institution_type);
+          if (!requiresUniv && s.institution_type) {
+            boardText = s.institution_type;
+          } else {
+            const univ = s.affiliated_university || 'Self';
+            if (univ === 'Not University Affiliated' || univ.includes('Self')) {
+              boardText = univ;
+            } else {
+              boardText = `${univ} Affiliated`;
+            }
+          }
+        } else {
+          boardText = `${boardText} Affiliated`;
+        }
+
         const city = s.city || '';
         const colorClass = s.color_class || 'color-1';
         const profileUrl = `school-profile.html?id=${p.school_id}`;
@@ -1215,8 +1233,8 @@
               <h3 class="profile-card-name">
                 <a href="${profileUrl}">${schoolName}${badgeHtml}</a>
               </h3>
-              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">Verified School</span>
-              <p class="profile-card-headline">${board} Affiliated ${city ? `• ${city}` : ''}</p>
+              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">${isCollege ? 'Verified College' : 'Verified School'}</span>
+              <p class="profile-card-headline">${boardText} ${city ? `• ${city}` : ''}</p>
               <p class="profile-card-school" style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); margin-top: 4px;">
                 👤 Admin: ${displayName}
               </p>
@@ -1569,12 +1587,24 @@
     activeShareUrl = shareUrl;
     sharePostModal.classList.add('active');
     document.body.style.overflow = 'hidden';
+    
+    // Hide mobile bottom navigation bar to avoid overlay collision
+    const mobileNav = document.getElementById('global-mobile-nav');
+    if (mobileNav) {
+      mobileNav.style.setProperty('display', 'none', 'important');
+    }
   }
 
   function closeSharePostModal() {
     if (!sharePostModal) return;
     sharePostModal.classList.remove('active');
     document.body.style.overflow = 'auto';
+    
+    // Restore mobile bottom navigation bar
+    const mobileNav = document.getElementById('global-mobile-nav');
+    if (mobileNav) {
+      mobileNav.style.removeProperty('display');
+    }
   }
 
   const shareModalClose = document.getElementById('share-modal-close');
@@ -2736,6 +2766,22 @@
         const postId = e.currentTarget.getAttribute('data-post-id');
         const shareUrl = `${window.location.origin}${window.location.pathname}?post=${postId}`;
 
+        // 1. Try Capacitor Native Share Plugin (Mobile iOS/Android Apps)
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share) {
+          try {
+            await window.Capacitor.Plugins.Share.share({
+              title: 'CampusLink Post',
+              text: 'Check out this post on CampusLink:',
+              url: shareUrl
+            });
+            incrementShareCount(postId);
+            return;
+          } catch (err) {
+            console.warn('Capacitor share failed, trying Web Share API:', err);
+          }
+        }
+
+        // 2. Try Web Share API (HTTPS web view)
         if (navigator.share) {
           try {
             await navigator.share({
@@ -2749,6 +2795,7 @@
             console.log('Web share cancelled or failed:', err);
           }
         } else {
+          // 3. Fallback to custom share modal (Desktop or Local HTTP testing)
           openShareModal(postId, shareUrl);
         }
       });

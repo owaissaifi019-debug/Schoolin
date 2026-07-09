@@ -50,11 +50,21 @@
         html = html.replaceAll('Describe your school\'s vision', 'Describe your college\'s vision');
         html = html.replaceAll('Manage your school\'s academic structure', 'Manage your college\'s academic structure');
         html = html.replaceAll('school-profile.html', 'college-profile.html');
-        html = html.replaceAll('school-admin-body', 'college-admin-body');
+        // NOTE: body class replacement on the HTML string is intentionally omitted —
+        // the <body> tag is stripped when injected via innerHTML into a div.
+        // school-admin-body is instead added directly to document.body below.
         
-        // Remove the loading screen and inject HTML
-        document.getElementById('loader-screen').remove();
+        // Inject HTML template first
         document.getElementById('college-dashboard-root').innerHTML = html;
+
+        // ── THE CRITICAL FIX ──────────────────────────────────────────────────────
+        // The <body> tag in the fetched HTML is stripped by innerHTML. We must add
+        // school-admin-body directly to document.body so every CSS layout rule in
+        // admin.css, dashboard.css, and inline <style> blocks applies correctly.
+        // college-admin-body is already present (set in the static HTML file).
+        document.body.classList.add('school-admin-body');
+        document.body.style.overflow = 'hidden'; // matches school dashboard's inline style
+        // ─────────────────────────────────────────────────────────────────────────
         
         // Sequentially execute script tags
         const scriptElements = Array.from(document.getElementById('college-dashboard-root').querySelectorAll('script'));
@@ -62,7 +72,7 @@
           await new Promise((resolve) => {
             const newScript = document.createElement('script');
             if (script.src) {
-              if (script.src.includes('dashboard.js')) {
+              if (script.src.includes('dashboard.js') || script.src.includes('college-dashboard.js')) {
                 console.log('[College Loader] Intercepting dashboard.js to translate terminology...');
                 fetch('dashboard.js')
                   .then(res => res.text())
@@ -116,6 +126,10 @@
         
         console.log('[College Loader] All scripts executed. Dispatching DOMContentLoaded...');
         document.dispatchEvent(new Event('DOMContentLoaded'));
+        
+        // Remove the loader screen only after everything is initialized
+        const loader = document.getElementById('loader-screen');
+        if (loader) loader.remove();
       } catch (err) {
         console.error('[College Loader] Critical Error:', err);
         document.getElementById('loader-screen').innerHTML = `
