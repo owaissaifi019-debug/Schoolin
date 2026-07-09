@@ -11976,4 +11976,8 @@ header:not(.dashboard-top-bar) {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
+
+#cl-debug-block {
+  display: none !important;
+}
 
