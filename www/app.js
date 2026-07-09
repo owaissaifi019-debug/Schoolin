@@ -1380,9 +1380,13 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       // Bind trigger click
-      document.getElementById('trigger-create-post').addEventListener('click', () => {
+      const startPostBtn = document.getElementById('trigger-create-post');
+      startPostBtn.addEventListener('click', () => {
         openCreatePostModal();
       });
+
+      // Start dynamic placeholder text rotation
+      initPlaceholderRotator(startPostBtn);
 
       // Bind quick action clicks
       document.querySelectorAll('.btn-share-action').forEach(btn => {
@@ -1403,6 +1407,61 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
     }
+  }
+
+  // Rotate placeholder prompts dynamically
+  function initPlaceholderRotator(button) {
+    if (!button) return;
+    
+    if (button.placeholderInterval) {
+      clearInterval(button.placeholderInterval);
+    }
+    
+    const prompts = [
+      "Start a post...",
+      "Share a story...",
+      "Brag about your latest project...",
+      "Share a recent achievement...",
+      "What is happening today?",
+      "Ask a question to the campus...",
+      "Post an upcoming event...",
+      "Share an internship opportunity..."
+    ];
+    
+    let currentIndex = 0;
+    
+    button.style.position = 'relative';
+    button.style.overflow = 'hidden';
+    button.style.display = 'flex';
+    button.style.alignItems = 'center';
+    
+    button.innerHTML = `<span class="placeholder-text-rotator" style="transition: all 0.35s ease; opacity: 0.6; transform: translateY(0); display: inline-block;">Start a post...</span>`;
+    const textSpan = button.querySelector('.placeholder-text-rotator');
+    
+    button.placeholderInterval = setInterval(() => {
+      if (!document.body.contains(button)) {
+        clearInterval(button.placeholderInterval);
+        return;
+      }
+      
+      textSpan.style.opacity = '0';
+      textSpan.style.transform = 'translateY(-15px)';
+      
+      setTimeout(() => {
+        currentIndex = (currentIndex + 1) % prompts.length;
+        textSpan.textContent = prompts[currentIndex];
+        
+        textSpan.style.transition = 'none';
+        textSpan.style.transform = 'translateY(15px)';
+        
+        // Force reflow
+        textSpan.offsetHeight;
+        
+        textSpan.style.transition = 'all 0.35s ease';
+        textSpan.style.opacity = '0.6';
+        textSpan.style.transform = 'translateY(0)';
+      }, 350);
+    }, 2800);
   }
 
   // Create Post Modal Controls

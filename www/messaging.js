@@ -10,6 +10,8 @@
   let currentUserProfile = null;
   let conversations = [];
   let activeChatId = null;
+  let activeConv = null;
+  let activeOther = null;
   let currentTab = 'active'; // 'active' or 'requests'
   let conversationSearchQuery = '';
   let realtimeChannelMessages = null;
@@ -160,7 +162,14 @@
             message,
             sender_id,
             created_at,
-            read_status
+            read_status,
+            sender:profiles!sender_id (
+              id,
+              full_name,
+              avatar_url,
+              user_type,
+              username
+            )
           )
         `)
         .in('id', conversationIds)
@@ -470,7 +479,6 @@
     }
   }
 
-  // --- Select a Conversation ---
   async function selectConversation(chatId) {
     activeChatId = chatId;
 
@@ -484,6 +492,9 @@
       console.warn('Selected conversation not found locally, loading all...');
       return;
     }
+
+    activeConv = conv;
+    activeOther = getOtherParticipant(conv);
 
     // Update URL query parameter without reloading
     const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?chat_id=${chatId}`;
@@ -499,7 +510,7 @@
   }
 
   // Toggle collapsible profile panel state
-  let profilePanelCollapsed = false;
+  let profilePanelCollapsed = true;
 
   function renderProfilePanel(other) {
     const panel = document.getElementById('chat-profile-panel');
@@ -762,6 +773,8 @@
       }
     }
 
+
+
     // Render messages history
     renderMessageHistory(conv.messages);
   }
@@ -812,6 +825,35 @@
 
       // Bubble layout
       const isSent = msg.sender_id === currentUser.id;
+
+      // Determine if we need to show sender name (Group chats received messages)
+      let senderNameHtml = '';
+      if (!isSent && activeOther && activeOther.isGroup) {
+        let senderName = 'Member';
+        if (msg.sender) {
+          senderName = msg.sender.full_name || 'Member';
+        } else if (activeConv && activeConv.conversation_participants) {
+          const participant = activeConv.conversation_participants.find(p => p.profile && p.profile.id === msg.sender_id);
+          if (participant && participant.profile) {
+            senderName = participant.profile.full_name || 'Member';
+          }
+        }
+        const stringHash = (str) => {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          return hash;
+        };
+        const getHashColor = (str) => {
+          const hash = stringHash(str);
+          const h = Math.abs(hash % 360);
+          return `hsl(${h}, 65%, 40%)`;
+        };
+        const nameColor = getHashColor(senderName);
+        senderNameHtml = `<a href="profile.html?id=${msg.sender_id}" class="message-sender-name" style="font-size: 0.72rem; font-weight: 700; color: ${nameColor}; display: block; margin-bottom: 4px; text-decoration: none; cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" onclick="event.stopPropagation();">${senderName}</a>`;
+      }
+
       const row = document.createElement('div');
       row.className = `message-bubble-row ${isSent ? 'sent' : 'received'}`;
 
@@ -835,7 +877,10 @@
 
       row.innerHTML = `
         <div class="message-bubble-wrapper">
-          <div class="message-bubble">${cleanMsg}</div>
+          <div class="message-bubble">
+            ${senderNameHtml}
+            ${cleanMsg}
+          </div>
           <div class="message-time-meta">
             <span>${timeStr}</span>
             ${ticksHtml}
@@ -1160,7 +1205,10 @@
 
             let notificationRecipientId = null;
 
-            if (other.isSchool) {
+            if (other.isGroup) {
+              msgPayload.receiver_id = null;
+              msgPayload.receiver_school_id = null;
+            } else if (other.isSchool) {
               msgPayload.receiver_school_id = other.id;
               // Fetch the admin user ID of the school to trigger notifications, but do NOT insert it as receiver_id in messages table
               const { data: sch } = await sb.from('schools').select('admin_user_id').eq('id', other.id).maybeSingle();
@@ -1182,16 +1230,44 @@
             if (window.CampusLink && window.CampusLink.notifications) {
               try {
                 const senderName = currentUserProfile?.full_name || 'Someone';
-                const recipientId = notificationRecipientId;
-                if (recipientId) {
-                  await window.CampusLink.notifications.createNotification(
-                    recipientId,
-                    'message',
-                    `New message from ${senderName}`,
-                    messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
-                    `messaging.html?chat_id=${activeChatId}`,
-                    currentUser.id
-                  );
+                if (other.isGroup) {
+                  // Fetch other participants
+                  const { data: participants } = await sb
+                    .from('conversation_participants')
+                    .select('user_id')
+                    .eq('conversation_id', activeChatId)
+                    .neq('user_id', currentUser.id);
+
+                  if (participants && participants.length > 0) {
+                    for (const part of participants) {
+                      if (part.user_id) {
+                        try {
+                          await window.CampusLink.notifications.createNotification(
+                            part.user_id,
+                            'message',
+                            `New message in ${other.name}`,
+                            `${senderName}: ${messageText.substring(0, 50)}${messageText.length > 50 ? '...' : ''}`,
+                            `messaging.html?chat_id=${activeChatId}`,
+                            currentUser.id
+                          );
+                        } catch (e) {
+                          console.warn('Failed to notify participant:', part.user_id, e);
+                        }
+                      }
+                    }
+                  }
+                } else {
+                  const recipientId = notificationRecipientId;
+                  if (recipientId) {
+                    await window.CampusLink.notifications.createNotification(
+                      recipientId,
+                      'message',
+                      `New message from ${senderName}`,
+                      messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+                      `messaging.html?chat_id=${activeChatId}`,
+                      currentUser.id
+                    );
+                  }
                 }
               } catch (notifErr) {
                 console.warn('Error sending message notification:', notifErr);
@@ -1229,6 +1305,25 @@
           }
         });
       }
+    }
+
+    // Make header container clickable to open settings panel (WhatsApp style)
+    const chatHeader = document.querySelector('.chat-header');
+    if (chatHeader) {
+      chatHeader.style.cursor = 'pointer';
+      chatHeader.addEventListener('click', (e) => {
+        if (e.target.closest('#btn-chat-back') || e.target.closest('#btn-toggle-profile') || e.target.closest('.inquiry-badge-tag')) {
+          return;
+        }
+        if (activeChatId) {
+          const activeConv = conversations.find(c => c.id === activeChatId);
+          if (activeConv) {
+            const other = getOtherParticipant(activeConv);
+            profilePanelCollapsed = !profilePanelCollapsed;
+            renderProfilePanel(other);
+          }
+        }
+      });
     }
   }
 

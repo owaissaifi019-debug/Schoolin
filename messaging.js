@@ -5,11 +5,15 @@
 (function () {
   'use strict';
 
+  console.log('校园社交 messaging.js: Script executed and IIFE started.');
+
   // State
   let currentUser = null;
   let currentUserProfile = null;
   let conversations = [];
   let activeChatId = null;
+  let activeConv = null;
+  let activeOther = null;
   let currentTab = 'active'; // 'active' or 'requests'
   let conversationSearchQuery = '';
   let realtimeChannelMessages = null;
@@ -49,9 +53,10 @@
 
   // --- Initialise Module ---
   async function init() {
+    console.log('校园社交 messaging.js: init() function started.');
     const auth = getAuth();
     if (!auth) {
-      console.error('Auth module not loaded.');
+      console.error('校园社交 messaging.js: Auth module not loaded.');
       return;
     }
 
@@ -87,7 +92,26 @@
     }
 
     currentUser = session.user;
+    console.log('校园社交 messaging.js: Current user authenticated:', currentUser.id);
     currentUserProfile = await auth.getProfile(currentUser.id);
+    console.log('校园社交 messaging.js: Fetched user profile:', currentUserProfile);
+
+    // Dynamic "+ New Group" vs "+ New Chat" button presentation based on user role
+    const isSchoolOrCollegeAdmin = (currentUserProfile?.user_type === 'school_representative' || currentUserProfile?.platform_role === 'school_admin');
+    const createGroupBtn = document.getElementById('btn-create-group');
+    if (createGroupBtn) {
+      if (isSchoolOrCollegeAdmin) {
+        createGroupBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+          New Group
+        `;
+      } else {
+        createGroupBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          New Chat
+        `;
+      }
+    }
 
     // Initial load
     await loadConversations();
@@ -161,7 +185,14 @@
             message,
             sender_id,
             created_at,
-            read_status
+            read_status,
+            sender:profiles!sender_id (
+              id,
+              full_name,
+              avatar_url,
+              user_type,
+              username
+            )
           )
         `)
         .in('id', conversationIds)
@@ -205,6 +236,7 @@
         colorClass: 'bg-gradient-3',
         avatarUrl: conv.avatar_url || null,
         headline: conv.description || 'Group Conversation',
+        description: conv.description || null,
         isSchool: false,
         isGroup: true,
         isVerified: false
@@ -495,6 +527,7 @@
 
   // --- Select a Conversation ---
   async function selectConversation(chatId) {
+    const sb = getSupabase();
     activeChatId = chatId;
 
     // Highlight item
@@ -507,6 +540,9 @@
       console.warn('Selected conversation not found locally, loading all...');
       return;
     }
+
+    activeConv = conv;
+    activeOther = getOtherParticipant(conv);
 
     // Update URL query parameter without reloading
     const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?chat_id=${chatId}`;
@@ -522,7 +558,7 @@
   }
 
   // Toggle collapsible profile panel state
-  let profilePanelCollapsed = false;
+  let profilePanelCollapsed = true;
 
   function renderProfilePanel(other) {
     const panel = document.getElementById('chat-profile-panel');
@@ -542,25 +578,166 @@
     }
 
     let contentHtml = '';
-    if (other.isSchool) {
+    if (other.isGroup) {
+      let avatarHtml = '';
+      if (other.avatarUrl) {
+        avatarHtml = `<div class="whatsapp-avatar-image" style="background-image: url('${other.avatarUrl}');"></div>`;
+      } else {
+        avatarHtml = `<div class="whatsapp-avatar-letter">👥</div>`;
+      }
+
+      contentHtml = `
+        <!-- Sticky WhatsApp-style Header -->
+        <div class="whatsapp-header" style="display:flex; align-items:center; background:var(--primary); color:#ffffff; padding: 12px 16px; position:sticky; top:0; z-index:100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height:56px;">
+          <button class="whatsapp-back-btn" id="btn-panel-close-action" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; display:flex; align-items:center; padding:0; margin-right:20px;" aria-label="Close panel">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          </button>
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-weight:600; font-size:1.15rem; letter-spacing:0.01em;">Group info</span>
+          </div>
+        </div>
+
+        <!-- WhatsApp Scroll Container -->
+        <div class="whatsapp-scroll-content" style="background:#f0f2f5; flex:1; overflow-y:auto; display:flex; flex-direction:column; padding-bottom:30px;">
+          
+          <!-- Hero Section: Group Picture, Title, Subtitle -->
+          <div class="whatsapp-card" style="background:#ffffff; padding: 28px 16px 20px; text-align:center; box-shadow:0 1px 2px rgba(11,20,26,0.08);">
+            <div class="whatsapp-avatar-container" style="position:relative; width:120px; height:120px; margin:0 auto 16px; cursor:pointer; border-radius:50%; overflow:hidden;" id="group-avatar-container" onclick="triggerGroupAvatarUpload('${other.id}')">
+              ${avatarHtml}
+              <div class="avatar-edit-overlay" id="group-avatar-edit-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              </div>
+              <input type="file" id="group-avatar-file-input-${other.id}" style="display:none;" accept="image/*" onchange="handleGroupAvatarUpload('${other.id}', this.files)">
+            </div>
+            
+            <h2 class="whatsapp-group-title" style="font-size:1.45rem; font-weight:700; color:#111b21; margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
+              <span id="group-panel-name-text">${other.name}</span>
+              <button id="btn-edit-group-name" class="btn-whatsapp-edit" style="display:none; background:none; border:none; cursor:pointer; padding:4px;" onclick="editGroupName('${other.id}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#667781" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+            </h2>
+            <p style="font-size:0.88rem; color:#667781; margin:6px 0 0;" id="group-panel-header-count">Group · Loading...</p>
+          </div>
+
+          <!-- Divider -->
+          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+
+          <!-- Description Section -->
+          <div class="whatsapp-card" style="background:#ffffff; padding:16px; display:flex; flex-direction:column; gap:4px; box-shadow:0 1px 2px rgba(11,20,26,0.08);">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+              <span style="font-size:0.88rem; color:#667781; font-weight:500;">Group description</span>
+              <button id="btn-edit-group-desc" class="btn-whatsapp-edit" style="display:none; background:none; border:none; cursor:pointer; padding:4px;" onclick="editGroupDescription('${other.id}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#667781" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+            </div>
+            <div id="group-panel-desc-text" style="font-size:0.95rem; color:#111b21; line-height:1.4; margin-top:2px;">
+              ${other.description || 'Add group description'}
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+
+          <!-- Settings Option Row -->
+          <div class="whatsapp-card" id="group-panel-settings-section" style="display:none; background:#ffffff; box-shadow:0 1px 2px rgba(11,20,26,0.08); padding:0 16px;">
+            <details style="width:100%; border:none; padding:16px 0;">
+              <summary style="font-size:0.95rem; color:#111b21; font-weight:500; display:flex; justify-content:space-between; align-items:center; outline:none; list-style:none; cursor:pointer;">
+                <div style="display:flex; align-items:center; gap:16px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#667781" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  <span>Group settings</span>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#667781" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </summary>
+              <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px; padding-left:36px; border-top:1px solid #e9edef; padding-top:16px;">
+                <div>
+                  <label style="display:block; font-size:0.85rem; font-weight:600; color:#111b21; margin-bottom:6px;">Who can send messages</label>
+                  <select id="setting-send-messages-${other.id}" style="width:100%; padding:8px 12px; font-size:0.88rem; border-radius:8px; border:1px solid #e9edef; outline:none; background:#f0f2f5; color:#111b21;" onchange="updateGroupSetting('${other.id}', 'send_messages_threshold', this.value)">
+                    <option value="Everyone">All Participants</option>
+                    <option value="Admin">Only Admins</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="display:block; font-size:0.85rem; font-weight:600; color:#111b21; margin-bottom:6px;">Who can edit group info</label>
+                  <select id="setting-edit-info-${other.id}" style="width:100%; padding:8px 12px; font-size:0.88rem; border-radius:8px; border:1px solid #e9edef; outline:none; background:#f0f2f5; color:#111b21;" onchange="updateGroupSetting('${other.id}', 'edit_info_threshold', this.value)">
+                    <option value="Everyone">All Participants</option>
+                    <option value="Admin">Only Admins</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <!-- Divider -->
+          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+
+          <!-- Participants List Card -->
+          <div class="whatsapp-card" style="background:#ffffff; box-shadow:0 1px 2px rgba(11,20,26,0.08); padding: 16px 16px 8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+              <span id="group-panel-member-count" style="font-size:0.95rem; font-weight:600; color:#111b21;">Participants</span>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <!-- Add Participants Row (WhatsApp style) -->
+              <div id="btn-group-add-member" style="display:none; align-items:center; gap:16px; padding:10px 0; cursor:pointer;" onclick="openAddMemberSubModal('${other.id}')">
+                <div style="width:40px; height:40px; border-radius:50%; background:var(--primary); color:#ffffff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                </div>
+                <div style="display:flex; flex-direction:column; flex:1;">
+                  <span style="font-size:0.95rem; font-weight:600; color:var(--primary);">Add participants</span>
+                </div>
+              </div>
+
+              <!-- Invite via Link Row -->
+              <div style="display:flex; align-items:center; gap:16px; padding:10px 0; cursor:pointer; border-bottom:1px solid #f0f2f5;" onclick="copyGroupInviteLink('${other.id}')">
+                <div style="width:40px; height:40px; border-radius:50%; background:var(--primary); color:#ffffff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                </div>
+                <div style="display:flex; flex-direction:column; flex:1;">
+                  <span style="font-size:0.95rem; font-weight:600; color:var(--primary);">Invite via link</span>
+                </div>
+              </div>
+
+              <!-- Real members injected here -->
+              <div id="group-panel-members-list" style="display:flex; flex-direction:column; overflow-y:auto; max-height:350px; margin-top:8px;">
+                <div style="text-align:center; padding:12px; color:#8696a0; font-size:0.88rem;">Loading participants...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+
+          <!-- Exit / Block Group Rows (WhatsApp style) -->
+          <div class="whatsapp-card" style="background:#ffffff; box-shadow:0 1px 2px rgba(11,20,26,0.08); padding:0 16px;">
+            <div style="display:flex; align-items:center; gap:16px; padding:16px 0; color:#ea0038; cursor:pointer;" onclick="exitGroup('${other.id}')">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              <span style="font-size:0.98rem; font-weight:600;">Exit group</span>
+            </div>
+          </div>
+
+        </div>
+      `;
+      
+      loadGroupPanelMembers(other.id);
+    } else if (other.isSchool) {
       let logoHtml = '';
       if (other.avatarUrl) {
-        logoHtml = `<div class="panel-school-logo" style="background-image: url('${other.avatarUrl}');"></div>`;
+        logoHtml = `<div class="whatsapp-avatar-image" style="background-image: url('${other.avatarUrl}');"></div>`;
       } else {
-        logoHtml = `<div class="panel-school-logo-letter ${other.colorClass}">${other.logoLetter}</div>`;
+        logoHtml = `<div class="whatsapp-avatar-letter">🏫</div>`;
       }
 
       let badgeHtml = '';
       if (other.verificationBadge === 'gold') {
         badgeHtml = `
-          <svg class="verified-badge verified-badge-md gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School">
+          <svg class="verified-badge verified-badge-md gold" style="color: #D97706;" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School">
             <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
             <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
           </svg>
         `;
       } else if (other.verificationBadge === 'blue') {
         badgeHtml = `
-          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School">
+          <svg class="verified-badge verified-badge-md" style="color: var(--primary);" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School">
             <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
             <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
           </svg>
@@ -568,44 +745,78 @@
       }
 
       contentHtml = `
-        <div class="panel-header-close">
-          <button class="btn-panel-close" id="btn-panel-close-action" aria-label="Close panel">&times;</button>
+        <!-- Sticky WhatsApp-style Header -->
+        <div class="whatsapp-header" style="display:flex; align-items:center; background:var(--primary); color:#ffffff; padding: 12px 16px; position:sticky; top:0; z-index:100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height:56px;">
+          <button class="whatsapp-back-btn" id="btn-panel-close-action" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; display:flex; align-items:center; padding:0; margin-right:20px;" aria-label="Close panel">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          </button>
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-weight:600; font-size:1.15rem; letter-spacing:0.01em;">School info</span>
+          </div>
         </div>
-        <div class="panel-content-scroll">
-          <div class="panel-identity-card">
-            ${logoHtml}
-            <h3 class="panel-name">${other.name} ${badgeHtml}</h3>
-            <span class="panel-subtitle">School Profile</span>
-          </div>
-          <div class="panel-details-list">
-            <div class="panel-detail-item">
-              <span class="detail-label">City</span>
-              <span class="detail-value">${other.city}</span>
+
+        <!-- WhatsApp Scroll Container -->
+        <div class="whatsapp-scroll-content" style="background:#f0f2f5; flex:1; overflow-y:auto; display:flex; flex-direction:column; padding-bottom:30px;">
+          
+          <!-- Hero Section -->
+          <div class="whatsapp-card" style="background:#ffffff; padding: 28px 16px 20px; text-align:center; box-shadow:0 1px 2px rgba(11,20,26,0.08);">
+            <div style="width:120px; height:120px; margin:0 auto 16px; border-radius:50%; overflow:hidden;">
+              ${logoHtml}
             </div>
-            <div class="panel-detail-item">
-              <span class="detail-label">Board</span>
-              <span class="detail-value">${other.board}</span>
+            <h2 style="font-size:1.45rem; font-weight:700; color:#111b21; margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
+              ${other.name} ${badgeHtml}
+            </h2>
+            <p style="font-size:0.88rem; color:#667781; margin:6px 0 0;">School Profile</p>
+          </div>
+
+          <!-- Divider -->
+          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+
+          <!-- Details Card -->
+          <div class="whatsapp-card" style="background:#ffffff; padding:16px; display:flex; flex-direction:column; gap:16px; box-shadow:0 1px 2px rgba(11,20,26,0.08);">
+            <div>
+              <span style="font-size:0.85rem; color:#667781; font-weight:500; display:block;">City</span>
+              <span style="font-size:1rem; color:#111b21; font-weight:600;">${other.city || 'N/A'}</span>
+            </div>
+            <div style="border-top:1px solid #f0f2f5; padding-top:12px;">
+              <span style="font-size:0.85rem; color:#667781; font-weight:500; display:block;">Board</span>
+              <span style="font-size:1rem; color:#111b21; font-weight:600;">${other.board || 'N/A'}</span>
             </div>
           </div>
-          <div class="panel-actions-list">
-            <a href="school-profile.html?id=${other.id}" class="btn btn-secondary panel-btn">View School</a>
-            <a href="school-profile.html?id=${other.id}#panel-events" class="btn btn-secondary panel-btn">View Events</a>
-            <a href="school-profile.html?id=${other.id}#panel-admissions" class="btn btn-secondary panel-btn">View Admissions</a>
+
+          <!-- Divider -->
+          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+
+          <!-- Actions Card -->
+          <div class="whatsapp-card" style="background:#ffffff; box-shadow:0 1px 2px rgba(11,20,26,0.08); display:flex; flex-direction:column; padding:8px 16px;">
+            <a href="school-profile.html?id=${other.id}" style="display:flex; align-items:center; gap:16px; padding:16px 0; color:var(--primary); text-decoration:none; font-weight:600; border-bottom:1px solid #f0f2f5;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+              <span>View School Portal</span>
+            </a>
+            <a href="school-profile.html?id=${other.id}#panel-events" style="display:flex; align-items:center; gap:16px; padding:16px 0; color:var(--primary); text-decoration:none; font-weight:600; border-bottom:1px solid #f0f2f5;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              <span>View Events</span>
+            </a>
+            <a href="school-profile.html?id=${other.id}#panel-admissions" style="display:flex; align-items:center; gap:16px; padding:16px 0; color:var(--primary); text-decoration:none; font-weight:600;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              <span>View Admissions</span>
+            </a>
           </div>
+
         </div>
       `;
     } else {
       let avatarHtml = '';
       if (other.avatarUrl) {
-        avatarHtml = `<div class="panel-user-avatar" style="background-image: url('${other.avatarUrl}');"></div>`;
+        avatarHtml = `<div class="whatsapp-avatar-image" style="background-image: url('${other.avatarUrl}');"></div>`;
       } else {
-        avatarHtml = `<div class="panel-user-avatar-letter">${other.logoLetter}</div>`;
+        avatarHtml = `<div class="whatsapp-avatar-letter">👤</div>`;
       }
 
       let badgeHtml = '';
       if (other.isVerified) {
         badgeHtml = `
-          <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
+          <svg class="verified-badge verified-badge-md" style="color: var(--primary);" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile">
             <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
             <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
           </svg>
@@ -613,29 +824,57 @@
       }
 
       contentHtml = `
-        <div class="panel-header-close">
-          <button class="btn-panel-close" id="btn-panel-close-action" aria-label="Close panel">&times;</button>
+        <!-- Sticky WhatsApp-style Header -->
+        <div class="whatsapp-header" style="display:flex; align-items:center; background:var(--primary); color:#ffffff; padding: 12px 16px; position:sticky; top:0; z-index:100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height:56px;">
+          <button class="whatsapp-back-btn" id="btn-panel-close-action" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; display:flex; align-items:center; padding:0; margin-right:20px;" aria-label="Close panel">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          </button>
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-weight:600; font-size:1.15rem; letter-spacing:0.01em;">Contact info</span>
+          </div>
         </div>
-        <div class="panel-content-scroll">
-          <div class="panel-identity-card">
-            ${avatarHtml}
-            <h3 class="panel-name">${other.name} ${badgeHtml}</h3>
-            ${other.username ? `<span class="panel-username" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400; display: block; margin-top: 2px; margin-bottom: 4px;">@${other.username}</span>` : ''}
-            <span class="panel-subtitle">Member Profile</span>
-          </div>
-          <div class="panel-details-list">
-            <div class="panel-detail-item">
-              <span class="detail-label">User Type</span>
-              <span class="detail-value">${other.userType || 'Student'}</span>
+
+        <!-- WhatsApp Scroll Container -->
+        <div class="whatsapp-scroll-content" style="background:#f0f2f5; flex:1; overflow-y:auto; display:flex; flex-direction:column; padding-bottom:30px;">
+          
+          <!-- Hero Section -->
+          <div class="whatsapp-card" style="background:#ffffff; padding: 28px 16px 20px; text-align:center; box-shadow:0 1px 2px rgba(11,20,26,0.08);">
+            <div style="width:120px; height:120px; margin:0 auto 16px; border-radius:50%; overflow:hidden;">
+              ${avatarHtml}
             </div>
-            <div class="panel-detail-item">
-              <span class="detail-label">School</span>
-              <span class="detail-value">${other.schoolName || 'Not Linked'}</span>
+            <h2 style="font-size:1.45rem; font-weight:700; color:#111b21; margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
+              ${other.name} ${badgeHtml}
+            </h2>
+            ${other.username ? `<p style="font-size:0.9rem; color:#667781; margin:4px 0 0;">@${other.username}</p>` : ''}
+            <p style="font-size:0.88rem; color:#667781; margin:6px 0 0;">Member Profile</p>
+          </div>
+
+          <!-- Divider -->
+          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+
+          <!-- Details Card -->
+          <div class="whatsapp-card" style="background:#ffffff; padding:16px; display:flex; flex-direction:column; gap:16px; box-shadow:0 1px 2px rgba(11,20,26,0.08);">
+            <div>
+              <span style="font-size:0.85rem; color:#667781; font-weight:500; display:block;">User Type</span>
+              <span style="font-size:1rem; color:#111b21; font-weight:600; text-transform:capitalize;">${other.userType || 'Student'}</span>
+            </div>
+            <div style="border-top:1px solid #f0f2f5; padding-top:12px;">
+              <span style="font-size:0.85rem; color:#667781; font-weight:500; display:block;">School / Institution</span>
+              <span style="font-size:1rem; color:#111b21; font-weight:600;">${other.schoolName || 'Not Linked'}</span>
             </div>
           </div>
-          <div class="panel-actions-list">
-            <a href="profile.html?id=${other.id}" class="btn btn-secondary panel-btn">View Profile</a>
+
+          <!-- Divider -->
+          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+
+          <!-- Actions Card -->
+          <div class="whatsapp-card" style="background:#ffffff; box-shadow:0 1px 2px rgba(11,20,26,0.08); display:flex; flex-direction:column; padding:8px 16px;">
+            <a href="profile.html?id=${other.id}" style="display:flex; align-items:center; gap:16px; padding:16px 0; color:var(--primary); text-decoration:none; font-weight:600;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>View Full Profile</span>
+            </a>
           </div>
+
         </div>
       `;
     }
@@ -656,6 +895,7 @@
 
   // --- Render Active Chat Details ---
   function renderActiveChat(conv) {
+    const sb = getSupabase();
     if (!chatEmptyState || !chatActiveInterface) return;
 
     chatEmptyState.style.display = 'none';
@@ -823,8 +1063,53 @@
         messageRequestBar.style.display = 'none';
         chatMessageInput.disabled = false;
         btnSendMessage.disabled = false;
+        
+        // Check message send threshold constraints (WhatsApp-style lock)
+        if (other.isGroup && sb) {
+          (async () => {
+            try {
+              const { data: myMember } = await sb
+                .from('conversation_members')
+                .select('role')
+                .eq('conversation_id', conv.id)
+                .eq('user_id', currentUser.id)
+                .is('left_at', null)
+                .maybeSingle();
+                
+              const myRole = myMember?.role || 'Member';
+              const isSchoolRep = currentUserProfile?.user_type === 'school_representative' || currentUserProfile?.platform_role === 'school_admin';
+              const isUserAdmin = (myRole === 'Owner' || myRole === 'Admin' || isSchoolRep);
+
+              const { data: settings } = await sb
+                .from('conversation_settings')
+                .select('send_messages_threshold')
+                .eq('conversation_id', conv.id)
+                .maybeSingle();
+
+              if (settings && settings.send_messages_threshold === 'Admin') {
+                if (!isUserAdmin) {
+                  chatMessageInput.disabled = true;
+                  chatMessageInput.placeholder = 'Only admins can send messages to this group.';
+                  btnSendMessage.disabled = true;
+                } else {
+                  chatMessageInput.disabled = false;
+                  chatMessageInput.placeholder = 'Write a message...';
+                  btnSendMessage.disabled = false;
+                }
+              } else {
+                chatMessageInput.disabled = false;
+                chatMessageInput.placeholder = 'Write a message...';
+                btnSendMessage.disabled = false;
+              }
+            } catch (e) {
+              console.warn('Failed to verify send messages threshold:', e);
+            }
+          })();
+        }
       }
     }
+
+
 
     // Render messages history
     renderMessageHistory(conv.messages);
@@ -876,6 +1161,35 @@
 
       // Bubble layout
       const isSent = msg.sender_id === currentUser.id;
+      
+      // Determine if we need to show sender name (Group chats received messages)
+      let senderNameHtml = '';
+      if (!isSent && activeOther && activeOther.isGroup) {
+        let senderName = 'Member';
+        if (msg.sender) {
+          senderName = msg.sender.full_name || 'Member';
+        } else if (activeConv && activeConv.conversation_participants) {
+          const participant = activeConv.conversation_participants.find(p => p.profile && p.profile.id === msg.sender_id);
+          if (participant && participant.profile) {
+            senderName = participant.profile.full_name || 'Member';
+          }
+        }
+        const stringHash = (str) => {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          return hash;
+        };
+        const getHashColor = (str) => {
+          const hash = stringHash(str);
+          const h = Math.abs(hash % 360);
+          return `hsl(${h}, 65%, 40%)`;
+        };
+        const nameColor = getHashColor(senderName);
+        senderNameHtml = `<a href="profile.html?id=${msg.sender_id}" class="message-sender-name" style="font-size: 0.72rem; font-weight: 700; color: ${nameColor}; display: block; margin-bottom: 4px; text-decoration: none; cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" onclick="event.stopPropagation();">${senderName}</a>`;
+      }
+
       const row = document.createElement('div');
       row.className = `message-bubble-row ${isSent ? 'sent' : 'received'}`;
 
@@ -900,6 +1214,7 @@
       row.innerHTML = `
         <div class="message-bubble-wrapper" style="position: relative;">
           <div class="message-bubble" style="position: relative; padding-right: 32px;">
+            ${senderNameHtml}
             <span class="message-text-content">${cleanMsg}</span>
             <button class="message-options-btn" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 4px; cursor: pointer; color: inherit; opacity: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; line-height: 1; border-radius: 50%; transition: opacity 0.2s;" onclick="toggleMessageMenu(event, '${msg.id}')">
               ⋮
@@ -1286,7 +1601,10 @@
 
             let notificationRecipientId = null;
 
-            if (other.isSchool) {
+            if (other.isGroup) {
+              msgPayload.receiver_id = null;
+              msgPayload.receiver_school_id = null;
+            } else if (other.isSchool) {
               msgPayload.receiver_school_id = other.id;
               // Fetch the admin user ID of the school to trigger notifications, but do NOT insert it as receiver_id in messages table
               const { data: sch } = await sb.from('schools').select('admin_user_id').eq('id', other.id).maybeSingle();
@@ -1308,16 +1626,44 @@
             if (window.CampusLink && window.CampusLink.notifications) {
               try {
                 const senderName = currentUserProfile?.full_name || 'Someone';
-                const recipientId = notificationRecipientId;
-                if (recipientId) {
-                  await window.CampusLink.notifications.createNotification(
-                    recipientId,
-                    'message',
-                    `New message from ${senderName}`,
-                    messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
-                    `messaging.html?chat_id=${activeChatId}`,
-                    currentUser.id
-                  );
+                if (other.isGroup) {
+                  // Fetch other participants
+                  const { data: participants } = await sb
+                    .from('conversation_participants')
+                    .select('user_id')
+                    .eq('conversation_id', activeChatId)
+                    .neq('user_id', currentUser.id);
+
+                  if (participants && participants.length > 0) {
+                    for (const part of participants) {
+                      if (part.user_id) {
+                        try {
+                          await window.CampusLink.notifications.createNotification(
+                            part.user_id,
+                            'message',
+                            `New message in ${other.name}`,
+                            `${senderName}: ${messageText.substring(0, 50)}${messageText.length > 50 ? '...' : ''}`,
+                            `messaging.html?chat_id=${activeChatId}`,
+                            currentUser.id
+                          );
+                        } catch (e) {
+                          console.warn('Failed to notify participant:', part.user_id, e);
+                        }
+                      }
+                    }
+                  }
+                } else {
+                  const recipientId = notificationRecipientId;
+                  if (recipientId) {
+                    await window.CampusLink.notifications.createNotification(
+                      recipientId,
+                      'message',
+                      `New message from ${senderName}`,
+                      messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+                      `messaging.html?chat_id=${activeChatId}`,
+                      currentUser.id
+                    );
+                  }
                 }
               } catch (notifErr) {
                 console.warn('Error sending message notification:', notifErr);
@@ -1355,6 +1701,25 @@
           }
         });
       }
+    }
+
+    // Make header container clickable to open settings panel (WhatsApp style)
+    const chatHeader = document.querySelector('.chat-header');
+    if (chatHeader) {
+      chatHeader.style.cursor = 'pointer';
+      chatHeader.addEventListener('click', (e) => {
+        if (e.target.closest('#btn-chat-back') || e.target.closest('#btn-toggle-profile') || e.target.closest('.inquiry-badge-tag')) {
+          return;
+        }
+        if (activeChatId) {
+          const activeConv = conversations.find(c => c.id === activeChatId);
+          if (activeConv) {
+            const other = getOtherParticipant(activeConv);
+            profilePanelCollapsed = !profilePanelCollapsed;
+            renderProfilePanel(other);
+          }
+        }
+      });
     }
   }
 
@@ -1494,6 +1859,7 @@
 
   // ── Multi-Step Conversation Creator State ──
   let currentGroupMembersList = [];
+  let schoolAlumniBatches = [];
   let selectedGroupMembers = new Set();
   let selectedGroupPhotoBase64 = null;
   let activeConvType = 'group'; // 'group' or 'dm'
@@ -1579,7 +1945,26 @@
     const teachers = filtered.filter(p => p.user_type === 'teacher');
     const students = filtered.filter(p => p.user_type === 'student');
     const reps = filtered.filter(p => p.user_type === 'school_representative');
-    const others = filtered.filter(p => p.user_type !== 'teacher' && p.user_type !== 'student' && p.user_type !== 'school_representative');
+    
+    // Alumni Grouping by Passing Year / Batches
+    const alumniByBatch = {};
+    const ungroupedAlumni = [];
+    const others = [];
+
+    filtered.forEach(p => {
+      if (p.user_type === 'alumni') {
+        if (p.passing_year) {
+          if (!alumniByBatch[p.passing_year]) {
+            alumniByBatch[p.passing_year] = [];
+          }
+          alumniByBatch[p.passing_year].push(p);
+        } else {
+          ungroupedAlumni.push(p);
+        }
+      } else if (p.user_type !== 'teacher' && p.user_type !== 'student' && p.user_type !== 'school_representative') {
+        others.push(p);
+      }
+    });
 
     let html = '';
     const auth = getAuth();
@@ -1589,7 +1974,20 @@
       let sectHtml = `<div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 6px 8px 4px 8px; background: rgba(0,0,0,0.02); border-radius: 4px; margin-top: 6px;">${title} (${list.length})</div>`;
       sectHtml += list.map(p => {
         const isChecked = selectedGroupMembers.has(p.id);
-        const roleLabel = auth ? auth.getUserTypeLabel(p.user_type) : 'Member';
+        
+        let roleLabel = auth ? auth.getUserTypeLabel(p.user_type) : 'Member';
+        if (p.user_type === 'alumni') {
+          if (p.passing_year) {
+            roleLabel = p.department ? `Alumni (${p.department}, Class of ${p.passing_year})` : `Alumni (Class of ${p.passing_year})`;
+          } else {
+            roleLabel = 'Alumni';
+          }
+        } else if (p.user_type === 'student' && p.class) {
+          roleLabel = `Student (${p.class})`;
+        } else if (p.user_type === 'teacher' && p.department) {
+          roleLabel = `Teacher (${p.department})`;
+        }
+
         const initials = (p.full_name || '?').charAt(0).toUpperCase();
         const avatarHtml = p.avatar_url 
           ? `<div style="width:30px;height:30px;border-radius:50%;background-image:url('${p.avatar_url}');background-size:cover;flex-shrink:0;"></div>`
@@ -1615,7 +2013,25 @@
     html += renderSection('Teachers', teachers);
     html += renderSection('Students', students);
     html += renderSection('School Representatives', reps);
-    html += renderSection('Others', others);
+
+    // Sort passing years descending (newer batches first)
+    const sortedYears = Object.keys(alumniByBatch).map(Number).sort((a, b) => b - a);
+    sortedYears.forEach(year => {
+      const batchMatch = schoolAlumniBatches.find(b => b.passing_year === year);
+      let title = `Batch of ${year} (Alumni)`;
+      if (batchMatch && (batchMatch.program || batchMatch.department)) {
+        const details = [batchMatch.program, batchMatch.department].filter(Boolean).join(' - ');
+        title = `${details} (${year}) (Alumni)`;
+      }
+      html += renderSection(title, alumniByBatch[year]);
+    });
+
+    if (ungroupedAlumni.length > 0) {
+      html += renderSection('Alumni (General)', ungroupedAlumni);
+    }
+    if (others.length > 0) {
+      html += renderSection('Others', others);
+    }
 
     listContainer.innerHTML = html;
   }
@@ -1686,15 +2102,41 @@
   };
 
   window.openGroupModal = async function() {
+    console.log('校园社交 messaging.js: openGroupModal() called');
     const modal = document.getElementById('create-group-modal');
+    console.log('校园社交 messaging.js: modal element found:', modal);
     if (!modal) return;
     modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    if (!currentUserProfile && currentUser) {
+      console.log('校园社交 messaging.js: Profile not loaded yet. Loading now...');
+      const auth = getAuth();
+      if (auth) {
+        currentUserProfile = await auth.getProfile(currentUser.id);
+        console.log('校园社交 messaging.js: Loaded profile inside modal:', currentUserProfile);
+      }
+    }
+
+    const isSchoolOrCollegeAdmin = (currentUserProfile?.user_type === 'school_representative' || currentUserProfile?.platform_role === 'school_admin');
+    console.log('校园社交 messaging.js: isSchoolOrCollegeAdmin:', isSchoolOrCollegeAdmin);
+    
+    const modalTitle = modal.querySelector('h3');
+    const modalDesc = modal.querySelector('p');
+    
+    if (isSchoolOrCollegeAdmin) {
+      if (modalTitle) modalTitle.textContent = 'Create Conversation';
+      if (modalDesc) modalDesc.textContent = 'Start a new conversation or group in your school community.';
+    } else {
+      if (modalTitle) modalTitle.textContent = 'New Message';
+      if (modalDesc) modalDesc.textContent = 'Start a direct message conversation with another school member.';
+    }
 
     // Clear inputs
     document.getElementById('group-name-input').value = '';
     document.getElementById('group-desc-input').value = '';
     document.getElementById('group-member-search').value = '';
-    document.getElementById('group-purpose-select').value = 'General Discussion';
+    document.getElementById('group-purpose-select').value = 'Class Section Group';
     
     // Clear image previews
     selectedGroupPhotoBase64 = null;
@@ -1707,7 +2149,19 @@
     selectedGroupMembers.clear();
     renderMemberChips();
 
-    selectConvType('group');
+    // Hide Conversation Type selection for non-admin users
+    const convTypeContainer = document.getElementById('conv-type-container');
+    if (convTypeContainer && convTypeContainer.parentElement) {
+      if (isSchoolOrCollegeAdmin) {
+        convTypeContainer.parentElement.style.display = 'block';
+        window.selectConvType('group');
+      } else {
+        convTypeContainer.parentElement.style.display = 'none';
+        window.selectConvType('dm');
+      }
+    } else {
+      window.selectConvType(isSchoolOrCollegeAdmin ? 'group' : 'dm');
+    }
 
     const listContainer = document.getElementById('group-members-list');
     if (!listContainer) return;
@@ -1722,7 +2176,7 @@
     try {
       const { data: profiles, error } = await sb
         .from('profiles')
-        .select('id, full_name, username, avatar_url, user_type')
+        .select('id, full_name, username, avatar_url, user_type, passing_year, department, class')
         .eq('school_id', currentUserProfile.school_id)
         .not('id', 'eq', currentUser.id)
         .order('full_name');
@@ -1730,6 +2184,19 @@
       if (error) throw error;
 
       currentGroupMembersList = profiles || [];
+
+      try {
+        const { data: batchData } = await sb
+          .from('alumni_batches')
+          .select('id, passing_year, program, department')
+          .eq('school_id', currentUserProfile.school_id)
+          .order('passing_year', { ascending: false });
+        schoolAlumniBatches = batchData || [];
+      } catch (batchErr) {
+        console.warn('Failed to load alumni batches:', batchErr);
+        schoolAlumniBatches = [];
+      }
+
       renderGroupMembers();
 
     } catch (err) {
@@ -1740,7 +2207,10 @@
 
   window.closeGroupModal = function() {
     const modal = document.getElementById('create-group-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('active');
+    }
   };
 
   window.submitCreateGroup = async function() {
@@ -1748,6 +2218,12 @@
     if (!sb || !currentUser) return;
 
     if (activeConvType === 'group') {
+      const isSchoolOrCollegeAdmin = (currentUserProfile?.user_type === 'school_representative' || currentUserProfile?.platform_role === 'school_admin');
+      if (!isSchoolOrCollegeAdmin) {
+        alert("Only schools and colleges can create groups.");
+        return;
+      }
+
       const name = document.getElementById('group-name-input').value.trim();
       const description = document.getElementById('group-desc-input').value.trim();
       const purpose = document.getElementById('group-purpose-select').value;
@@ -1851,6 +2327,811 @@
       }
       
       showToast('Direct conversation opened', 'success');
+    }
+  };
+
+  // Load group panel members dynamically
+  // Load group panel members dynamically
+  async function loadGroupPanelMembers(convId) {
+    const sb = getSupabase();
+    if (!sb) return;
+
+    try {
+      // 1. Fetch group participants profiles
+      const { data: participants, error } = await sb
+        .from('conversation_participants')
+        .select(`
+          user_id,
+          profile:profiles(id, full_name, username, avatar_url, user_type)
+        `)
+        .eq('conversation_id', convId);
+
+      if (error) throw error;
+
+      // 2. Fetch conversation details to verify creator
+      const { data: convDetails, error: detailsErr } = await sb
+        .from('conversations')
+        .select('created_by, initiator_id')
+        .eq('id', convId)
+        .single();
+        
+      if (detailsErr) throw detailsErr;
+
+      // 3. Fetch member roles mapping
+      const { data: membersList, error: membersErr } = await sb
+        .from('conversation_members')
+        .select('user_id, role')
+        .eq('conversation_id', convId)
+        .is('left_at', null);
+
+      if (membersErr) throw membersErr;
+
+      const memberRoleMap = {};
+      membersList.forEach(m => {
+        memberRoleMap[m.user_id] = m.role;
+      });
+
+      // 4. Fetch group settings
+      let settings = null;
+      try {
+        const { data: settingsData, error: settingsErr } = await sb
+          .from('conversation_settings')
+          .select('*')
+          .eq('conversation_id', convId)
+          .single();
+        if (settingsErr && settingsErr.code === 'PGRST116') {
+          const { data: newSettings } = await sb
+            .from('conversation_settings')
+            .insert({ conversation_id: convId })
+            .select()
+            .single();
+          settings = newSettings;
+        } else if (!settingsErr) {
+          settings = settingsData;
+        }
+      } catch (e) {
+        console.warn('Failed to load settings inside panel:', e);
+      }
+
+      const isOwner = convDetails && (convDetails.created_by === currentUser.id || convDetails.initiator_id === currentUser.id);
+      const isSchoolRep = currentUserProfile?.user_type === 'school_representative' || currentUserProfile?.platform_role === 'school_admin';
+      const myRole = memberRoleMap[currentUser.id] || 'Member';
+      const hasAdminPrivileges = (myRole === 'Owner' || myRole === 'Admin' || isSchoolRep);
+
+      // Show/Hide settings edit options based on permissions
+      if (hasAdminPrivileges) {
+        const avatarOverlay = document.getElementById('group-avatar-edit-overlay');
+        if (avatarOverlay) avatarOverlay.style.display = 'flex';
+
+        const editNameBtn = document.getElementById('btn-edit-group-name');
+        if (editNameBtn) editNameBtn.style.display = 'inline-block';
+
+        const editDescBtn = document.getElementById('btn-edit-group-desc');
+        if (editDescBtn) editDescBtn.style.display = 'inline-block';
+
+        const settingsSection = document.getElementById('group-panel-settings-section');
+        if (settingsSection) settingsSection.style.display = 'block';
+
+        if (settings) {
+          const sendSelect = document.getElementById(`setting-send-messages-${convId}`);
+          if (sendSelect) sendSelect.value = settings.send_messages_threshold === 'Admin' ? 'Admin' : 'Everyone';
+
+          const editSelect = document.getElementById(`setting-edit-info-${convId}`);
+          if (editSelect) editSelect.value = settings.edit_info_threshold === 'Admin' ? 'Admin' : 'Everyone';
+        }
+      }
+
+      const addBtn = document.getElementById('btn-group-add-member');
+      if (addBtn && (isOwner || isSchoolRep || myRole === 'Admin')) {
+        addBtn.style.display = 'flex';
+      }
+
+      const listContainer = document.getElementById('group-panel-members-list');
+      const countEl = document.getElementById('group-panel-member-count');
+      const headerCountEl = document.getElementById('group-panel-header-count');
+      
+      if (listContainer) {
+        listContainer.innerHTML = '';
+        if (!participants || participants.length === 0) {
+          listContainer.innerHTML = '<div style="text-align:center;color:#8696a0;font-size:0.88rem;padding:8px;">No participants found.</div>';
+          return;
+        }
+
+        if (countEl) {
+          countEl.textContent = `${participants.length} participants`;
+        }
+        if (headerCountEl) {
+          headerCountEl.textContent = `Group · ${participants.length} participants`;
+        }
+
+        participants.forEach(p => {
+          if (!p.profile) return;
+          const prof = p.profile;
+          const isCurrentUser = prof.id === currentUser.id;
+          const avatarUrl = prof.avatar_url;
+          const name = prof.full_name || 'Member';
+          const username = prof.username ? `@${prof.username}` : '';
+          const role = memberRoleMap[prof.id] || 'Member';
+          const roleLabel = isCurrentUser ? 'You' : (role === 'Owner' || role === 'Admin' ? 'Admin' : prof.user_type || 'Member');
+          
+          const item = document.createElement('div');
+          item.className = 'whatsapp-member-row';
+          
+          const avatarDiv = avatarUrl 
+            ? `<div class="whatsapp-member-avatar" style="background-image: url('${avatarUrl}');"></div>`
+            : `<div class="whatsapp-member-avatar-letter">${name.charAt(0).toUpperCase()}</div>`;
+
+          let actionBtnHtml = '';
+          if (hasAdminPrivileges && !isCurrentUser && role !== 'Owner') {
+            actionBtnHtml = `
+              <div style="position:relative; display:inline-block;">
+                <button class="btn btn-sm btn-icon" style="padding: 2px 4px; background:none; border:none; cursor:pointer; color:#667781;" onclick="toggleMemberActionsMenu(event, '${prof.id}')">
+                  ⚙️
+                </button>
+                <div id="member-actions-menu-${prof.id}" class="member-actions-menu" style="display:none; position:absolute; right:0; top:20px; background:var(--white); border:1px solid var(--border-color); border-radius:var(--radius-sm); box-shadow:var(--shadow-md); z-index:100; min-width:110px; flex-direction:column; padding:4px;">
+                  ${role === 'Admin' ? `
+                    <button style="padding:6px 10px; font-size:0.7rem; border:none; background:none; cursor:pointer; text-align:left; color:var(--text-main); width:100%;" onmouseover="this.style.background='var(--light-bg)'" onmouseout="this.style.background='none'" onclick="updateMemberRole('${convId}', '${prof.id}', 'Member')">Dismiss Admin</button>
+                  ` : `
+                    <button style="padding:6px 10px; font-size:0.7rem; border:none; background:none; cursor:pointer; text-align:left; color:var(--text-main); width:100%;" onmouseover="this.style.background='var(--light-bg)'" onmouseout="this.style.background='none'" onclick="updateMemberRole('${convId}', '${prof.id}', 'Admin')">Make Admin</button>
+                  `}
+                  <button style="padding:6px 10px; font-size:0.7rem; border:none; background:none; cursor:pointer; text-align:left; color:#EF4444; width:100%; border-top:1px solid var(--border-color);" onmouseover="this.style.background='var(--light-bg)'" onmouseout="this.style.background='none'" onclick="removeMemberFromGroup('${convId}', '${prof.id}')">Remove</button>
+                </div>
+              </div>
+            `;
+          }
+
+          item.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; flex-grow: 1;">
+              ${avatarDiv}
+              <div style="display: flex; flex-direction: column; overflow: hidden;">
+                <span style="font-size: 0.95rem; font-weight: 600; color: #111b21; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${name}${isCurrentUser ? ' (You)' : ''}
+                </span>
+                <span style="font-size: 0.8rem; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${username || 'Available'}
+                </span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+              ${role === 'Admin' || role === 'Owner' ? `
+                <span class="whatsapp-admin-badge">Group admin</span>
+              ` : `
+                <span style="font-size: 0.72rem; color: #667781; background: #f0f2f5; padding: 2px 6px; border-radius: 4px;">
+                  ${roleLabel}
+                </span>
+              `}
+              ${actionBtnHtml}
+            </div>
+          `;
+          listContainer.appendChild(item);
+        });
+      }
+
+    } catch (err) {
+      console.error('Failed to load group panel participants:', err);
+      const listContainer = document.getElementById('group-panel-members-list');
+      if (listContainer) {
+        listContainer.innerHTML = '<div style="text-align:center;color:#EF4444;font-size:0.8rem;padding:8px;">Failed to load.</div>';
+      }
+    }
+  }
+
+  // --- WhatsApp-style Setting & Member Management Helper Actions ---
+
+  window.toggleMemberActionsMenu = function(event, memberId) {
+    event.stopPropagation();
+    document.querySelectorAll('.member-actions-menu').forEach(menu => {
+      if (menu.id !== `member-actions-menu-${memberId}`) {
+        menu.style.display = 'none';
+      }
+    });
+    const menu = document.getElementById(`member-actions-menu-${memberId}`);
+    if (menu) {
+      menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+    }
+  };
+
+  // Close menus on click outside
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.member-actions-menu').forEach(menu => {
+      menu.style.display = 'none';
+    });
+  });
+
+  window.triggerGroupAvatarUpload = function(convId) {
+    const input = document.getElementById(`group-avatar-file-input-${convId}`);
+    if (input) input.click();
+  };
+
+  window.handleGroupAvatarUpload = async function(convId, files) {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64 = e.target.result;
+      const sb = getSupabase();
+      if (!sb) return;
+      try {
+        const { error } = await sb
+          .from('conversations')
+          .update({ avatar_url: base64 })
+          .eq('id', convId);
+        if (error) throw error;
+        
+        await sb.from('messages').insert({
+          conversation_id: convId,
+          sender_id: currentUser.id,
+          content: `${currentUserProfile.full_name || 'Admin'} changed the group profile photo.`,
+          message: `${currentUserProfile.full_name || 'Admin'} changed the group profile photo.`,
+          type: 'SYSTEM'
+        });
+        
+        showToast('Group profile picture updated!', 'success');
+        
+        const activeImg = document.getElementById('group-panel-avatar-img');
+        if (activeImg) {
+          activeImg.style.backgroundImage = `url('${base64}')`;
+          activeImg.style.display = 'block';
+          const letter = document.getElementById('group-panel-avatar-letter');
+          if (letter) letter.style.display = 'none';
+        }
+        await loadConversations();
+        const conv = conversations.find(c => c.id === convId);
+        if (conv) selectConversation(convId);
+      } catch (err) {
+        console.error('Failed to upload group DP:', err);
+        showToast('Failed to update group picture: ' + err.message, 'error');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.editGroupName = function(convId) {
+    const nameTextSpan = document.getElementById('group-panel-name-text');
+    const editBtn = document.getElementById('btn-edit-group-name');
+    if (!nameTextSpan || !editBtn) return;
+    
+    if (nameTextSpan.querySelector('input')) return;
+
+    const currentName = nameTextSpan.textContent.trim();
+    editBtn.style.display = 'none';
+    
+    nameTextSpan.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px; width: 100%; max-width: 320px; margin: 0 auto;">
+        <input type="text" id="inline-group-name-input" value="${currentName}" maxLength="25" style="flex: 1; padding: 6px 10px; font-size: 1.1rem; font-weight: 600; border: 1.5px solid var(--primary); border-radius: 6px; outline: none; text-align: center; background: #ffffff; color: #111b21; box-sizing: border-box;" />
+        <button id="btn-save-inline-name" style="background: var(--primary); border: none; color: #ffffff; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;" title="Save">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block !important; stroke: #ffffff !important; stroke-width: 3px !important; fill: none !important; width: 16px !important; height: 16px !important;"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+        <button id="btn-cancel-inline-name" style="background: #e9edef; border: none; color: #54656f; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;" title="Cancel">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#54656f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block !important; stroke: #54656f !important; stroke-width: 3px !important; fill: none !important; width: 16px !important; height: 16px !important;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    `;
+
+    const input = document.getElementById('inline-group-name-input');
+    if (input) {
+      input.focus();
+      input.select();
+      
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          saveName();
+        } else if (e.key === 'Escape') {
+          cancelEdit();
+        }
+      });
+    }
+
+    async function saveName() {
+      const newName = input.value.trim();
+      if (!newName) {
+        showToast('Group name cannot be empty', 'error');
+        return;
+      }
+      
+      const sb = getSupabase();
+      if (!sb) return;
+
+      try {
+        const { error } = await sb
+          .from('conversations')
+          .update({ name: newName })
+          .eq('id', convId);
+        
+        if (error) throw error;
+
+        await sb.from('messages').insert({
+          conversation_id: convId,
+          sender_id: currentUser.id,
+          content: `${currentUserProfile.full_name || 'Admin'} renamed the group to "${newName}".`,
+          message: `${currentUserProfile.full_name || 'Admin'} renamed the group to "${newName}".`,
+          type: 'SYSTEM'
+        });
+
+        const conv = conversations.find(c => c.id === convId);
+        if (conv) conv.name = newName;
+
+        showToast('Group name updated!', 'success');
+        nameTextSpan.textContent = newName;
+        editBtn.style.display = 'inline-block';
+        
+        await loadConversations();
+        selectConversation(convId);
+      } catch (err) {
+        console.error('Failed to edit group name:', err);
+        showToast('Failed to update group name: ' + err.message, 'error');
+        cancelEdit();
+      }
+    }
+
+    function cancelEdit() {
+      nameTextSpan.textContent = currentName;
+      editBtn.style.display = 'inline-block';
+    }
+
+    document.getElementById('btn-save-inline-name').onclick = (e) => {
+      e.stopPropagation();
+      saveName();
+    };
+
+    document.getElementById('btn-cancel-inline-name').onclick = (e) => {
+      e.stopPropagation();
+      cancelEdit();
+    };
+  };
+
+  window.editGroupDescription = function(convId) {
+    const descTextSpan = document.getElementById('group-panel-desc-text');
+    const editBtn = document.getElementById('btn-edit-group-desc');
+    if (!descTextSpan || !editBtn) return;
+
+    if (descTextSpan.querySelector('textarea')) return;
+
+    const currentDesc = descTextSpan.textContent.trim() === 'Add group description' ? '' : descTextSpan.textContent.trim();
+    editBtn.style.display = 'none';
+
+    descTextSpan.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 6px;">
+        <textarea id="inline-group-desc-input" rows="3" maxLength="500" style="width: 100%; padding: 8px 12px; font-size: 0.95rem; line-height: 1.4; border: 1.5px solid var(--primary); border-radius: 6px; outline: none; background: #ffffff; color: #111b21; resize: vertical; box-sizing: border-box; font-family: inherit;">${currentDesc}</textarea>
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
+          <span id="inline-desc-char-count" style="font-size: 0.75rem; color: #667781; margin-right: auto;">${500 - currentDesc.length} characters left</span>
+          <button id="btn-save-inline-desc" style="background: var(--primary); border: none; color: #ffffff; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; border-radius: 20px; display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Save">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block !important; stroke: #ffffff !important; stroke-width: 3px !important; fill: none !important; width: 14px !important; height: 14px !important;"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Save</span>
+          </button>
+          <button id="btn-cancel-inline-desc" style="background: #e9edef; border: none; color: #54656f; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; border-radius: 20px; display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Cancel">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#54656f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block !important; stroke: #54656f !important; stroke-width: 3px !important; fill: none !important; width: 14px !important; height: 14px !important;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span>Cancel</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    const textarea = document.getElementById('inline-group-desc-input');
+    const charCountSpan = document.getElementById('inline-desc-char-count');
+    if (textarea) {
+      textarea.focus();
+      textarea.select();
+
+      textarea.addEventListener('input', () => {
+        const left = 500 - textarea.value.length;
+        if (charCountSpan) charCountSpan.textContent = `${left} characters left`;
+      });
+
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          cancelEdit();
+        }
+      });
+    }
+
+    async function saveDesc() {
+      const newDesc = textarea.value.trim();
+      const sb = getSupabase();
+      if (!sb) return;
+
+      try {
+        const { error } = await sb
+          .from('conversations')
+          .update({ description: newDesc || null })
+          .eq('id', convId);
+        
+        if (error) throw error;
+
+        await sb.from('messages').insert({
+          conversation_id: convId,
+          sender_id: currentUser.id,
+          content: `${currentUserProfile.full_name || 'Admin'} updated the group description.`,
+          message: `${currentUserProfile.full_name || 'Admin'} updated the group description.`,
+          type: 'SYSTEM'
+        });
+
+        const conv = conversations.find(c => c.id === convId);
+        if (conv) conv.description = newDesc || null;
+
+        showToast('Group description updated!', 'success');
+        descTextSpan.textContent = newDesc || 'Add group description';
+        editBtn.style.display = 'inline-block';
+
+        await loadConversations();
+        const updatedConv = conversations.find(c => c.id === convId);
+        if (updatedConv) {
+          const other = getOtherParticipant(updatedConv);
+          renderProfilePanel(other);
+        }
+      } catch (err) {
+        console.error('Failed to edit group description:', err);
+        showToast('Failed to update group description: ' + err.message, 'error');
+        cancelEdit();
+      }
+    }
+
+    function cancelEdit() {
+      descTextSpan.textContent = currentDesc || 'Add group description';
+      editBtn.style.display = 'inline-block';
+    }
+
+    document.getElementById('btn-save-inline-desc').onclick = (e) => {
+      e.stopPropagation();
+      saveDesc();
+    };
+
+    document.getElementById('btn-cancel-inline-desc').onclick = (e) => {
+      e.stopPropagation();
+      cancelEdit();
+    };
+  };
+
+  window.updateGroupSetting = async function(convId, settingField, value) {
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+      const updateData = {};
+      updateData[settingField] = value;
+      const { error } = await sb
+        .from('conversation_settings')
+        .update(updateData)
+        .eq('conversation_id', convId);
+      if (error) throw error;
+      
+      let changeDesc = '';
+      if (settingField === 'send_messages_threshold') {
+        changeDesc = value === 'Admin' ? 'only admins can send messages' : 'all participants can send messages';
+      } else if (settingField === 'edit_info_threshold') {
+        changeDesc = value === 'Admin' ? 'only admins can edit group settings' : 'all participants can edit group settings';
+      }
+      
+      await sb.from('messages').insert({
+        conversation_id: convId,
+        sender_id: currentUser.id,
+        content: `${currentUserProfile.full_name || 'Admin'} changed group settings: ${changeDesc}.`,
+        message: `${currentUserProfile.full_name || 'Admin'} changed group settings: ${changeDesc}.`,
+        type: 'SYSTEM'
+      });
+      
+      showToast('Group settings updated!', 'success');
+      selectConversation(convId);
+    } catch (err) {
+      console.error('Failed to update group setting:', err);
+      showToast('Failed to update setting: ' + err.message, 'error');
+    }
+  };
+
+  window.updateMemberRole = async function(convId, memberId, newRole) {
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+      const { error } = await sb
+        .from('conversation_members')
+        .update({ role: newRole })
+        .eq('conversation_id', convId)
+        .eq('user_id', memberId);
+      if (error) throw error;
+      
+      const { data: prof } = await sb.from('profiles').select('full_name').eq('id', memberId).single();
+      const memberName = prof?.full_name || 'Member';
+      
+      const announcement = newRole === 'Admin' 
+        ? `${currentUserProfile.full_name || 'Admin'} promoted ${memberName} to Group Admin.`
+        : `${currentUserProfile.full_name || 'Admin'} dismissed ${memberName} as Group Admin.`;
+         
+      await sb.from('messages').insert({
+        conversation_id: convId,
+        sender_id: currentUser.id,
+        content: announcement,
+        message: announcement,
+        type: 'SYSTEM'
+      });
+      
+      showToast(`Role updated to ${newRole}!`, 'success');
+      loadGroupPanelMembers(convId);
+      selectConversation(convId);
+    } catch (err) {
+      console.error('Failed to update member role:', err);
+      showToast('Failed to update member role: ' + err.message, 'error');
+    }
+  };
+
+  window.removeMemberFromGroup = async function(convId, memberId) {
+    if (!confirm('Are you sure you want to remove this member from the group?')) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+      const { error: err1 } = await sb
+        .from('conversation_participants')
+        .delete()
+        .eq('conversation_id', convId)
+        .eq('user_id', memberId);
+      if (err1) throw err1;
+      
+      const { error: err2 } = await sb
+        .from('conversation_members')
+        .delete()
+        .eq('conversation_id', convId)
+        .eq('user_id', memberId);
+      if (err2) throw err2;
+      
+      const { data: prof } = await sb.from('profiles').select('full_name').eq('id', memberId).single();
+      const memberName = prof?.full_name || 'Member';
+      
+      const announcement = `${currentUserProfile.full_name || 'Admin'} removed ${memberName} from the group.`;
+      await sb.from('messages').insert({
+        conversation_id: convId,
+        sender_id: currentUser.id,
+        content: announcement,
+        message: announcement,
+        type: 'SYSTEM'
+      });
+      
+      showToast('Member removed from group.', 'success');
+      loadGroupPanelMembers(convId);
+      selectConversation(convId);
+    } catch (err) {
+      console.error('Failed to remove member:', err);
+      showToast('Failed to remove member: ' + err.message, 'error');
+    }
+  };
+
+  // Exit group chat (WhatsApp style)
+  window.exitGroup = async function(convId) {
+    if (!confirm('Are you sure you want to exit this group?')) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+      const { error: err1 } = await sb
+        .from('conversation_participants')
+        .delete()
+        .eq('conversation_id', convId)
+        .eq('user_id', currentUser.id);
+      if (err1) throw err1;
+      
+      const { error: err2 } = await sb
+        .from('conversation_members')
+        .delete()
+        .eq('conversation_id', convId)
+        .eq('user_id', currentUser.id);
+      if (err2) throw err2;
+      
+      // Post system announcement that the user left
+      const announcement = `${currentUserProfile.full_name || 'Member'} left the group.`;
+      await sb.from('messages').insert({
+        conversation_id: convId,
+        sender_id: currentUser.id,
+        content: announcement,
+        message: announcement,
+        type: 'SYSTEM'
+      });
+
+      showToast('You have exited the group.');
+      
+      // Close panel and reset active chat
+      profilePanelCollapsed = true;
+      const panel = document.getElementById('chat-profile-panel');
+      if (panel) panel.style.display = 'none';
+      if (messagingCard) {
+        messagingCard.classList.remove('profile-panel-open');
+        messagingCard.classList.remove('chat-open');
+      }
+      activeChatId = null;
+      if (chatActiveInterface) chatActiveInterface.style.display = 'none';
+      if (chatEmptyState) chatEmptyState.style.display = 'flex';
+      
+      await loadConversations();
+    } catch (err) {
+      console.error('Exit group failed:', err);
+      showToast('Failed to exit group: ' + err.message, 'error');
+    }
+  };
+
+  // Copy group invite link
+  window.copyGroupInviteLink = function(convId) {
+    const inviteUrl = window.location.origin + window.location.pathname + '?chat_id=' + convId;
+    navigator.clipboard.writeText(inviteUrl).then(() => {
+      showToast('Invite link copied to clipboard!', 'success');
+    }).catch(err => {
+      console.error('Failed to copy link:', err);
+      // Fallback method
+      const input = document.createElement('input');
+      input.value = inviteUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      showToast('Invite link copied to clipboard!', 'success');
+    });
+  };
+
+  // Add school member directly to the active group chat
+  window.openAddMemberSubModal = async function(convId) {
+    console.log('openAddMemberSubModal called for:', convId);
+    const sb = getSupabase();
+    const auth = getAuth();
+    if (!sb) return;
+
+    if (!currentUserProfile && currentUser) {
+      try {
+        currentUserProfile = await auth.getProfile(currentUser.id);
+      } catch (e) {
+        console.error('Failed to load user profile in modal:', e);
+      }
+    }
+
+    if (!currentUserProfile?.school_id) {
+      showToast('Unable to add members: Profile school details not found.', 'error');
+      return;
+    }
+    
+    try {
+      // 1. Fetch current members in group
+      const { data: currentMembers, error: err1 } = await sb
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', convId);
+        
+      if (err1) throw err1;
+      const existingUserIds = new Set(currentMembers.map(m => m.user_id));
+      
+      // 2. Fetch all school members
+      const { data: allProfiles, error: err2 } = await sb
+        .from('profiles')
+        .select('id, full_name, username, avatar_url, user_type, passing_year, department, class')
+        .eq('school_id', currentUserProfile.school_id)
+        .order('full_name');
+        
+      if (err2) throw err2;
+      
+      const eligibleUsers = allProfiles.filter(p => !existingUserIds.has(p.id));
+      
+      if (eligibleUsers.length === 0) {
+        alert("All school members are already participants of this group.");
+        return;
+      }
+      
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay active';
+      overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1000000 !important; display: flex; align-items: center; justify-content: center; padding: 20px;';
+      
+      overlay.innerHTML = `
+        <div style="background: var(--white); border-radius: var(--radius-lg); width: 100%; max-width: 440px; box-shadow: var(--shadow-xl); overflow: hidden; display: flex; flex-direction: column; max-height: 80vh; border: 1px solid var(--border-color);">
+          <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--dark-bg);">Add Participant</h4>
+            <button id="close-add-member-modal" style="background: none; border: none; font-size: 1.35rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+          </div>
+          <div style="padding: 12px 20px; border-bottom: 1px solid var(--border-color);">
+            <input type="text" id="add-member-search" placeholder="Search members to add..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; outline: none; background: var(--light-bg);">
+          </div>
+          <div id="add-member-list-container" style="padding: 12px 20px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 8px;">
+            <!-- Eligible members rendered here -->
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      const listContainer = overlay.querySelector('#add-member-list-container');
+      const searchInput = overlay.querySelector('#add-member-search');
+      
+      const renderEligible = (query = '') => {
+        listContainer.innerHTML = '';
+        const filtered = eligibleUsers.filter(u => {
+          const name = (u.full_name || '').toLowerCase();
+          const uname = (u.username || '').toLowerCase();
+          return name.includes(query.toLowerCase()) || uname.includes(query.toLowerCase());
+        });
+        
+        if (filtered.length === 0) {
+          listContainer.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:0.8rem;padding:12px;">No members found.</div>';
+          return;
+        }
+        
+        filtered.forEach(u => {
+          const name = u.full_name || 'Member';
+          const avatarUrl = u.avatar_url;
+          
+          let roleLabel = auth ? auth.getUserTypeLabel(u.user_type) : 'Member';
+          if (u.user_type === 'alumni') {
+            if (u.passing_year) {
+              roleLabel = u.department ? `Alumni (${u.department}, Class of ${u.passing_year})` : `Alumni (Class of ${u.passing_year})`;
+            } else {
+              roleLabel = 'Alumni';
+            }
+          } else if (u.user_type === 'student' && u.class) {
+            roleLabel = `Student (${u.class})`;
+          } else if (u.user_type === 'teacher' && u.department) {
+            roleLabel = `Teacher (${u.department})`;
+          }
+          
+          const row = document.createElement('div');
+          row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 8px; border-radius: var(--radius-sm); background: var(--light-bg); border: 1px solid var(--border-color); transition: all 0.2s ease;';
+          
+          const avatarDiv = avatarUrl 
+            ? `<div style="width: 32px; height: 32px; border-radius: 50%; background-image: url('${avatarUrl}'); background-size: cover; background-position: center; flex-shrink:0;"></div>`
+            : `<div style="width: 32px; height: 32px; border-radius: 50%; background: #E2E8F0; color: #64748B; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink:0;">${name.charAt(0).toUpperCase()}</div>`;
+            
+          row.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex-grow: 1;">
+              ${avatarDiv}
+              <div style="display: flex; flex-direction: column; overflow: hidden;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--dark-bg);">${name}</span>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">${roleLabel}</span>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-primary btn-add-user" style="padding: 4px 10px; font-size: 0.72rem; border-radius: var(--radius-sm); cursor: pointer;">Add</button>
+          `;
+          
+          row.querySelector('.btn-add-user').addEventListener('click', async (e) => {
+            e.currentTarget.disabled = true;
+            e.currentTarget.textContent = 'Adding...';
+            try {
+              const { error: insErr1 } = await sb
+                .from('conversation_participants')
+                .insert({ conversation_id: convId, user_id: u.id });
+                
+              if (insErr1) throw insErr1;
+              
+              const { error: insErr2 } = await sb
+                .from('conversation_members')
+                .insert({ conversation_id: convId, user_id: u.id, role: 'Member' });
+                
+              if (insErr2) throw insErr2;
+              
+              await sb.from('messages').insert({
+                conversation_id: convId,
+                sender_id: currentUser.id,
+                content: `${currentUserProfile.full_name || 'Admin'} added ${name} to the group.`,
+                message: `${currentUserProfile.full_name || 'Admin'} added ${name} to the group.`,
+                type: 'SYSTEM'
+              });
+              
+              showToast(`${name} added successfully!`);
+              document.body.removeChild(overlay);
+              loadGroupPanelMembers(convId);
+              
+            } catch (addErr) {
+              console.error('Failed to add participant:', addErr);
+              alert('Failed to add participant: ' + addErr.message);
+              e.currentTarget.disabled = false;
+              e.currentTarget.textContent = 'Add';
+            }
+          });
+          
+          listContainer.appendChild(row);
+        });
+      };
+      
+      renderEligible();
+      
+      searchInput.addEventListener('input', (e) => {
+        renderEligible(e.target.value);
+      });
+      
+      overlay.querySelector('#close-add-member-modal').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+      });
+      
+    } catch (err) {
+      console.error('Failed to load eligible members to add:', err);
+      showToast('Failed to load eligible members: ' + err.message, 'error');
     }
   };
 

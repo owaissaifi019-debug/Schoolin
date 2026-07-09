@@ -6952,6 +6952,10 @@ footer {
   box-shadow: var(--shadow-sm);
   margin-bottom: 16px;
   transition: var(--transition-smooth);
+  max-width: 100%;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .feed-post-card:hover {
@@ -7238,6 +7242,8 @@ footer {
   line-height: 1.6;
   color: var(--text-main);
   white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .post-stats-row {
@@ -15559,6 +15565,12 @@ header:not(.mobile-fixed-header):not(.dashboard-top-bar) .container {
     border-radius: 3px;
     margin: -4px auto 16px auto;
   }
+}
+
+/* Premium elevation shadow below top navigation to add Telegram/Instamart depth */
+header:not(.dashboard-top-bar) {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
 
 

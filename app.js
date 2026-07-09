@@ -1019,6 +1019,8 @@
   let activeFeedFilter = 'all';
   let activeTopicFilter = 'all';
   let userFollows = { users: new Set(), schools: new Set() };
+  let allFeedPosts = [];
+  let displayedPostsCount = 5;
 
   // Relative time helper
   function formatRelativeTime(dateString) {
@@ -1365,9 +1367,13 @@
       `;
 
       // Bind trigger click
-      document.getElementById('trigger-create-post').addEventListener('click', () => {
+      const startPostBtn = document.getElementById('trigger-create-post');
+      startPostBtn.addEventListener('click', () => {
         openCreatePostModal();
       });
+
+      // Start dynamic placeholder text rotation
+      initPlaceholderRotator(startPostBtn);
 
       // Bind quick action clicks
       document.querySelectorAll('.btn-share-action').forEach(btn => {
@@ -1388,6 +1394,61 @@
         </div>
       `;
     }
+  }
+
+  // Rotate placeholder prompts dynamically
+  function initPlaceholderRotator(button) {
+    if (!button) return;
+    
+    if (button.placeholderInterval) {
+      clearInterval(button.placeholderInterval);
+    }
+    
+    const prompts = [
+      "Start a post...",
+      "Share a story...",
+      "Brag about your latest project...",
+      "Share a recent achievement...",
+      "What is happening today?",
+      "Ask a question to the campus...",
+      "Post an upcoming event...",
+      "Share an internship opportunity..."
+    ];
+    
+    let currentIndex = 0;
+    
+    button.style.position = 'relative';
+    button.style.overflow = 'hidden';
+    button.style.display = 'flex';
+    button.style.alignItems = 'center';
+    
+    button.innerHTML = `<span class="placeholder-text-rotator" style="transition: all 0.35s ease; opacity: 0.6; transform: translateY(0); display: inline-block;">Start a post...</span>`;
+    const textSpan = button.querySelector('.placeholder-text-rotator');
+    
+    button.placeholderInterval = setInterval(() => {
+      if (!document.body.contains(button)) {
+        clearInterval(button.placeholderInterval);
+        return;
+      }
+      
+      textSpan.style.opacity = '0';
+      textSpan.style.transform = 'translateY(-15px)';
+      
+      setTimeout(() => {
+        currentIndex = (currentIndex + 1) % prompts.length;
+        textSpan.textContent = prompts[currentIndex];
+        
+        textSpan.style.transition = 'none';
+        textSpan.style.transform = 'translateY(15px)';
+        
+        // Force reflow
+        textSpan.offsetHeight;
+        
+        textSpan.style.transition = 'all 0.35s ease';
+        textSpan.style.opacity = '0.6';
+        textSpan.style.transform = 'translateY(0)';
+      }, 350);
+    }, 2800);
   }
 
   // Create Post Modal Controls
@@ -1884,6 +1945,9 @@
     const feedContainer = document.getElementById('social-feed');
     if (!feedContainer) return;
 
+    displayedPostsCount = 5;
+    allFeedPosts = [];
+
     // Check sessionStorage cache first for SWR (stale-while-revalidate) pattern
     const cacheKey = `campuslink_cached_feed_${activeFeedFilter}_${activeTopicFilter || 'all'}`;
     try {
@@ -1891,7 +1955,8 @@
       if (cached) {
         const cachedData = JSON.parse(cached);
         console.log('[Feed Cache] Rendering cached posts instantly:', cachedData.length);
-        renderFeed(cachedData);
+        allFeedPosts = cachedData;
+        renderFeed(allFeedPosts.slice(0, displayedPostsCount));
       }
     } catch (e) {
       console.warn('Failed to parse cached feed:', e);
@@ -2124,7 +2189,17 @@
         }
       }
 
-      renderFeed(filteredPosts);
+      allFeedPosts = filteredPosts;
+      
+      // If a specific post is linked, ensure we show enough posts to display it
+      if (targetPostId) {
+        const targetIndex = allFeedPosts.findIndex(p => p.id === targetPostId);
+        if (targetIndex !== -1 && targetIndex >= displayedPostsCount) {
+          displayedPostsCount = targetIndex + 1;
+        }
+      }
+
+      renderFeed(allFeedPosts.slice(0, displayedPostsCount));
 
       if (targetPostId) {
         setTimeout(() => {
@@ -2657,6 +2732,7 @@
             card.style.transform = 'scale(0.95)';
             setTimeout(() => {
               card.remove();
+              allFeedPosts = allFeedPosts.filter(p => p.id !== postId);
 
               // Check if feed is now empty
               const remaining = feedContainer.querySelectorAll('.feed-post-card');
@@ -2800,6 +2876,58 @@
         }
       });
     });
+
+    // Append a "Load More" button if there are more posts in the database than displayed
+    if (allFeedPosts.length > posts.length) {
+      const loadMoreContainer = document.createElement('div');
+      loadMoreContainer.className = 'feed-load-more-container';
+      loadMoreContainer.style.cssText = 'display: flex; justify-content: center; margin: 24px 0 32px 0;';
+      loadMoreContainer.innerHTML = `
+        <button id="btn-load-more-posts" class="btn btn-primary" style="padding: 12px 32px; font-weight: 600; border-radius: 8px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 86, 179, 0.15); transition: all 0.2s ease;">
+          <span>Load More Posts</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      `;
+      feedContainer.appendChild(loadMoreContainer);
+
+      const btn = loadMoreContainer.querySelector('#btn-load-more-posts');
+      if (btn) {
+        if (!document.getElementById('feed-spin-style')) {
+          const style = document.createElement('style');
+          style.id = 'feed-spin-style';
+          style.textContent = `
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+
+        btn.addEventListener('mouseenter', () => {
+          btn.style.transform = 'translateY(-2px)';
+          btn.style.boxShadow = '0 6px 16px rgba(0, 86, 179, 0.25)';
+        });
+        btn.addEventListener('mouseleave', () => {
+          btn.style.transform = 'translateY(0)';
+          btn.style.boxShadow = '0 4px 12px rgba(0, 86, 179, 0.15)';
+        });
+
+        btn.addEventListener('click', () => {
+          btn.disabled = true;
+          btn.innerHTML = `
+            <span class="spinner" style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; vertical-align: middle;"></span>
+            <span>Loading...</span>
+          `;
+          
+          setTimeout(() => {
+            displayedPostsCount += 5;
+            renderFeed(allFeedPosts.slice(0, displayedPostsCount));
+          }, 400);
+        });
+      }
+    }
   }
 
   // Toggle Like Status
