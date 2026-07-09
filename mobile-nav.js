@@ -120,17 +120,21 @@
       postBtn.addEventListener('click', (e) => {
         e.preventDefault();
         // On home/feed page: open create post modal
-        const createPostModal = document.getElementById('create-post-modal');
-        if (createPostModal) {
-          createPostModal.classList.add('active');
-          document.body.style.overflow = 'hidden';
-          setTimeout(() => {
-            const textarea = document.getElementById('post-content-textarea');
-            if (textarea) textarea.focus();
-          }, 100);
+        if (window.CampusLink && window.CampusLink.openCreatePostModal) {
+          window.CampusLink.openCreatePostModal('general');
         } else {
-          // On other pages: navigate to home with openPost flag
-          window.location.href = 'index.html?openPost=1';
+          const createPostModal = document.getElementById('create-post-modal');
+          if (createPostModal) {
+            createPostModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+              const textarea = document.getElementById('post-content-textarea');
+              if (textarea) textarea.focus();
+            }, 100);
+          } else {
+            // On other pages: navigate to home with openPost flag
+            window.location.href = 'index.html?openPost=1';
+          }
         }
       });
     }
@@ -141,14 +145,19 @@
     const params = new URLSearchParams(window.location.search);
     if (params.get('openPost') === '1') {
       setTimeout(() => {
-        const createPostModal = document.getElementById('create-post-modal');
-        if (createPostModal) {
-          createPostModal.classList.add('active');
-          document.body.style.overflow = 'hidden';
-          const textarea = document.getElementById('post-content-textarea');
-          if (textarea) textarea.focus();
-          // Clean URL
+        if (window.CampusLink && window.CampusLink.openCreatePostModal) {
+          window.CampusLink.openCreatePostModal('general');
           window.history.replaceState({}, '', window.location.pathname);
+        } else {
+          const createPostModal = document.getElementById('create-post-modal');
+          if (createPostModal) {
+            createPostModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            const textarea = document.getElementById('post-content-textarea');
+            if (textarea) textarea.focus();
+            // Clean URL
+            window.history.replaceState({}, '', window.location.pathname);
+          }
         }
       }, 600);
     }

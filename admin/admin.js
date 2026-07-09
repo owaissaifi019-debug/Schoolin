@@ -939,6 +939,20 @@ async function initAdmin() {
         <td style="font-weight: 700; color: var(--dark-bg);">${school.name}</td>
         <td>${school.city || 'N/A'}</td>
         <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${school.board || 'CBSE'}</span></td>
+        <td>
+          <select class="select-institution-type" data-id="${school.id}" ${selectDisabledAttr} style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; background: ${selectBackground}; color: ${selectColor}; outline: none; cursor: ${selectCursor};">
+            <option value="school" ${school.institution_type === 'school' || !school.institution_type ? 'selected' : ''}>School</option>
+            <option value="Central University" ${school.institution_type === 'Central University' ? 'selected' : ''}>Central University</option>
+            <option value="State University" ${school.institution_type === 'State University' ? 'selected' : ''}>State University</option>
+            <option value="Private University" ${school.institution_type === 'Private University' ? 'selected' : ''}>Private University</option>
+            <option value="Deemed-to-be University" ${school.institution_type === 'Deemed-to-be University' ? 'selected' : ''}>Deemed-to-be University</option>
+            <option value="Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)" ${school.institution_type === 'Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)' ? 'selected' : ''}>Institute of National Importance</option>
+            <option value="Government College" ${school.institution_type === 'Government College' ? 'selected' : ''}>Government College</option>
+            <option value="Private College" ${school.institution_type === 'Private College' ? 'selected' : ''}>Private College</option>
+            <option value="Polytechnic" ${school.institution_type === 'Polytechnic' ? 'selected' : ''}>Polytechnic</option>
+            <option value="Other" ${school.institution_type === 'Other' ? 'selected' : ''}>Other</option>
+          </select>
+        </td>
         <td><span class="badge-status ${statusBadgeClass}" style="font-weight:700;">${statusLabel}</span></td>
         <td>
           <select class="select-school-badge" data-id="${school.id}" ${selectDisabledAttr} style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; background: ${selectBackground}; color: ${selectColor}; outline: none; cursor: ${selectCursor};">
@@ -989,6 +1003,15 @@ async function initAdmin() {
         const id = select.getAttribute('data-id');
         const newBadge = select.value;
         await updateSchoolBadge(id, newBadge);
+      });
+    });
+
+    // Bind institution type change dropdowns
+    schoolsTbody.querySelectorAll('.select-institution-type').forEach(select => {
+      select.addEventListener('change', async (e) => {
+        const id = select.getAttribute('data-id');
+        const newType = select.value;
+        await updateInstitutionType(id, newType);
       });
     });
   }
@@ -1168,6 +1191,30 @@ async function initAdmin() {
     } catch (e) {
       console.error('Failed to update school badge:', e);
       showToast(`Failed to update school badge: ${e.message}`, 'error');
+    }
+  }
+
+  async function updateInstitutionType(schoolId, newType) {
+    if (!supabase) return;
+    const canChange = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
+    if (!canChange) {
+      showToast('Access Denied: Only super admins can change institution types.', 'error');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({ institution_type: newType })
+        .eq('id', schoolId);
+
+      if (error) throw error;
+
+      showToast(`Institution type updated to ${newType.toUpperCase()}!`, 'success');
+      await loadSchoolsData();
+    } catch (e) {
+      console.error('Failed to update institution type:', e);
+      showToast(`Failed to update institution type: ${e.message}`, 'error');
     }
   }
 

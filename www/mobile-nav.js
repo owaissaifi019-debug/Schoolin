@@ -120,11 +120,49 @@
       postBtn.addEventListener('click', (e) => {
         e.preventDefault();
         // On home/feed page: open create post modal
-        const createPostModal = document.getElementById('create-post-modal');
-        if (createPostModal) {
-          createPostModal.classList.add('active');
-          document.body.style.overflow = 'hidden';
-          setTimeout(() => {
+        if (window.CampusLink && window.CampusLink.openCreatePostModal) {
+          window.CampusLink.openCreatePostModal('general');
+        } else {
+          const createPostModal = document.getElementById('create-post-modal');
+          if (createPostModal) {
+            createPostModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+              const textarea = document.getElementById('post-content-textarea');
+              if (textarea) {
+                textarea.focus();
+                // Bind MentionAutocomplete if not already done
+                if (!textarea.hasMentionAutocomplete && window.MentionAutocomplete) {
+                  textarea.hasMentionAutocomplete = true;
+                  new window.MentionAutocomplete(textarea, (item) => {
+                    textarea.selectedMentions = textarea.selectedMentions || [];
+                    textarea.selectedMentions.push(item);
+                  });
+                }
+              }
+            }, 100);
+          } else {
+            // On other pages: navigate to home with openPost flag
+            window.location.href = 'index.html?openPost=1';
+          }
+        }
+      });
+    }
+  }
+
+  // ── Auto-open post modal if navigated from another page ──────────
+  function checkAutoOpenPost() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openPost') === '1') {
+      setTimeout(() => {
+        if (window.CampusLink && window.CampusLink.openCreatePostModal) {
+          window.CampusLink.openCreatePostModal('general');
+          window.history.replaceState({}, '', window.location.pathname);
+        } else {
+          const createPostModal = document.getElementById('create-post-modal');
+          if (createPostModal) {
+            createPostModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
             const textarea = document.getElementById('post-content-textarea');
             if (textarea) {
               textarea.focus();
@@ -137,38 +175,9 @@
                 });
               }
             }
-          }, 100);
-        } else {
-          // On other pages: navigate to home with openPost flag
-          window.location.href = 'index.html?openPost=1';
-        }
-      });
-    }
-  }
-
-  // ── Auto-open post modal if navigated from another page ──────────
-  function checkAutoOpenPost() {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('openPost') === '1') {
-      setTimeout(() => {
-        const createPostModal = document.getElementById('create-post-modal');
-        if (createPostModal) {
-          createPostModal.classList.add('active');
-          document.body.style.overflow = 'hidden';
-          const textarea = document.getElementById('post-content-textarea');
-          if (textarea) {
-            textarea.focus();
-            // Bind MentionAutocomplete if not already done
-            if (!textarea.hasMentionAutocomplete && window.MentionAutocomplete) {
-              textarea.hasMentionAutocomplete = true;
-              new window.MentionAutocomplete(textarea, (item) => {
-                textarea.selectedMentions = textarea.selectedMentions || [];
-                textarea.selectedMentions.push(item);
-              });
-            }
+            // Clean URL
+            window.history.replaceState({}, '', window.location.pathname);
           }
-          // Clean URL
-          window.history.replaceState({}, '', window.location.pathname);
         }
       }, 600);
     }

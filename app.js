@@ -1418,25 +1418,29 @@
       const p = currentUserProfile;
       const role = p.platform_role;
       const type = p.user_type;
+      const isCollege = p.schools && p.schools.institution_type && p.schools.institution_type !== 'school';
       
+      const officialAccountLabel = isCollege ? '🎓 Official College Account' : '🏫 Official School Account';
+      const representativeLabel = isCollege ? '👤 College Representative' : '👤 School Representative';
+
       if (role === 'super_admin') {
         postAsGroup.style.display = 'block';
         postAsSelect.innerHTML = `
           <option value="personal">👤 Personal Post (as Admin)</option>
-          <option value="school">🏫 Official School Account</option>
+          <option value="school">${officialAccountLabel}</option>
         `;
         postAsSelect.value = 'personal';
       } else if (type === 'school_representative' && role === 'user') {
         postAsGroup.style.display = 'block';
         postAsSelect.innerHTML = `
-          <option value="personal">👤 School Representative</option>
-          <option value="school">🏫 Official School Account</option>
+          <option value="personal">${representativeLabel}</option>
+          <option value="school">${officialAccountLabel}</option>
         `;
         postAsSelect.value = 'personal';
       } else if (role === 'school_admin') {
         postAsGroup.style.display = 'none';
         postAsSelect.innerHTML = `
-          <option value="school">🏫 Official School Account</option>
+          <option value="school">${officialAccountLabel}</option>
         `;
         postAsSelect.value = 'school';
       } else {
@@ -3060,5 +3064,9 @@
       dropdown.classList.remove('active');
     });
   });
+
+  // Expose post modal trigger globally
+  window.CampusLink = window.CampusLink || {};
+  window.CampusLink.openCreatePostModal = openCreatePostModal;
 });
 

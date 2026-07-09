@@ -104,7 +104,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (existingSession && !isRecovery) {
     const role = await auth.getUserRole();
     if (role === 'school_admin') {
-      window.location.href = 'dashboard.html';
+      const schoolObj = await auth.getSchoolForUser(existingSession.user.id);
+      if (schoolObj && schoolObj.institution_type && schoolObj.institution_type !== 'school') {
+        window.location.href = 'college-dashboard.html';
+      } else {
+        window.location.href = 'dashboard.html';
+      }
     } else if (role === 'super_admin') {
       window.location.href = 'admin/index.html';
     } else {
@@ -539,7 +544,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else if (platformRole === 'super_admin') {
         redirectPage = 'admin/index.html';
       } else if (platformRole === 'school_admin') {
-        redirectPage = 'dashboard.html';
+        const schoolObj = await auth.getSchoolForUser(loginData.user.id);
+        if (schoolObj && schoolObj.institution_type && schoolObj.institution_type !== 'school') {
+          redirectPage = 'college-dashboard.html';
+        } else {
+          redirectPage = 'dashboard.html';
+        }
       }
 
       // Show success and redirect
@@ -783,7 +793,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (platformRole === 'super_admin') {
             redirectPage = 'admin/index.html';
           } else if (platformRole === 'school_admin') {
-            redirectPage = 'dashboard.html';
+            const schoolObj = await auth.getSchoolForUser(user.id);
+            if (schoolObj && schoolObj.institution_type && schoolObj.institution_type !== 'school') {
+              redirectPage = 'college-dashboard.html';
+            } else {
+              redirectPage = 'dashboard.html';
+            }
           }
         }
         

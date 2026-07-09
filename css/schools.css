@@ -254,7 +254,7 @@
   margin-top: 30px;
   position: relative;
   z-index: 10;
-  margin-bottom: 0;
+  margin-bottom: 32px;
 }
 
 .profile-header-box {
@@ -427,17 +427,21 @@
 .about-meta-item {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   font-size: 0.9rem;
+  gap: 16px;
 }
 
 .about-meta-item span:first-child {
   color: var(--text-muted);
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .about-meta-item span:last-child {
   font-weight: 600;
   color: var(--dark-bg);
+  text-align: right;
 }
 
 /* Achievements tab style */
@@ -976,6 +980,7 @@
 @media (max-width: 992px) {
   .profile-tabs-grid {
     grid-template-columns: 1fr;
+    margin-bottom: 32px;
   }
   
   .profile-tab-list {

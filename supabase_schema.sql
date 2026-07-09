@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS schools (
   about text,
   events_count integer DEFAULT 0,
   verification_badge text NOT NULL CHECK (verification_badge IN ('none', 'blue', 'gold')) DEFAULT 'blue',
+  institution_type text NOT NULL CHECK (institution_type IN ('school', 'college')) DEFAULT 'school',
   contact_phone text,
   created_at timestamp with time zone DEFAULT now()
 );
@@ -778,3 +779,82 @@ CREATE TRIGGER tr_cascade_delete_post_dependencies
 BEFORE DELETE ON public.posts
 FOR EACH ROW
 EXECUTE FUNCTION public.cascade_delete_post_dependencies();
+
+
+-- ============================================================
+-- INSTITUTION TYPE MANAGEMENT (PHASE C0 MIGRATIONS)
+-- ============================================================
+
+-- Add institution_type column to public.schools if it does not exist
+ALTER TABLE public.schools
+ADD COLUMN IF NOT EXISTS institution_type text NOT NULL CHECK (institution_type IN ('school', 'college')) DEFAULT 'school';
+
+-- Function to prevent non-super_admin from changing school institution_type
+CREATE OR REPLACE FUNCTION public.enforce_school_institution_type_permissions()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.institution_type IS DISTINCT FROM OLD.institution_type THEN
+    IF auth.role() = 'authenticated' AND NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Access Denied: Only super admins can change school institution type.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for school institution_type restriction
+DROP TRIGGER IF EXISTS tr_enforce_school_institution_type ON public.schools;
+CREATE TRIGGER tr_enforce_school_institution_type
+  BEFORE UPDATE ON public.schools
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_school_institution_type_permissions();
+
+-- ============================================================
+-- INSTITUTION TYPE & AFFILIATED UNIVERSITY UPDATES (COLLEGES ONLY)
+-- ============================================================
+
+-- 1. Add affiliated_university column if not exists
+ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS affiliated_university text;
+
+-- 2. Drop old check constraints on institution_type
+ALTER TABLE public.schools DROP CONSTRAINT IF EXISTS schools_institution_type_check;
+
+-- 3. Add new check constraint with the expanded list of options
+ALTER TABLE public.schools ADD CONSTRAINT schools_institution_type_check CHECK (
+  institution_type IN (
+    'Central University',
+    'State University',
+    'Private University',
+    'Deemed-to-be University',
+    'Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)',
+    'Government College',
+    'Private College',
+    'Polytechnic',
+    'School',
+    'school',
+    'Other',
+    'college'
+  )
+);
+
+-- 4. Update the trigger function to allow the school/college owner (admin_user_id) to update it
+CREATE OR REPLACE FUNCTION public.enforce_school_institution_type_permissions()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.institution_type IS DISTINCT FROM OLD.institution_type THEN
+    IF auth.role() = 'authenticated' THEN
+      -- Allow update if super_admin OR if the user is the owner (admin_user_id) of the school
+      IF NOT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = auth.uid() AND platform_role = 'super_admin'
+      ) AND NEW.admin_user_id IS DISTINCT FROM auth.uid() AND OLD.admin_user_id IS DISTINCT FROM auth.uid() THEN
+        RAISE EXCEPTION 'Access Denied: Only super admins or the institution owner can change the institution type.';
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+

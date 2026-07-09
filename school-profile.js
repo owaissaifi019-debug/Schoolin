@@ -352,6 +352,12 @@ function initSchoolProfile() {
         if (schoolId.length > 8) { // UUID
           const { data } = await supabase.from('schools').select('*').eq('id', schoolId).maybeSingle();
           dbSchool = data;
+
+          if (dbSchool && dbSchool.institution_type && dbSchool.institution_type !== 'school') {
+            console.log('[Routing Guard] Institution is a College. Redirecting to college-profile.html...');
+            window.location.href = `college-profile.html${window.location.search}`;
+            return;
+          }
         } else {
           // Mock ID fallback — do not fetch database record.
           dbSchool = null;
@@ -404,7 +410,9 @@ function initSchoolProfile() {
             contactEmail: dbSchool.contact_email || '',
             website: dbSchool.website || '',
             contactPhone: dbSchool.contact_phone || '',
-            adminUserId: dbSchool.admin_user_id || null
+            adminUserId: dbSchool.admin_user_id || null,
+            institution_type: dbSchool.institution_type || 'school',
+            affiliated_university: dbSchool.affiliated_university || ''
           };
           
           // Load all profile widgets, count, status, and permissions in parallel (up to 5 queries at once)
@@ -529,7 +537,7 @@ function initSchoolProfile() {
       } else {
         banner.className = `profile-banner ${currentProfile.colorClass}`;
         banner.style.backgroundImage = '';
-        banner.style.display = 'none';
+        banner.style.display = 'block';
       }
     }
     if (logo) {
@@ -571,9 +579,24 @@ function initSchoolProfile() {
         ${badgeHtml}
       `;
     }
-    if (boardBadge) {
-      boardBadge.textContent = `${currentProfile.board} Affiliated`;
+    const isCollege = currentProfile.institution_type && currentProfile.institution_type !== 'school';
+    const labelSchType = document.getElementById('label-sch-type');
+    const valSchType = document.getElementById('val-sch-type');
+    const labelSchBoard = document.getElementById('label-sch-board');
+
+    if (isCollege) {
+      if (labelSchType) labelSchType.textContent = 'Institution Type';
+      if (valSchType) valSchType.textContent = currentProfile.institution_type;
+      if (labelSchBoard) labelSchBoard.textContent = 'Affiliated University';
+      if (boardBadge) {
+        boardBadge.textContent = `${currentProfile.affiliated_university || 'Self'} Affiliated`;
+      }
+    } else {
+      if (boardBadge) {
+        boardBadge.textContent = `${currentProfile.board} Affiliated`;
+      }
     }
+
     if (locationText) {
       locationText.textContent = `${currentProfile.city}, India`;
     }
@@ -583,9 +606,46 @@ function initSchoolProfile() {
     const metaEst = document.getElementById('meta-est');
     const metaBoard = document.getElementById('meta-board');
     const metaSize = document.getElementById('meta-size');
+
+    if (isCollege && metaBoard) {
+      metaBoard.textContent = currentProfile.affiliated_university || 'Self (Degree Awarding Institution)';
+    } else if (metaBoard) {
+      metaBoard.textContent = currentProfile.board;
+    }
     
     if (aboutPara) {
-      aboutPara.textContent = currentProfile.about;
+      const formatBold = (str) => {
+        if (!str) return '';
+        const temp = document.createElement('div');
+        temp.textContent = str;
+        let safe = temp.innerHTML;
+        // Replace **text** with <strong>text</strong>
+        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Replace *text* with <strong>text</strong>
+        safe = safe.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+        // Preserve line breaks
+        safe = safe.replaceAll('\n', '<br>');
+        return safe;
+      };
+
+      const fullText = currentProfile.about || '';
+      const isMobile = window.innerWidth <= 768;
+      const needsTruncation = isMobile && fullText.length > 280;
+
+      if (needsTruncation) {
+        const truncatedText = fullText.slice(0, 260) + '...';
+        aboutPara.innerHTML = formatBold(truncatedText) + ` <button id="btn-desc-see-more" style="background:none; border:none; color:var(--primary); font-weight:700; cursor:pointer; padding:0; font-size:inherit; display:inline-block; margin-left:4px; text-decoration:underline;">See more</button>`;
+        
+        // Use a delegate-style or target check listener
+        const seeMoreBtn = document.getElementById('btn-desc-see-more');
+        if (seeMoreBtn) {
+          seeMoreBtn.addEventListener('click', () => {
+            aboutPara.innerHTML = formatBold(fullText);
+          }, { once: true });
+        }
+      } else {
+        aboutPara.innerHTML = formatBold(fullText);
+      }
     }
     if (metaEst) {
       metaEst.textContent = currentProfile.est;
@@ -1351,21 +1411,20 @@ function showToast(message, type = 'success') {
 
       if (!prevBtn || !cancelBtn || !nextBtn || !saveBtn) return;
 
+      saveBtn.style.display = 'inline-flex';
+
       if (activeTabId === 'tab-sch-basic') {
         prevBtn.style.display = 'none';
         cancelBtn.style.display = 'inline-flex';
         nextBtn.style.display = 'inline-flex';
-        saveBtn.style.display = 'none';
       } else if (activeTabId === 'tab-sch-highlights') {
         prevBtn.style.display = 'inline-flex';
         cancelBtn.style.display = 'none';
         nextBtn.style.display = 'none';
-        saveBtn.style.display = 'inline-flex';
       } else {
         prevBtn.style.display = 'inline-flex';
         cancelBtn.style.display = 'none';
         nextBtn.style.display = 'inline-flex';
-        saveBtn.style.display = 'none';
       }
     };
 
@@ -1480,6 +1539,44 @@ function showToast(message, type = 'success') {
       });
     }
 
+    // Bind change events for college type and university selects
+    const instTypeSelect = document.getElementById('edit-sch-institution-type');
+    const affUnivGroup = document.getElementById('edit-sch-affiliated-university-group');
+    const affUnivSelect = document.getElementById('edit-sch-affiliated-university');
+    const affUnivCustom = document.getElementById('edit-sch-affiliated-university-custom');
+
+    if (instTypeSelect && affUnivGroup && affUnivSelect && affUnivCustom) {
+      instTypeSelect.addEventListener('change', () => {
+        const val = instTypeSelect.value;
+        const requiresAffiliation = ['Government College', 'Private College', 'Polytechnic'].includes(val);
+        
+        if (requiresAffiliation) {
+          affUnivGroup.style.display = 'block';
+          if (affUnivSelect.value === 'Self (Degree Awarding Institution)') {
+            affUnivSelect.value = '';
+          }
+        } else {
+          affUnivGroup.style.display = 'none';
+          affUnivCustom.style.display = 'none';
+          if (['Central University', 'State University', 'Private University', 'Deemed-to-be University', 'Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)'].includes(val)) {
+            affUnivSelect.value = 'Self (Degree Awarding Institution)';
+            affUnivCustom.value = '';
+          } else {
+            affUnivSelect.value = '';
+            affUnivCustom.value = '';
+          }
+        }
+      });
+
+      affUnivSelect.addEventListener('change', () => {
+        if (affUnivSelect.value === 'Other') {
+          affUnivCustom.style.display = 'block';
+        } else {
+          affUnivCustom.style.display = 'none';
+        }
+      });
+    }
+
     // Open modal
     editBtn.addEventListener('click', () => {
       document.getElementById('edit-sch-name').value = dbSchool.name || '';
@@ -1494,6 +1591,67 @@ function showToast(message, type = 'success') {
       document.getElementById('edit-sch-logo-letter').value = dbSchool.logo_letter || '';
       document.getElementById('edit-sch-color-class').value = dbSchool.color_class || 'color-1';
       document.getElementById('edit-sch-about').value = currentProfile.about || '';
+
+      // Set up college type fields if this is a college
+      const isCollege = dbSchool.institution_type && dbSchool.institution_type !== 'school';
+      const collegeTypeGroup = document.getElementById('edit-college-type-fields');
+      const boardGroup = document.getElementById('edit-sch-board-group');
+
+      if (isCollege) {
+        if (collegeTypeGroup) collegeTypeGroup.style.display = 'block';
+        if (boardGroup) boardGroup.style.display = 'none';
+
+        if (instTypeSelect) {
+          instTypeSelect.value = dbSchool.institution_type || '';
+          
+          const requiresUniv = ['Government College', 'Private College', 'Polytechnic'].includes(instTypeSelect.value);
+          if (requiresUniv) {
+            if (affUnivGroup) affUnivGroup.style.display = 'block';
+            const univValue = dbSchool.affiliated_university || '';
+            
+            let optionExists = false;
+            if (affUnivSelect) {
+              for (let i = 0; i < affUnivSelect.options.length; i++) {
+                if (affUnivSelect.options[i].value === univValue) {
+                  optionExists = true;
+                  break;
+                }
+              }
+              if (optionExists) {
+                affUnivSelect.value = univValue;
+                if (affUnivCustom) {
+                  affUnivCustom.style.display = 'none';
+                  affUnivCustom.value = '';
+                }
+              } else if (univValue) {
+                affUnivSelect.value = 'Other';
+                if (affUnivCustom) {
+                  affUnivCustom.style.display = 'block';
+                  affUnivCustom.value = univValue;
+                }
+              } else {
+                affUnivSelect.value = '';
+                if (affUnivCustom) {
+                  affUnivCustom.style.display = 'none';
+                  affUnivCustom.value = '';
+                }
+              }
+            }
+          } else {
+            if (affUnivGroup) affUnivGroup.style.display = 'none';
+            if (affUnivSelect) {
+              affUnivSelect.value = dbSchool.affiliated_university || '';
+            }
+            if (affUnivCustom) {
+              affUnivCustom.style.display = 'none';
+              affUnivCustom.value = '';
+            }
+          }
+        }
+      } else {
+        if (collegeTypeGroup) collegeTypeGroup.style.display = 'none';
+        if (boardGroup) boardGroup.style.display = 'block';
+      }
 
       // Initialize lists
       tempAchievements = [...(currentProfile.achievements || [])];
@@ -1762,6 +1920,37 @@ function showToast(message, type = 'success') {
           return;
         }
 
+        const isCollege = dbSchool.institution_type && dbSchool.institution_type !== 'school';
+        let schInstType = dbSchool.institution_type || 'school';
+        let schAffiliatedUniversity = dbSchool.affiliated_university || null;
+
+        if (isCollege) {
+          schInstType = document.getElementById('edit-sch-institution-type').value;
+          if (!schInstType) {
+            showToast('Institution type is required.', 'error');
+            return;
+          }
+
+          const requiresUniv = ['Government College', 'Private College', 'Polytechnic'].includes(schInstType);
+          if (requiresUniv) {
+            const selectedUniv = document.getElementById('edit-sch-affiliated-university').value;
+            if (selectedUniv === 'Other') {
+              schAffiliatedUniversity = sanitize(document.getElementById('edit-sch-affiliated-university-custom').value);
+            } else {
+              schAffiliatedUniversity = selectedUniv;
+            }
+
+            if (!schAffiliatedUniversity) {
+              showToast('Affiliated University is required.', 'error');
+              return;
+            }
+          } else if (['Central University', 'State University', 'Private University', 'Deemed-to-be University', 'Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)'].includes(schInstType)) {
+            schAffiliatedUniversity = 'Self (Degree Awarding Institution)';
+          } else {
+            schAffiliatedUniversity = null;
+          }
+        }
+
         if (schEmail) {
           const emailErr = validateEmail(schEmail);
           if (emailErr) {
@@ -1786,7 +1975,7 @@ function showToast(message, type = 'success') {
 
         const updateData = {
           name: schName,
-          board: schBoard,
+          board: isCollege ? (schAffiliatedUniversity || '') : schBoard,
           city: schCity,
           address: schAddress,
           contact_email: schEmail,
@@ -1798,7 +1987,9 @@ function showToast(message, type = 'success') {
           color_class: colorClass,
           logo_url: tempLogoUrl || null,
           cover_url: tempCoverUrl || null,
-          about: aboutJSON
+          about: aboutJSON,
+          institution_type: schInstType,
+          affiliated_university: schAffiliatedUniversity
         };
 
         console.log('[UPLOAD-DEBUG] Form submit updateData:', updateData);

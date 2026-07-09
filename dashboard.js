@@ -48,6 +48,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    if (school.institution_type && school.institution_type !== 'school') {
+      window.location.href = 'college-dashboard.html';
+      return;
+    }
+
     window.hideAuthOverlayTransition = function() {
       const authOverlay = document.getElementById('auth-loading-overlay');
       const sidebarLogo = document.querySelector('.dashboard-sidebar .logo-brand-wrapper');

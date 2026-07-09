@@ -103,8 +103,8 @@
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="css/global.css">
   <link rel="stylesheet" href="css/layout.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/schools.css">
+  <link rel="stylesheet" href="css/components.css?v=1.2">
+  <link rel="stylesheet" href="css/schools.css?v=1.2">
   <link rel="stylesheet" href="style.css?v=1.1">
   <link rel="stylesheet" href="css/profile.css">
   <style>
@@ -402,9 +402,9 @@
         
         <!-- Tab 1: About -->
         <div class="profile-tab-panel active" id="panel-about">
-          <h2>About the School</h2>
           <div class="about-grid">
             <div>
+              <h2>About the School</h2>
               <p style="margin-bottom: 20px; font-size: 1.05rem;" id="about-intro-para">
                 Loading school description...
               </p>
@@ -423,16 +423,16 @@
                     <span>Established</span>
                     <span id="meta-est">...</span>
                   </li>
-                  <li class="about-meta-item">
-                    <span>School Type</span>
-                    <span>Co-Educational</span>
+                  <li class="about-meta-item" id="detail-item-type">
+                    <span id="label-sch-type">School Type</span>
+                    <span id="val-sch-type">Co-Educational</span>
                   </li>
-                  <li class="about-meta-item">
-                    <span>Intake Grades</span>
-                    <span>Nursery to XII</span>
+                  <li class="about-meta-item" id="detail-item-grades">
+                    <span id="label-sch-grades">Intake Grades</span>
+                    <span id="val-sch-grades">Nursery to XII</span>
                   </li>
-                  <li class="about-meta-item">
-                    <span>Affiliation Board</span>
+                  <li class="about-meta-item" id="detail-item-board">
+                    <span id="label-sch-board">Affiliation Board</span>
                     <span id="meta-board">...</span>
                   </li>
                   <li class="about-meta-item">
@@ -494,15 +494,15 @@
 
         <!-- Tab 3: Admissions -->
         <div class="profile-tab-panel" id="panel-admissions">
-          <h2>Admission Details (2026 - 2027)</h2>
-          <div class="admission-highlight-box" id="admission-status-box">
-            Admissions Open: Registration for nursery and grade XI starts June 15, 2026.
-          </div>
-          <div style="margin-top: 24px; display: flex; justify-content: flex-start;">
-            <a href="#" id="btn-profile-apply-admission" class="btn btn-primary" style="padding: 12px 32px; font-size: 0.95rem; text-decoration: none; display: none;">Apply Now</a>
-          </div>
           <div class="about-grid">
             <div>
+              <h2>Admission Details (2026 - 2027)</h2>
+              <div class="admission-highlight-box" id="admission-status-box" style="margin-bottom: 20px;">
+                Admissions Open: Registration for nursery and grade XI starts June 15, 2026.
+              </div>
+              <div style="margin-top: 16px; margin-bottom: 24px; display: flex; justify-content: flex-start;">
+                <a href="#" id="btn-profile-apply-admission" class="btn btn-primary" style="padding: 12px 32px; font-size: 0.95rem; text-decoration: none; display: none;">Apply Now</a>
+              </div>
               <h3 style="margin-bottom: 12px; font-size: 1.15rem;">Application Process</h3>
               <p style="margin-bottom: 16px;">
                 Parents can download the prospectus and registration form online. Duly filled physical copies or digitally compiled uploads must be submitted before the target entry deadline.
@@ -781,7 +781,7 @@
         <div class="footer-links">
           <h4>Company</h4>
           <ul>
-            <li><a href="#">About Us</a></li>
+            <li><a href="about.html">About Us</a></li>
             <li><a href="#">Careers</a></li>
             <li><a href="#">Press Kit</a></li>
             <li><a href="#">Contact</a></li>
@@ -860,6 +860,47 @@
             </select>
           </div>
 
+          <!-- Institution Type and Affiliated University (Colleges only) -->
+          <div id="edit-college-type-fields" style="display: none; margin-bottom: 16px;">
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label for="edit-sch-institution-type">Institution Type *</label>
+                <select id="edit-sch-institution-type">
+                  <option value="">Select Institution Type...</option>
+                  <option value="Central University">Central University</option>
+                  <option value="State University">State University</option>
+                  <option value="Private University">Private University</option>
+                  <option value="Deemed-to-be University">Deemed-to-be University</option>
+                  <option value="Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)">Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)</option>
+                  <option value="Government College">Government College</option>
+                  <option value="Private College">Private College</option>
+                  <option value="Polytechnic">Polytechnic</option>
+                  <option value="School">School</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              
+              <div class="form-group col-6" id="edit-sch-affiliated-university-group" style="display: none;">
+                <label for="edit-sch-affiliated-university">Affiliated University *</label>
+                <div style="position: relative;">
+                  <select id="edit-sch-affiliated-university">
+                    <option value="">Select University...</option>
+                    <option value="Jamia Millia Islamia">Jamia Millia Islamia</option>
+                    <option value="AKTU (Dr. A.P.J. Abdul Kalam Technical University)">AKTU (Dr. A.P.J. Abdul Kalam Technical University)</option>
+                    <option value="Anna University">Anna University</option>
+                    <option value="VTU (Visvesvaraya Technological University)">VTU (Visvesvaraya Technological University)</option>
+                    <option value="Delhi University">Delhi University</option>
+                    <option value="University of Mumbai">University of Mumbai</option>
+                    <option value="Rajasthan Technical University">Rajasthan Technical University</option>
+                    <option value="MAKAUT">MAKAUT</option>
+                    <option value="Other">Other (Enter Manually)</option>
+                  </select>
+                  <input type="text" id="edit-sch-affiliated-university-custom" placeholder="Enter custom university name" class="form-control" style="display: none; margin-top: 8px; width: 100%;">
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-group">
             <label for="edit-sch-about">About / Description</label>
             <textarea id="edit-sch-about" rows="5" placeholder="Describe your school's history, infrastructure, academic focus, and unique opportunities..."></textarea>
@@ -869,7 +910,7 @@
         <!-- Tab 2: Location & Contact -->
         <div class="tab-pane" id="tab-sch-contact">
           <div class="form-row">
-            <div class="form-group col-6">
+            <div class="form-group col-6" id="edit-sch-board-group">
               <label for="edit-sch-board">Affiliation Board</label>
               <select id="edit-sch-board">
                 <option value="">Select Board...</option>
