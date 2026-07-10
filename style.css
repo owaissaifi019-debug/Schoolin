@@ -1397,13 +1397,15 @@ body {
   align-items: center;
   justify-content: center;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: var(--transition-smooth);
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .modal-overlay.active {
   opacity: 1;
   pointer-events: all;
+  visibility: visible;
 }
 
 .modal-content {
