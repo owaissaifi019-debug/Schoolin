@@ -619,6 +619,16 @@
     students[idx].updatedAt = new Date().toISOString();
     saveStored('campuslink_students', students);
 
+    // Sync status change to Supabase
+    var sb = window.CampusLink?.supabase;
+    if (sb && id) {
+      sb.from('students').update({ status: status, updated_at: new Date().toISOString() }).eq('id', id)
+        .then(function(res) {
+          if (res.error) console.warn('[quickStatus] Supabase update error:', res.error);
+          else console.log('[quickStatus] Supabase status updated to:', status);
+        });
+    }
+
     // If approved and was pending, check for inviteCode increment
     if (status === 'active' && oldStatus === 'pending' && students[idx].inviteCode) {
       loadDependencies(); // Ensure fresh invites state
@@ -626,6 +636,12 @@
       if (invite) {
         invite.joinedCount = (invite.joinedCount || 0) + 1;
         saveStored('campuslink_invites', invites);
+        // Sync joined count to Supabase
+        if (sb) {
+          sb.from('student_invitations').update({ joined_count: invite.joinedCount })
+            .eq('invite_code', invite.inviteCode)
+            .then(function(r) { if (r.error) console.warn('[quickStatus] Invite joinedCount sync error:', r.error); });
+        }
       }
     }
 
@@ -1559,14 +1575,15 @@
     populateFilters();
     renderActiveSubpanel();
 
-    // Call Supabase sync asynchronously in live mode
-    const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
-    if (isLiveMode) {
-      syncStudentsFromSupabase().then(() => {
-        syncInvitesFromSupabase().then(() => {
-          renderActiveSubpanel();
-          populateFilters();
-        });
+    // Always sync from Supabase when configured (no broken token check)
+    if (window.CampusLink?.supabase) {
+      syncStudentsFromSupabase().then(function() {
+        return syncInvitesFromSupabase();
+      }).then(function() {
+        renderActiveSubpanel();
+        populateFilters();
+      }).catch(function(err) {
+        console.warn('[initStudentsTab] Sync failed:', err);
       });
     }
 
