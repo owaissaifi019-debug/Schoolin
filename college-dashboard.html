@@ -50,6 +50,9 @@
         html = html.replaceAll('Describe your school\'s vision', 'Describe your college\'s vision');
         html = html.replaceAll('Manage your school\'s academic structure', 'Manage your college\'s academic structure');
         html = html.replaceAll('school-profile.html', 'college-profile.html');
+        html = html.replaceAll('Academic Year', 'Batch Year');
+        html = html.replaceAll('Class &amp; Section', 'Program &amp; Section');
+        html = html.replaceAll('Class & Section', 'Program & Section');
         // NOTE: body class replacement on the HTML string is intentionally omitted —
         // the <body> tag is stripped when injected via innerHTML into a div.
         // school-admin-body is instead added directly to document.body below.
@@ -89,7 +92,6 @@
     }`
                     );
 
-                    // General terminology translations
                     js = js.replaceAll('School Admin Dashboard', 'College Admin Dashboard');
                     js = js.replaceAll('School Profile Settings', 'College Profile Settings');
                     js = js.replaceAll('School Representative', 'College Representative');
@@ -101,6 +103,9 @@
                     js = js.replaceAll('No school associated with this administrator account.', 'No college associated with this administrator account.');
                     js = js.replaceAll('Administrator account has no associated school record.', 'Administrator account has no associated college record.');
                     js = js.replaceAll('Loading school...', 'Loading college...');
+                    js = js.replaceAll('Academic Year', 'Batch Year');
+                    js = js.replaceAll('Class &amp; Section', 'Program &amp; Section');
+                    js = js.replaceAll('Class & Section', 'Program & Section');
 
                     newScript.textContent = js;
                     document.body.appendChild(newScript);

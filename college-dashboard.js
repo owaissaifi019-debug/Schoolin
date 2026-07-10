@@ -30,6 +30,9 @@
     js = js.replaceAll('No school associated with this administrator account.', 'No college associated with this administrator account.');
     js = js.replaceAll('Administrator account has no associated school record.', 'Administrator account has no associated college record.');
     js = js.replaceAll('Loading school...', 'Loading college...');
+    js = js.replaceAll('Academic Year', 'Batch Year');
+    js = js.replaceAll('Class &amp; Section', 'Program &amp; Section');
+    js = js.replaceAll('Class & Section', 'Program & Section');
     
     // Execute translated code in page context
     const script = document.createElement('script');

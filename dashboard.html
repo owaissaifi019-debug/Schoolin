@@ -1130,6 +1130,7 @@
           <!-- Student Sub-navigation Bar -->
           <div class="student-subtabs-nav" style="display: flex; border-bottom: 1.5px solid var(--border-color); margin-bottom: 24px; gap: 20px;">
             <button class="student-subtab-btn active" data-subtab="all-students" style="background: none; border: none; padding: 12px 4px; font-weight: 700; font-size: 0.9rem; color: var(--primary); border-bottom: 3px solid var(--primary); cursor: pointer; transition: var(--transition-fast);">All Students</button>
+            <button class="student-subtab-btn" data-subtab="by-batch" style="background: none; border: none; padding: 12px 4px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); border-bottom: 3px solid transparent; cursor: pointer; transition: var(--transition-fast);">By Batch</button>
             <button class="student-subtab-btn" data-subtab="new-admissions" style="background: none; border: none; padding: 12px 4px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); border-bottom: 3px solid transparent; cursor: pointer; transition: var(--transition-fast);">New Admissions</button>
             <button class="student-subtab-btn" data-subtab="active-students" style="background: none; border: none; padding: 12px 4px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); border-bottom: 3px solid transparent; cursor: pointer; transition: var(--transition-fast);">Active Students</button>
             <button class="student-subtab-btn" data-subtab="alumni" style="background: none; border: none; padding: 12px 4px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); border-bottom: 3px solid transparent; cursor: pointer; transition: var(--transition-fast);">Alumni / Graduated</button>
@@ -1209,6 +1210,14 @@
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+
+          <!-- By Batch / Year -->
+          <div id="student-subpanel-by-batch" class="student-subpanel" style="display:none;">
+            <div style="margin-bottom:16px; font-size:0.8rem; color:var(--text-muted);">Grouped by batch year</div>
+            <div id="student-batch-groups" style="display: flex; flex-direction: column; gap: 20px;">
+              <!-- Groups loaded dynamically -->
             </div>
           </div>
 
@@ -3354,16 +3363,17 @@
         </div>
         <div style="padding: 24px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 16px;">
           <div>
-            <label style="font-weight: 600; font-size: 0.82rem; color: var(--text-main); margin-bottom: 6px; display: block;">Academic Year *</label>
+            <label id="invite-modal-year-label" style="font-weight: 600; font-size: 0.82rem; color: var(--text-main); margin-bottom: 6px; display: block;">Academic Year *</label>
             <select id="invite-modal-year" required style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white); color: var(--text-main); cursor: pointer;">
               <!-- Dynamic -->
             </select>
           </div>
           <div>
-            <label style="font-weight: 600; font-size: 0.82rem; color: var(--text-main); margin-bottom: 6px; display: block;">Class &amp; Section *</label>
+            <label id="invite-modal-class-label" style="font-weight: 600; font-size: 0.82rem; color: var(--text-main); margin-bottom: 6px; display: block;">Class &amp; Section *</label>
             <select id="invite-modal-class" required style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white); color: var(--text-main); cursor: pointer;">
               <!-- Dynamic -->
             </select>
+            <input id="invite-modal-class-input" type="text" placeholder="e.g. B.Tech CSE, B.Sc Physics..." style="display: none; width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: var(--white); color: var(--text-main); box-sizing: border-box;">
           </div>
           <div>
             <label style="font-weight: 600; font-size: 0.82rem; color: var(--text-main); margin-bottom: 6px; display: block;">Invite Type *</label>
@@ -3401,8 +3411,8 @@
 
           <!-- Target Classroom Details -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.8rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-            <div><strong style="color:var(--text-muted);">Classroom:</strong> <span id="success-invite-class" style="color:var(--dark-bg); font-weight:700;">9 A</span></div>
-            <div><strong style="color:var(--text-muted);">Academic Year:</strong> <span id="success-invite-year" style="color:var(--dark-bg); font-weight:700;">2026–2027</span></div>
+            <div><strong id="success-invite-class-label" style="color:var(--text-muted);">Classroom:</strong> <span id="success-invite-class" style="color:var(--dark-bg); font-weight:700;">9 A</span></div>
+            <div><strong id="success-invite-year-label" style="color:var(--text-muted);">Academic Year:</strong> <span id="success-invite-year" style="color:var(--dark-bg); font-weight:700;">2026–2027</span></div>
             <div><strong style="color:var(--text-muted);">Invite Type:</strong> <span style="color:var(--dark-bg); font-weight:700;">Student Invite</span></div>
             <div><strong style="color:var(--text-muted);">Students Joined:</strong> <span style="color:var(--primary); font-weight:800;">0 / Unlimited</span></div>
           </div>
@@ -3700,8 +3710,8 @@
 
   <script src="dashboard.js?v=1.9"></script>
   <script src="classrooms.js?v=1.1"></script>
-  <script src="students.js?v=1.1"></script>
-  <script src="attendance.js?v=1.1"></script>
+  <script src="students.js?v=1.5"></script>
+  <script src="attendance.js?v=1.2"></script>
   <script src="teacher_classroom_hub.js?v=1.0"></script>
 
 

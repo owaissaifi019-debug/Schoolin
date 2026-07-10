@@ -23,18 +23,7 @@
     { id: 'cls_006', name: 'Class 12', section: 'A', status: 'active', academicYearId: 'ay_002' }
   ];
 
-  const DEFAULT_STUDENTS = [
-    { id: 'stu_001', schoolId: 'sch_001', academicYearId: 'ay_002', classId: 'cls_001', sectionId: 'A', username: 'ahmed.khan', campuslinkId: 'CL-STU-0001', admissionNumber: 'ADM2026001', rollNumber: '09A-01', fullName: 'Ahmed Khan', email: 'ahmed.khan@student.com', phone: '+91 9876500001', gender: 'Male', dateOfBirth: '2010-03-15', bloodGroup: 'O+', religion: 'Islam', nationality: 'Indian', address: '12 Green Park, New Delhi - 110016', emergencyContact: '+91 9000000001', guardianId: 'grd_001', transportId: null, houseId: 'house_red', house: 'Red House', status: 'active', admissionDate: '2026-04-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'stu_002', schoolId: 'sch_001', academicYearId: 'ay_002', classId: 'cls_001', sectionId: 'A', username: 'priya.mehta', campuslinkId: 'CL-STU-0002', admissionNumber: 'ADM2026002', rollNumber: '09A-02', fullName: 'Priya Mehta', email: 'priya.mehta@student.com', phone: '+91 9876500002', gender: 'Female', dateOfBirth: '2010-07-22', bloodGroup: 'B+', religion: 'Hinduism', nationality: 'Indian', address: '45 Lajpat Nagar, New Delhi - 110024', emergencyContact: '+91 9000000002', guardianId: 'grd_002', transportId: 'bus_01', houseId: 'house_blue', house: 'Blue House', status: 'active', admissionDate: '2026-04-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'stu_003', schoolId: 'sch_001', academicYearId: 'ay_002', classId: 'cls_002', sectionId: 'B', username: 'raza.ali', campuslinkId: 'CL-STU-0003', admissionNumber: 'ADM2026003', rollNumber: '09B-01', fullName: 'Raza Ali', email: 'raza.ali@student.com', phone: '+91 9876500003', gender: 'Male', dateOfBirth: '2010-01-10', bloodGroup: 'A+', religion: 'Islam', nationality: 'Indian', address: '7 Jamia Nagar, New Delhi - 110025', emergencyContact: '+91 9000000003', guardianId: 'grd_003', transportId: 'bus_02', houseId: 'house_green', house: 'Green House', status: 'active', admissionDate: '2026-04-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'stu_004', schoolId: 'sch_001', academicYearId: 'ay_002', classId: 'cls_003', sectionId: 'A', username: 'anjali.singh', campuslinkId: 'CL-STU-0004', admissionNumber: 'ADM2026004', rollNumber: '10A-01', fullName: 'Anjali Singh', email: 'anjali.singh@student.com', phone: '+91 9876500004', gender: 'Female', dateOfBirth: '2009-11-05', bloodGroup: 'AB+', religion: 'Hinduism', nationality: 'Indian', address: '88 Saket, New Delhi - 110017', emergencyContact: '+91 9000000004', guardianId: 'grd_004', transportId: null, houseId: 'house_yellow', house: 'Yellow House', status: 'active', admissionDate: '2025-04-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'stu_005', schoolId: 'sch_001', academicYearId: 'ay_002', classId: 'cls_003', sectionId: 'A', username: 'farhan.qureshi', campuslinkId: 'CL-STU-0005', admissionNumber: 'ADM2026005', rollNumber: '10A-02', fullName: 'Farhan Qureshi', email: 'farhan.qureshi@student.com', phone: '+91 9876500005', gender: 'Male', dateOfBirth: '2009-06-18', bloodGroup: 'O-', religion: 'Islam', nationality: 'Indian', address: '34 Okhla Phase II, New Delhi - 110020', emergencyContact: '+91 9000000005', guardianId: 'grd_005', transportId: 'bus_01', houseId: 'house_red', house: 'Red House', status: 'pending', admissionDate: '2026-05-15', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'stu_006', schoolId: 'sch_001', academicYearId: 'ay_002', classId: 'cls_004', sectionId: 'B', username: 'sara.khan', campuslinkId: 'CL-STU-0006', admissionNumber: 'ADM2026006', rollNumber: '10B-01', fullName: 'Sara Khan', email: 'sara.khan@student.com', phone: '+91 9876500006', gender: 'Female', dateOfBirth: '2009-09-30', bloodGroup: 'B-', religion: 'Islam', nationality: 'Indian', address: '21 Abul Fazal Enclave, New Delhi - 110025', emergencyContact: '+91 9000000006', guardianId: 'grd_006', transportId: 'bus_02', houseId: 'house_blue', house: 'Blue House', status: 'pending', admissionDate: '2026-06-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'stu_007', schoolId: 'sch_001', academicYearId: 'ay_002', classId: 'cls_005', sectionId: 'A', username: 'rohit.sharma', campuslinkId: 'CL-STU-0007', admissionNumber: 'ADM2025007', rollNumber: '11A-01', fullName: 'Rohit Sharma', email: 'rohit.sharma@student.com', phone: '+91 9876500007', gender: 'Male', dateOfBirth: '2008-04-25', bloodGroup: 'A-', religion: 'Hinduism', nationality: 'Indian', address: '5 Dwarka Sector 7, New Delhi - 110045', emergencyContact: '+91 9000000007', guardianId: 'grd_007', transportId: null, houseId: 'house_green', house: 'Green House', status: 'suspended', admissionDate: '2025-04-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'stu_008', schoolId: 'sch_001', academicYearId: 'ay_001', classId: 'cls_006', sectionId: 'A', username: 'nadia.hussain', campuslinkId: 'CL-STU-0008', admissionNumber: 'ADM2024008', rollNumber: '12A-01', fullName: 'Nadia Hussain', email: 'nadia.hussain@student.com', phone: '+91 9876500008', gender: 'Female', dateOfBirth: '2007-12-08', bloodGroup: 'O+', religion: 'Islam', nationality: 'Indian', address: '99 Zakir Nagar, New Delhi - 110025', emergencyContact: '+91 9000000008', guardianId: 'grd_008', transportId: 'bus_03', houseId: 'house_yellow', house: 'Yellow House', status: 'graduated', admissionDate: '2024-04-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'stu_009', schoolId: 'sch_001', academicYearId: 'ay_001', classId: 'cls_006', sectionId: 'A', username: 'arjun.verma', campuslinkId: 'CL-STU-0009', admissionNumber: 'ADM2024009', rollNumber: '12A-02', fullName: 'Arjun Verma', email: 'arjun.verma@student.com', phone: '+91 9876500009', gender: 'Male', dateOfBirth: '2007-08-14', bloodGroup: 'B+', religion: 'Hinduism', nationality: 'Indian', address: '14 Mayur Vihar Phase 1, New Delhi - 110091', emergencyContact: '+91 9000000009', guardianId: 'grd_009', transportId: null, houseId: 'house_red', house: 'Red House', status: 'transferred', admissionDate: '2024-04-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'stu_010', schoolId: 'sch_001', academicYearId: 'ay_002', classId: 'cls_002', sectionId: 'B', username: 'zara.malik', campuslinkId: 'CL-STU-0010', admissionNumber: 'ADM2026010', rollNumber: '09B-02', fullName: 'Zara Malik', email: 'zara.malik@student.com', phone: '+91 9876500010', gender: 'Female', dateOfBirth: '2010-02-20', bloodGroup: 'AB-', religion: 'Islam', nationality: 'Indian', address: '63 Shaheen Bagh, New Delhi - 110025', emergencyContact: '+91 9000000010', guardianId: 'grd_010', transportId: 'bus_01', houseId: 'house_blue', house: 'Blue House', status: 'inactive', admissionDate: '2026-04-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-  ];
+  const DEFAULT_STUDENTS = [];
 
   const DEFAULT_INVITES = [];
 
@@ -68,6 +57,10 @@
     if (!isLiveMode && (!classes || classes.length === 0)) classes = DEFAULT_CLASSES;
 
     students = getStored('campuslink_students', isLiveMode ? [] : DEFAULT_STUDENTS);
+    if (students && students.some(s => s.id && s.id.startsWith('stu_00'))) {
+      students = [];
+      saveStored('campuslink_students', students);
+    }
     if (!isLiveMode && (!students || students.length === 0)) students = DEFAULT_STUDENTS;
 
     invites = getStored('campuslink_invites', DEFAULT_INVITES);
@@ -142,7 +135,13 @@
   // ─── Resolver Helpers ──────────────────────────────────────────────────────
   function getYearName(id) {
     const y = academicYears.find(function(a) { return a.id === id; });
-    return y ? y.name : '\u2014';
+    if (!y) return '\u2014';
+    const prof = getProfile();
+    const isCollege = (prof.institution_type && prof.institution_type !== 'school') || window.location.pathname.indexOf('college-dashboard.html') > -1;
+    if (isCollege && y.name.indexOf('-') > -1) {
+      return y.name.split('-')[1];
+    }
+    return y.name;
   }
 
   function getClassLabel(classId, sectionId) {
@@ -196,17 +195,19 @@
 
   // ─── Populate Filters ──────────────────────────────────────────────────────
   function populateFilters() {
+    const prof = getProfile();
+    const isCollege = (prof.institution_type && prof.institution_type !== 'school') || window.location.pathname.indexOf('college-dashboard.html') > -1;
     var yearSel = document.getElementById('student-filter-year');
     var classSel = document.getElementById('student-filter-class');
     var secSel = document.getElementById('student-filter-section');
 
     if (yearSel) {
-      var h = '<option value="">All Academic Years</option>';
-      academicYears.forEach(function(y) { h += '<option value="' + y.id + '">' + y.name + '</option>'; });
+      var h = '<option value="">' + (isCollege ? 'All Batch Years' : 'All Academic Years') + '</option>';
+      academicYears.forEach(function(y) { h += '<option value="' + y.id + '">' + getYearName(y.id) + '</option>'; });
       yearSel.innerHTML = h;
     }
     if (classSel) {
-      var h2 = '<option value="">All Classes</option>';
+      var h2 = '<option value="">' + (isCollege ? 'All Programs' : 'All Classes') + '</option>';
       var seen = new Set();
       classes.forEach(function(c) {
         if (!seen.has(c.id)) {
@@ -226,16 +227,18 @@
 
   // ─── Populate Modal Dropdowns ──────────────────────────────────────────────
   function populateModalDropdowns() {
+    const prof = getProfile();
+    const isCollege = (prof.institution_type && prof.institution_type !== 'school') || window.location.pathname.indexOf('college-dashboard.html') > -1;
     var yearSel = document.getElementById('student-modal-year');
     var classSel = document.getElementById('student-modal-class');
 
     if (yearSel) {
-      var h = '<option value="">Select Academic Year *</option>';
-      academicYears.forEach(function(y) { h += '<option value="' + y.id + '">' + y.name + '</option>'; });
+      var h = '<option value="">' + (isCollege ? 'Select Batch Year *' : 'Select Academic Year *') + '</option>';
+      academicYears.forEach(function(y) { h += '<option value="' + y.id + '">' + getYearName(y.id) + '</option>'; });
       yearSel.innerHTML = h;
     }
     if (classSel) {
-      var h2 = '<option value="">Select Class & Section *</option>';
+      var h2 = '<option value="">' + (isCollege ? 'Select Program & Section *' : 'Select Class & Section *') + '</option>';
       classes.forEach(function(c) {
         var label = c.section ? (c.name + ' - ' + c.section) : c.name;
         h2 += '<option value="' + c.id + '|' + (c.section || '') + '">' + label + '</option>';
@@ -295,6 +298,79 @@
     });
     var cnt = document.getElementById('students-all-count');
     if (cnt) cnt.textContent = list.length + ' student' + (list.length !== 1 ? 's' : '');
+  }
+
+  function renderByBatch() {
+    var container = document.getElementById('student-batch-groups');
+    if (!container) return;
+
+    var search = (document.getElementById('student-search')?.value || '').toLowerCase();
+    var filtered = students.filter(function(s) {
+      return s.status === 'active' || s.status === 'pending';
+    });
+
+    if (search) {
+      filtered = filtered.filter(function(s) {
+        return (s.fullName || '').toLowerCase().indexOf(search) > -1 || (s.username || '').toLowerCase().indexOf(search) > -1;
+      });
+    }
+
+    var groups = {};
+    filtered.forEach(function(s) {
+      var yr = getYearName(s.academicYearId) || 'Unknown';
+      if (!groups[yr]) groups[yr] = [];
+      groups[yr].push(s);
+    });
+
+    var sortedYears = Object.keys(groups).sort(function(a, b) {
+      if (a === 'Unknown') return 1;
+      if (b === 'Unknown') return -1;
+      return b.localeCompare(a);
+    });
+
+    if (sortedYears.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">No student records yet.</div>';
+      return;
+    }
+
+    container.innerHTML = sortedYears.map(function(yr) {
+      var members = groups[yr];
+      var programs = Array.from(new Set(members.map(function(m) {
+        return getClassLabel(m.classId, m.sectionId);
+      }).filter(Boolean))).join(', ') || 'N/A';
+
+      const prof = getProfile();
+      const isCollege = (prof.institution_type && prof.institution_type !== 'school') || window.location.pathname.indexOf('college-dashboard.html') > -1;
+      var batchTitle = isCollege ? ('Batch of ' + yr) : ('Academic Year: ' + yr);
+
+      var cardsHtml = members.map(function(s) {
+        var initials = s.fullName ? s.fullName.split(' ').map(function(w) { return w[0]; }).join('').substring(0, 2).toUpperCase() : '?';
+        var colors = ['#6366F1', '#8B5CF6', '#EC4899', '#3B82F6', '#10B981', '#F59E0B'];
+        var color = colors[(s.fullName || 'A').charCodeAt(0) % colors.length];
+        
+        return '<div class="btn-stu-view-card" data-id="' + s.id + '" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.15s;background:var(--white);">' +
+          '<div style="width:28px;height:28px;border-radius:50%;background:' + color + ';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.7rem;flex-shrink:0;">' + initials + '</div>' +
+          '<div><div style="font-weight:600;font-size:0.82rem;color:var(--text-main);">' + s.fullName + '</div><div style="font-size:0.72rem;color:var(--text-muted);">' + getClassLabel(s.classId, s.sectionId) + '</div></div>' +
+        '</div>';
+      }).join('');
+
+      return '<div style="border:1px solid var(--border-color);border-radius:var(--radius-md);overflow:hidden;margin-bottom:16px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--bg-secondary);border-bottom:1px solid var(--border-color);">' +
+          '<div>' +
+            '<span style="font-size:1rem;font-weight:800;color:var(--text-main);">' + batchTitle + '</span>' +
+            '<span style="font-size:0.78rem;color:var(--text-muted);margin-left:12px;">' + programs + '</span>' +
+          '</div>' +
+          '<span style="font-size:0.8rem;font-weight:700;background:var(--primary-light);color:var(--primary);padding:4px 12px;border-radius:99px;">' + members.length + ' students</span>' +
+        '</div>' +
+        '<div style="padding:16px;display:flex;flex-wrap:wrap;gap:10px;">' +
+          cardsHtml +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    container.querySelectorAll('.btn-stu-view-card').forEach(function(b) {
+      b.onclick = function() { openViewModal(b.dataset.id); };
+    });
   }
 
   function renderNewAdmissions() {
@@ -383,6 +459,7 @@
   function renderActiveSubpanel() {
     loadDependencies();
     if (activeSubTab === 'all-students') renderAllStudents();
+    else if (activeSubTab === 'by-batch') renderByBatch();
     else if (activeSubTab === 'new-admissions') renderNewAdmissions();
     else if (activeSubTab === 'active-students') renderActiveStudents();
     else if (activeSubTab === 'alumni') renderAlumni();
@@ -710,11 +787,42 @@
 
   function openInviteModal() {
     loadDependencies();
+    const prof = getProfile();
+    const isCollege = (prof.institution_type && prof.institution_type !== 'school') || window.location.pathname.indexOf('college-dashboard.html') > -1;
     var yearSel = document.getElementById('invite-modal-year');
     var classSel = document.getElementById('invite-modal-class');
+    var classInput = document.getElementById('invite-modal-class-input');
+    
+    // Dynamically update labels based on institution type (school vs college)
+    var yearLabel = document.getElementById('invite-modal-year-label');
+    var classLabel = document.getElementById('invite-modal-class-label');
+    if (yearLabel) yearLabel.textContent = isCollege ? 'Batch Year *' : 'Academic Year *';
+    if (classLabel) classLabel.textContent = isCollege ? 'Program & Section *' : 'Class & Section *';
+    
+    var successYearLabel = document.getElementById('success-invite-year-label');
+    var successClassLabel = document.getElementById('success-invite-class-label');
+    if (successYearLabel) successYearLabel.textContent = isCollege ? 'Batch Year:' : 'Academic Year:';
+    if (successClassLabel) successClassLabel.textContent = isCollege ? 'Program / Course:' : 'Classroom:';
+
+    if (isCollege) {
+      if (classSel) classSel.style.display = 'none';
+      if (classInput) classInput.style.display = 'block';
+    } else {
+      if (classSel) classSel.style.display = 'block';
+      if (classInput) classInput.style.display = 'none';
+    }
+
     if (yearSel) {
       var h = '';
-      academicYears.forEach(function(y) { h += '<option value="' + y.id + '">' + y.name + '</option>'; });
+      if (isCollege) {
+        // Generate list of batch years from currentYear + 6 down to currentYear - 4
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear + 6; y >= currentYear - 4; y--) {
+          h += '<option value="' + y + '">' + y + '</option>';
+        }
+      } else {
+        academicYears.forEach(function(y) { h += '<option value="' + y.id + '">' + getYearName(y.id) + '</option>'; });
+      }
       yearSel.innerHTML = h;
     }
     if (classSel) {
@@ -740,29 +848,43 @@
 
   function handleGenerateInvite() {
     loadDependencies();
+    const prof = getProfile();
+    const isCollege = (prof.institution_type && prof.institution_type !== 'school') || window.location.pathname.indexOf('college-dashboard.html') > -1;
+
     var yearId = document.getElementById('invite-modal-year').value;
-    var classVal = document.getElementById('invite-modal-class').value;
+    var classVal = isCollege 
+      ? document.getElementById('invite-modal-class-input').value.trim() 
+      : document.getElementById('invite-modal-class').value;
     var inviteType = document.getElementById('invite-modal-type').value;
 
     if (!yearId || !classVal) {
-      toast('Please select Academic Year and Class/Section.', 'error');
+      toast(isCollege ? 'Please select Batch Year and enter Program/Course.' : 'Please select Academic Year and Class/Section.', 'error');
       return;
     }
 
-    var parts = classVal.split('|');
-    var classId = parts[0];
-    var sectionId = parts[1] || '';
+    var classId = classVal;
+    var sectionId = '';
+    var classPrefix = 'CL';
 
-    var cls = classes.find(function(c) { return c.id === classId; });
-    var classPrefix = cls ? cls.name.replace(/[^0-9]/g, '') : 'CL';
-    if (!classPrefix) classPrefix = 'CL';
+    if (isCollege) {
+      const clean = classVal.replace(/[^a-zA-Z]/g, '').toUpperCase();
+      classPrefix = clean.substring(0, 3) || 'CL';
+    } else {
+      var parts = classVal.split('|');
+      classId = parts[0];
+      sectionId = parts[1] || '';
+      var cls = classes.find(function(c) { return c.id === classId; });
+      classPrefix = cls ? cls.name.replace(/[^0-9]/g, '') : 'CL';
+      if (!classPrefix) classPrefix = 'CL';
+    }
+
     var sectionPrefix = sectionId ? sectionId.toUpperCase() : 'X';
     var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     var codeRand = '';
     for (var i = 0; i < 5; i++) {
       codeRand += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    var code = 'CL-' + classPrefix + sectionPrefix + '-' + codeRand;
+    var code = 'CL-' + classPrefix + (isCollege ? '' : sectionPrefix) + '-' + codeRand;
 
     var newInvite = {
       id: 'inv_' + Date.now(),

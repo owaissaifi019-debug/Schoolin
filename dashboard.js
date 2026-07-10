@@ -2323,7 +2323,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
   });
-
   // ============================================================
   // COMMUNITY MEMBERS MODULE
   // ============================================================
@@ -2364,7 +2363,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .from('school_members')
         .select(`
           id, role, assigned_at,
-          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified, school_id, username)
+          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified, school_id, username, batch, passing_year)
         `)
         .eq('school_id', profile.id);
 
@@ -2377,7 +2376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           id,
           status,
           created_at,
-          user:profiles!initiator_id(id, full_name, avatar_url, user_type, class, is_verified, school_id, username)
+          user:profiles!initiator_id(id, full_name, avatar_url, user_type, class, is_verified, school_id, username, batch, passing_year)
         `)
         .eq('school_id', profile.id)
         .eq('status', 'accepted');
@@ -2497,6 +2496,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         : `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#EBF5FF,#DBEAFE);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);flex-shrink:0;font-size:0.85rem;">${initial}</div>`;
       const dateStr = member.assigned_at ? new Date(member.assigned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
+      let batchText = '';
+      if (member.role === 'student' || member.role === 'alumni') {
+        const bVal = u.batch || u.passing_year || '';
+        if (bVal) {
+          batchText = ` • Batch: ${bVal}`;
+        }
+      }
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>
@@ -2505,7 +2512,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div>
               <div style="font-weight:600;color:var(--dark-bg);font-size:0.88rem;">${name}</div>
               ${u.username ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:400;margin-top:1px;">@${u.username}</div>` : ''}
-              <div style="font-size:0.75rem;color:var(--text-muted);text-transform:capitalize;">${u.user_type || 'Member'}${u.class ? ' • ' + u.class : ''}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);text-transform:capitalize;">${u.user_type || 'Member'}${u.class ? ' • ' + u.class : ''}${batchText}</div>
             </div>
           </div>
         </td>

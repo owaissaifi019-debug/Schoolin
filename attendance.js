@@ -28,19 +28,10 @@
     { id: 'cr-10a', classId: 'cls-10', sectionId: 'A', classTeacherId: 't-ali',   academicYearId: 'ay-2026', status: 'active' }
   ];
 
-  const DEFAULT_STUDENTS_RAW = [
-    { id: 'stu_001', classId: 'cls-9',  sectionId: 'A', rollNumber: '09A-01', admissionNumber: 'ADM2026001', fullName: 'Ahmed Khan',     status: 'active' },
-    { id: 'stu_002', classId: 'cls-9',  sectionId: 'A', rollNumber: '09A-02', admissionNumber: 'ADM2026002', fullName: 'Priya Mehta',    status: 'active' },
-    { id: 'stu_003', classId: 'cls-9',  sectionId: 'B', rollNumber: '09B-01', admissionNumber: 'ADM2026003', fullName: 'Raza Ali',       status: 'active' },
-    { id: 'stu_004', classId: 'cls-10', sectionId: 'A', rollNumber: '10A-01', admissionNumber: 'ADM2026004', fullName: 'Anjali Singh',   status: 'active' },
-    { id: 'stu_005', classId: 'cls-10', sectionId: 'A', rollNumber: '10A-02', admissionNumber: 'ADM2026005', fullName: 'Farhan Qureshi', status: 'active' }
-  ];
+  const DEFAULT_STUDENTS_RAW = [];
 
   const SEED_ATTENDANCE = [];
-  const SEED_LEAVES = [
-    { id: 'lv_001', studentId: 'stu_005', studentName: 'Farhan Qureshi', classroomId: 'cr-10a', leaveType: 'Medical',      fromDate: '2026-07-05', toDate: '2026-07-07', reason: 'Fever',      status: 'pending',  createdAt: new Date().toISOString() },
-    { id: 'lv_002', studentId: 'stu_002', studentName: 'Priya Mehta',    classroomId: 'cr-9a',  leaveType: 'Family Event', fromDate: '2026-07-10', toDate: '2026-07-10', reason: 'Wedding',    status: 'approved', createdAt: new Date().toISOString() }
-  ];
+  const SEED_LEAVES = [];
 
   // ─── State ────────────────────────────────────────────────────────────────
   let years           = [];
@@ -128,11 +119,7 @@
 
     // Students — loaded from campuslink_students
     const rawStudents = getS('campuslink_students', []);
-    students = (rawStudents && rawStudents.length) ? rawStudents : [
-      { id: 'stu_001', classId: 'cls_001', rollNumber: '09A-01', admissionNumber: 'ADM2026001', fullName: 'Ahmed Khan', status: 'active' },
-      { id: 'stu_002', classId: 'cls_001', rollNumber: '09A-02', admissionNumber: 'ADM2026002', fullName: 'Priya Mehta', status: 'active' },
-      { id: 'stu_003', classId: 'cls_001', rollNumber: '09A-03', admissionNumber: 'ADM2026003', fullName: 'Raza Ali', status: 'active' }
-    ];
+    students = rawStudents || [];
 
     attendanceRecs = getS('campuslink_attendance_records', SEED_ATTENDANCE);
     if (!attendanceRecs) { attendanceRecs = SEED_ATTENDANCE; setS('campuslink_attendance_records', attendanceRecs); }
