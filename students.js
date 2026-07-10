@@ -1025,10 +1025,9 @@
     }
   }
 
-  function handleGenerateInvite() {
+  async function handleGenerateInvite() {
     loadDependencies();
     const prof = getProfile();
-    const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
     const isCollege = (prof.institution_type && prof.institution_type !== 'school') || window.location.pathname.indexOf('college-dashboard.html') > -1;
 
     var yearId = document.getElementById('invite-modal-year').value;
@@ -1068,7 +1067,7 @@
 
     var newInvite = {
       id: 'inv_' + Date.now(),
-      schoolId: 'sch_001',
+      schoolId: prof.id || 'sch_001',
       academicYearId: yearId,
       classId: classId,
       sectionId: sectionId,
@@ -1082,23 +1081,45 @@
       joinedCount: 0
     };
 
+    // ── Always attempt Supabase save when configured ──────────────────────────
+    const sb = window.CampusLink?.supabase;
+    const auth = window.CampusLink?.auth;
+    if (sb && auth) {
+      try {
+        const user = await auth.getUser();
+        if (user) {
+          const school = await auth.getSchoolForUser(user.id);
+          const schoolId = school ? school.id : (prof.id || null);
+          if (schoolId) {
+            const { error: insertErr } = await sb.from('student_invitations').insert({
+              school_id: schoolId,
+              academic_year_id: yearId,
+              class_id: classId,
+              section_id: sectionId || null,
+              invite_code: code,
+              invite_type: inviteType,
+              status: 'active'
+            });
+            if (insertErr) {
+              console.warn('[Invite] Supabase insert error:', insertErr);
+              toast('Warning: Invite saved locally only. DB error: ' + insertErr.message, 'error');
+            } else {
+              console.log('[Invite] Saved to Supabase successfully.');
+              newInvite.schoolId = schoolId;
+            }
+          }
+        }
+      } catch (saveErr) {
+        console.warn('[Invite] Supabase save exception:', saveErr);
+        toast('Warning: Invite saved locally only.', 'error');
+      }
+    } else {
+      console.log('[Invite] Supabase not configured, saving locally only.');
+    }
+
+    // Save locally regardless
     invites.unshift(newInvite);
     saveStored('campuslink_invites', invites);
-
-    if (isLiveMode) {
-      const sb = window.CampusLink.supabase;
-      sb.from('student_invitations').insert({
-        school_id: prof.id,
-        academic_year_id: yearId,
-        class_id: classId,
-        section_id: sectionId,
-        invite_code: code,
-        invite_type: inviteType,
-        status: 'active'
-      }).then(function(res) {
-        if (res.error) console.warn('Error saving student invite to Supabase:', res.error);
-      });
-    }
 
     var formScreen = document.getElementById('invite-form-screen');
     var successScreen = document.getElementById('invite-success-screen');
