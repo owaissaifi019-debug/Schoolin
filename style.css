@@ -6028,9 +6028,7 @@ select.epm-input {
     left: 0;
     right: 0;
     height: 56px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--white) !important;
     border-top: 1px solid rgba(15, 23, 42, 0.08);
     justify-content: space-around;
     align-items: center;
@@ -9289,7 +9287,7 @@ select.epm-input {
 
   /* ── 7. Floating Bottom Navigation Post Button ── */
   .mobile-bottom-nav {
-    background-color: rgba(255, 255, 255, 0.96) !important;
+    background-color: var(--white) !important;
     border-top: 1px solid rgba(15, 23, 42, 0.06) !important;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05) !important;
     padding-bottom: env(safe-area-inset-bottom, 8px) !important;
