@@ -47,6 +47,87 @@
     try { return JSON.parse(localStorage.getItem('campuslink_profile')) || {}; } catch(e) { return {}; }
   }
 
+  function copyTextToClipboard(text, successCb, errorCb) {
+    console.log('[CopyHelper] Attempting to copy:', text);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(function() {
+            console.log('[CopyHelper] Successfully copied via Clipboard API.');
+            if (typeof successCb === 'function') successCb();
+          })
+          .catch(function(err) {
+            console.warn('[CopyHelper] Clipboard API rejected, trying fallback:', err);
+            fallbackCopyTextToClipboard(text, successCb, errorCb);
+          });
+      } else {
+        console.log('[CopyHelper] Clipboard API not available, trying fallback.');
+        fallbackCopyTextToClipboard(text, successCb, errorCb);
+      }
+    } catch (err) {
+      console.warn('[CopyHelper] Clipboard API threw sync error, trying fallback:', err);
+      fallbackCopyTextToClipboard(text, successCb, errorCb);
+    }
+  }
+
+  function fallbackCopyTextToClipboard(text, successCb, errorCb) {
+    try {
+      var textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.top = "-9999px";
+      textArea.style.left = "-9999px";
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+
+      if (navigator.userAgent.match(/ipad|ipod|iphone/i)) {
+        var range = document.createRange();
+        range.selectNodeContents(textArea);
+        var select = window.getSelection();
+        select.removeAllRanges();
+        select.addRange(range);
+        textArea.setSelectionRange(0, 999999);
+      } else {
+        textArea.focus();
+        textArea.select();
+      }
+
+      var successful = false;
+      try {
+        successful = document.execCommand('copy');
+      } catch (execErr) {
+        console.warn('[CopyHelper] execCommand threw error:', execErr);
+      }
+
+      document.body.removeChild(textArea);
+
+      if (successful) {
+        console.log('[CopyHelper] Successfully copied via execCommand.');
+        if (typeof successCb === 'function') successCb();
+      } else {
+        console.warn('[CopyHelper] execCommand failed, opening prompt.');
+        promptCopyFallback(text, successCb, errorCb);
+      }
+    } catch (fallbackErr) {
+      console.warn('[CopyHelper] Fallback threw error, opening prompt:', fallbackErr);
+      promptCopyFallback(text, successCb, errorCb);
+    }
+  }
+
+  function promptCopyFallback(text, successCb, errorCb) {
+    try {
+      var result = prompt("Copy this link manually:\n(Press Ctrl+C / Cmd+C or Long-Press to Copy)", text);
+      if (result !== null) {
+        if (typeof successCb === 'function') successCb();
+      } else {
+        if (typeof errorCb === 'function') errorCb();
+      }
+    } catch (promptErr) {
+      console.error('[CopyHelper] Prompt failed:', promptErr);
+      if (typeof errorCb === 'function') errorCb();
+    }
+  }
+
   function loadDependencies() {
     const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
 
@@ -122,6 +203,7 @@
           house: s.house || '',
           status: s.status || 'pending',
           admissionDate: s.admission_date || '',
+          inviteCode: s.invite_code || null,
           createdAt: s.created_at,
           updatedAt: s.updated_at
         }));
@@ -132,10 +214,54 @@
     }
   }
 
+  async function syncInvitesFromSupabase() {
+    const supabase = window.CampusLink?.supabase;
+    const auth = window.CampusLink?.auth;
+    if (!supabase || !auth) return;
+
+    try {
+      const user = await auth.getUser();
+      if (!user) return;
+      const school = await auth.getSchoolForUser(user.id);
+      if (!school) return;
+      const schoolId = school.id;
+
+      const { data: dbInvites, error } = await supabase
+        .from('student_invitations')
+        .select('*')
+        .eq('school_id', schoolId);
+
+      if (error) {
+        console.warn('Error fetching student invites from Supabase:', error);
+        return;
+      }
+
+      if (dbInvites) {
+        invites = dbInvites.map(i => ({
+          id: i.id,
+          schoolId: i.school_id,
+          academicYearId: i.academic_year_id,
+          classId: i.class_id,
+          sectionId: i.section_id || '',
+          inviteCode: i.invite_code,
+          inviteType: i.invite_type || 'student',
+          status: i.status || 'active',
+          createdAt: i.created_at
+        }));
+        saveStored('campuslink_invites', invites);
+      }
+    } catch (err) {
+      console.warn('syncInvitesFromSupabase exception:', err);
+    }
+  }
+
   // ─── Resolver Helpers ──────────────────────────────────────────────────────
   function getYearName(id) {
     const y = academicYears.find(function(a) { return a.id === id; });
-    if (!y) return '\u2014';
+    if (!y) {
+      if (id && id.length === 4 && !isNaN(id)) return id;
+      return id || '\u2014';
+    }
     const prof = getProfile();
     const isCollege = (prof.institution_type && prof.institution_type !== 'school') || window.location.pathname.indexOf('college-dashboard.html') > -1;
     if (isCollege && y.name.indexOf('-') > -1) {
@@ -146,7 +272,12 @@
 
   function getClassLabel(classId, sectionId) {
     const c = classes.find(function(cl) { return cl.id === classId; });
-    if (!c) return sectionId ? ('- ' + sectionId) : '\u2014';
+    if (!c) {
+      if (classId) {
+        return sectionId ? (classId + ' ' + sectionId) : classId;
+      }
+      return sectionId ? ('- ' + sectionId) : '\u2014';
+    }
     const sec = c.section || sectionId || '';
     return sec ? (c.name + ' ' + sec) : c.name;
   }
@@ -373,6 +504,17 @@
     });
   }
 
+  function renderPendingRequests() {
+    var list = getFilteredStudents(function(s) { return s.status === 'pending'; });
+    buildStudentsTable(list, 'students-requests-tbody', function(s) {
+      return btn('btn-stu-approve', '&#10003; Approve', s.id, 'background:#D1FAE5;color:#065F46;') +
+             btn('btn-stu-reject', '&#10005; Reject', s.id, 'background:#FEE2E2;color:#991B1B;') +
+             btn('btn-stu-view', '&#128065; View', s.id, 'background:#EEF2FF;color:#4F46E5;');
+    });
+    var cnt = document.getElementById('students-requests-count');
+    if (cnt) cnt.textContent = list.length + ' pending request' + (list.length !== 1 ? 's' : '');
+  }
+
   function renderNewAdmissions() {
     var list = getFilteredStudents(function(s) { return s.status === 'pending'; });
     buildStudentsTable(list, 'students-admissions-tbody', function(s) {
@@ -460,6 +602,7 @@
     loadDependencies();
     if (activeSubTab === 'all-students') renderAllStudents();
     else if (activeSubTab === 'by-batch') renderByBatch();
+    else if (activeSubTab === 'pending-requests') renderPendingRequests();
     else if (activeSubTab === 'new-admissions') renderNewAdmissions();
     else if (activeSubTab === 'active-students') renderActiveStudents();
     else if (activeSubTab === 'alumni') renderAlumni();
@@ -557,10 +700,24 @@
       btn.onclick = function() {
         var code = btn.dataset.code;
         var link = window.location.origin + '/join-school.html?code=' + code;
-        navigator.clipboard.writeText(link).then(function() {
+        
+        // Visual feedback reset
+        var originalBg = btn.style.background;
+        var originalColor = btn.style.color;
+        var originalText = btn.innerHTML;
+
+        copyTextToClipboard(link, function() {
           toast('Invitation link copied to clipboard!');
-        }).catch(function() {
-          toast('Failed to copy. Link: ' + link, 'error');
+          btn.innerHTML = '✓ Copied';
+          btn.style.background = '#10B981';
+          btn.style.color = '#fff';
+          setTimeout(function() {
+            btn.innerHTML = originalText;
+            btn.style.background = originalBg;
+            btn.style.color = originalColor;
+          }, 2000);
+        }, function() {
+          toast('Failed to copy link.', 'error');
         });
       };
     });
@@ -582,10 +739,21 @@
         var id = btn.dataset.id;
         var idx = invites.findIndex(function(i) { return i.id === id; });
         if (idx !== -1) {
-          invites[idx].status = invites[idx].status === 'active' ? 'disabled' : 'active';
+          var newStatus = invites[idx].status === 'active' ? 'disabled' : 'active';
+          invites[idx].status = newStatus;
           saveStored('campuslink_invites', invites);
           renderInviteLinks();
           toast('Invitation status updated.');
+
+          if (isLiveMode) {
+            const sb = window.CampusLink.supabase;
+            sb.from('student_invitations')
+              .update({ status: newStatus })
+              .or('id.eq.' + id + ',invite_code.eq.' + invites[idx].inviteCode)
+              .then(function(res) {
+                if (res.error) console.warn('Error updating invite status in Supabase:', res.error);
+              });
+          }
         }
       };
     });
@@ -594,10 +762,21 @@
       btn.onclick = function() {
         var id = btn.dataset.id;
         if (confirm('Are you sure you want to delete this invitation link?')) {
+          var found = invites.find(function(i) { return i.id === id; });
           invites = invites.filter(function(i) { return i.id !== id; });
           saveStored('campuslink_invites', invites);
           renderInviteLinks();
           toast('Invitation link deleted.', 'info');
+
+          if (isLiveMode && found) {
+            const sb = window.CampusLink.supabase;
+            sb.from('student_invitations')
+              .delete()
+              .or('id.eq.' + id + ',invite_code.eq.' + found.inviteCode)
+              .then(function(res) {
+                if (res.error) console.warn('Error deleting invite in Supabase:', res.error);
+              });
+          }
         }
       };
     });
@@ -849,6 +1028,7 @@
   function handleGenerateInvite() {
     loadDependencies();
     const prof = getProfile();
+    const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
     const isCollege = (prof.institution_type && prof.institution_type !== 'school') || window.location.pathname.indexOf('college-dashboard.html') > -1;
 
     var yearId = document.getElementById('invite-modal-year').value;
@@ -905,6 +1085,21 @@
     invites.unshift(newInvite);
     saveStored('campuslink_invites', invites);
 
+    if (isLiveMode) {
+      const sb = window.CampusLink.supabase;
+      sb.from('student_invitations').insert({
+        school_id: prof.id,
+        academic_year_id: yearId,
+        class_id: classId,
+        section_id: sectionId,
+        invite_code: code,
+        invite_type: inviteType,
+        status: 'active'
+      }).then(function(res) {
+        if (res.error) console.warn('Error saving student invite to Supabase:', res.error);
+      });
+    }
+
     var formScreen = document.getElementById('invite-form-screen');
     var successScreen = document.getElementById('invite-success-screen');
     if (formScreen) formScreen.style.display = 'none';
@@ -915,13 +1110,57 @@
     document.getElementById('success-invite-year').textContent = getYearName(yearId);
     
     var shareLink = window.location.origin + '/join-school.html?code=' + code;
-    document.getElementById('success-invite-link').value = shareLink;
+    var inputEl = document.getElementById('success-invite-link');
+    if (inputEl) {
+      inputEl.value = shareLink;
+      inputEl.onclick = function() {
+        this.focus();
+        this.select();
+        this.setSelectionRange(0, 99999);
+      };
+    }
 
-    document.getElementById('btn-copy-success-link').onclick = function() {
-      navigator.clipboard.writeText(shareLink).then(function() {
-        toast('Invitation link copied to clipboard!');
-      });
-    };
+    var copyBtn = document.getElementById('btn-copy-success-link');
+    if (copyBtn) {
+      // Reset button style
+      copyBtn.innerHTML = 'Copy Link';
+      copyBtn.style.background = '';
+      copyBtn.style.borderColor = '';
+      copyBtn.style.color = '';
+
+      copyBtn.onclick = function() {
+        if (inputEl) {
+          inputEl.focus();
+          inputEl.select();
+          inputEl.setSelectionRange(0, 99999);
+        }
+        copyTextToClipboard(shareLink, function() {
+          toast('Invitation link copied to clipboard!');
+          if (copyBtn) {
+            copyBtn.innerHTML = '✓ Copied!';
+            copyBtn.style.background = '#10B981';
+            copyBtn.style.borderColor = '#10B981';
+            copyBtn.style.color = '#fff';
+            setTimeout(function() {
+              if (copyBtn) {
+                copyBtn.innerHTML = 'Copy Link';
+                copyBtn.style.background = '';
+                copyBtn.style.borderColor = '';
+                copyBtn.style.color = '';
+              }
+            }, 2000);
+          }
+        }, function() {
+          toast('Failed to copy link automatically. Please copy the selected text manually.', 'error');
+          if (copyBtn) {
+            copyBtn.innerHTML = 'Copy Manually';
+            copyBtn.style.background = '#EF4444';
+            copyBtn.style.borderColor = '#EF4444';
+            copyBtn.style.color = '#fff';
+          }
+        });
+      };
+    }
 
     document.getElementById('btn-show-success-qr').onclick = function() {
       openQRModal(code, getClassLabel(classId, sectionId), getYearName(yearId));
@@ -1303,8 +1542,10 @@
     const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
     if (isLiveMode) {
       syncStudentsFromSupabase().then(() => {
-        renderActiveSubpanel();
-        populateFilters();
+        syncInvitesFromSupabase().then(() => {
+          renderActiveSubpanel();
+          populateFilters();
+        });
       });
     }
 

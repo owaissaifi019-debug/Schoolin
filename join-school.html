@@ -882,7 +882,8 @@
               phone: phone || null,
               gender: 'Male',
               date_of_birth: dob || null,
-              status: 'pending'
+              status: 'pending',
+              invite_code: activeInvite.inviteCode
             }, { onConflict: 'school_id,username' });
 
             if (error) console.error("Database student onboarding upsert failed:", error);

@@ -1131,6 +1131,7 @@
           <div class="student-subtabs-nav" style="display: flex; border-bottom: 1.5px solid var(--border-color); margin-bottom: 24px; gap: 20px;">
             <button class="student-subtab-btn active" data-subtab="all-students" style="background: none; border: none; padding: 12px 4px; font-weight: 700; font-size: 0.9rem; color: var(--primary); border-bottom: 3px solid var(--primary); cursor: pointer; transition: var(--transition-fast);">All Students</button>
             <button class="student-subtab-btn" data-subtab="by-batch" style="background: none; border: none; padding: 12px 4px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); border-bottom: 3px solid transparent; cursor: pointer; transition: var(--transition-fast);">By Batch</button>
+            <button class="student-subtab-btn" data-subtab="pending-requests" style="background: none; border: none; padding: 12px 4px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); border-bottom: 3px solid transparent; cursor: pointer; transition: var(--transition-fast);">Pending Requests</button>
             <button class="student-subtab-btn" data-subtab="new-admissions" style="background: none; border: none; padding: 12px 4px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); border-bottom: 3px solid transparent; cursor: pointer; transition: var(--transition-fast);">New Admissions</button>
             <button class="student-subtab-btn" data-subtab="active-students" style="background: none; border: none; padding: 12px 4px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); border-bottom: 3px solid transparent; cursor: pointer; transition: var(--transition-fast);">Active Students</button>
             <button class="student-subtab-btn" data-subtab="alumni" style="background: none; border: none; padding: 12px 4px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); border-bottom: 3px solid transparent; cursor: pointer; transition: var(--transition-fast);">Alumni / Graduated</button>
@@ -1218,6 +1219,32 @@
             <div style="margin-bottom:16px; font-size:0.8rem; color:var(--text-muted);">Grouped by batch year</div>
             <div id="student-batch-groups" style="display: flex; flex-direction: column; gap: 20px;">
               <!-- Groups loaded dynamically -->
+            </div>
+          </div>
+
+          <!-- Pending Join Requests -->
+          <div id="student-subpanel-pending-requests" class="student-subpanel" style="display:none;">
+            <div style="margin-bottom:12px; font-size:0.8rem; color:var(--text-muted);" id="students-requests-count">0 pending requests</div>
+            <div class="dash-table-card" style="padding: 0px; border-radius:var(--radius-md); overflow:hidden;">
+              <div class="dash-table-wrapper">
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Full Name / Username</th>
+                      <th>CampusLink ID</th>
+                      <th>Admission No.</th>
+                      <th>Roll No.</th>
+                      <th>Academic Year</th>
+                      <th>Class &amp; Section</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="students-requests-tbody">
+                    <!-- Loaded dynamically -->
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -3710,7 +3737,7 @@
 
   <script src="dashboard.js?v=1.9"></script>
   <script src="classrooms.js?v=1.1"></script>
-  <script src="students.js?v=1.5"></script>
+  <script src="students.js?v=2.3"></script>
   <script src="attendance.js?v=1.2"></script>
   <script src="teacher_classroom_hub.js?v=1.0"></script>
 
