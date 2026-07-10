@@ -621,20 +621,59 @@
       } else {
         // Adapt Pre-Screen Auth texts
         const authSubtitle = document.querySelector('#screen-auth .subtitle');
-        if (authSubtitle) authSubtitle.textContent = 'Please sign in or create a student account to join the school.';
-        const signinBtn = document.getElementById('btn-signin-redirect');
-        if (signinBtn) signinBtn.textContent = 'Sign In as Student';
+        const isCollege = activeInvite.inviteType !== 'teacher' && isCollegeInvite(activeInvite);
 
-        // Adapt Badge Details
-        var classLabel = getClassLabel(activeInvite.classId, activeInvite.sectionId);
-        document.getElementById('auth-badge-school').textContent = 'Greenwood International School';
-        document.getElementById('auth-badge-details').textContent = classLabel + ' • Academic Year 2026–2027';
-        document.getElementById('form-badge-school').textContent = 'Greenwood International School';
-        document.getElementById('form-badge-details').textContent = classLabel + ' • Academic Year 2026–2027';
+        if (isCollege) {
+          if (authSubtitle) authSubtitle.textContent = 'Please sign in or create a student account to join the college.';
+          const signinBtn2 = document.getElementById('btn-signin-redirect');
+          if (signinBtn2) signinBtn2.textContent = 'Sign In as Student';
+        } else {
+          if (authSubtitle) authSubtitle.textContent = 'Please sign in or create a student account to join the school.';
+          const signinBtn2 = document.getElementById('btn-signin-redirect');
+          if (signinBtn2) signinBtn2.textContent = 'Sign In as Student';
+        }
 
-        // Adapt headings
-        document.querySelector('#screen-join-form h2').textContent = 'Submit Request';
-        document.querySelector('#screen-join-form .subtitle').textContent = 'Enter your academic details to request to join the classroom.';
+        // Build badge detail string dynamically
+        var programLabel = getProgramLabel(activeInvite.classId, activeInvite.sectionId, isCollege);
+        var batchLabel = getBatchLabel(activeInvite.academicYearId, isCollege);
+        var badgeDetails = programLabel + ' • ' + batchLabel;
+
+        // Fetch real school name from Supabase
+        var schoolDisplayName = 'Loading...';
+        (async function() {
+          var sb = window.CampusLink && window.CampusLink.supabase;
+          if (sb && activeInvite.schoolId) {
+            try {
+              var result = await sb.from('schools').select('name,institution_type').eq('id', activeInvite.schoolId).maybeSingle();
+              if (!result.error && result.data) {
+                schoolDisplayName = result.data.name;
+              } else {
+                schoolDisplayName = isCollege ? 'Your College' : 'Your School';
+              }
+            } catch(e) {
+              schoolDisplayName = isCollege ? 'Your College' : 'Your School';
+            }
+          } else {
+            schoolDisplayName = isCollege ? 'Your College' : 'Your School';
+          }
+          document.getElementById('auth-badge-school').textContent = schoolDisplayName;
+          document.getElementById('form-badge-school').textContent = schoolDisplayName;
+        })();
+
+        // Set badge details immediately (school name updates async)
+        document.getElementById('auth-badge-school').textContent = schoolDisplayName;
+        document.getElementById('auth-badge-details').textContent = badgeDetails;
+        document.getElementById('form-badge-school').textContent = schoolDisplayName;
+        document.getElementById('form-badge-details').textContent = badgeDetails;
+
+        // Adapt headings for college vs school
+        if (isCollege) {
+          document.querySelector('#screen-join-form h2').textContent = 'Submit Request';
+          document.querySelector('#screen-join-form .subtitle').textContent = 'Enter your academic details to request to join the program.';
+        } else {
+          document.querySelector('#screen-join-form h2').textContent = 'Submit Request';
+          document.querySelector('#screen-join-form .subtitle').textContent = 'Enter your academic details to request to join the classroom.';
+        }
 
         // Display panels
         if (studentFields) studentFields.style.display = 'block';
@@ -683,6 +722,45 @@
       } else {
         showScreen('screen-auth');
       }
+    }
+
+    // Detect if invite is from a college (class_id is a text program name, not a UUID)
+    function isCollegeInvite(invite) {
+      if (!invite) return false;
+      var classId = invite.classId || '';
+      var yearId = invite.academicYearId || '';
+      // College: classId is a program name like 'B.Tech CSE', and yearId is a 4-digit year like '2032'
+      var isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId);
+      var isBatchYear = /^[0-9]{4}$/.test(yearId);
+      return !isUUID || isBatchYear;
+    }
+
+    // Return the program/class label for the badge
+    function getProgramLabel(classId, sectionId, isCollege) {
+      if (isCollege) {
+        // For college, classId is the program name directly (e.g. 'B.Tech CSE')
+        var prog = classId || 'Program';
+        return 'PROGRAM: ' + prog.toUpperCase() + (sectionId ? ' ' + sectionId.toUpperCase() : '');
+      }
+      // For school, look up classId in local classes array
+      var c = classes.find(function(cl) { return cl.id === classId; });
+      if (!c) return 'Class ' + classId + (sectionId ? (' ' + sectionId) : '');
+      var sec = c.section || sectionId || '';
+      return sec ? ('CLASS ' + c.name.toUpperCase() + ' ' + sec.toUpperCase()) : ('CLASS ' + c.name.toUpperCase());
+    }
+
+    // Return the batch/academic year label
+    function getBatchLabel(yearId, isCollege) {
+      if (!yearId) return isCollege ? 'Batch Year Unknown' : 'Academic Year Unknown';
+      if (isCollege) {
+        // yearId is a single year like '2032'
+        return 'BATCH YEAR: ' + yearId;
+      }
+      // yearId is a UUID for school — try local lookup first
+      var academicYears = [];
+      try { academicYears = JSON.parse(localStorage.getItem('campuslink_academic_years') || '[]'); } catch(e) {}
+      var y = academicYears.find(function(a) { return a.id === yearId; });
+      return 'ACADEMIC YEAR ' + (y ? y.name.toUpperCase() : yearId);
     }
 
     function getClassLabel(classId, sectionId) {
