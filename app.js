@@ -1173,7 +1173,7 @@
       const p = currentUserProfile;
       const displayName = p.full_name || currentUser.email;
       
-      const isSchoolUser = (p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id;
+      const isSchoolUser = p.school_id;
 
       if (isSchoolUser && p.schools) {
         const s = p.schools;
@@ -1225,6 +1225,22 @@
             </svg>`;
         }
         
+        let badgeLabel = isCollege ? 'Verified College' : 'Verified School';
+        if (p.user_type === 'student') {
+          badgeLabel = isCollege ? 'Verified Student' : 'Verified Student';
+        } else if (p.user_type === 'teacher') {
+          badgeLabel = 'Verified Teacher';
+        } else if (p.user_type === 'alumni') {
+          badgeLabel = 'Verified Alumni';
+        }
+
+        let roleDisplayHtml = '';
+        if (p.platform_role === 'school_admin' || p.user_type === 'school_representative') {
+          roleDisplayHtml = `👤 Admin: ${displayName}`;
+        } else {
+          roleDisplayHtml = `👤 Name: ${displayName}`;
+        }
+
         sidebarContainer.innerHTML = `
           <div class="feed-sidebar-card profile-sidebar-card">
             <div class="profile-card-cover ${colorClass}"></div>
@@ -1235,10 +1251,10 @@
               <h3 class="profile-card-name">
                 <a href="${profileUrl}">${schoolName}${badgeHtml}</a>
               </h3>
-              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">${isCollege ? 'Verified College' : 'Verified School'}</span>
+              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">${badgeLabel}</span>
               <p class="profile-card-headline">${boardText} ${city ? `• ${city}` : ''}</p>
               <p class="profile-card-school" style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); margin-top: 4px;">
-                👤 Admin: ${displayName}
+                ${roleDisplayHtml}
               </p>
             </div>
             <div class="profile-card-footer">

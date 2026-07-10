@@ -453,6 +453,7 @@
           if (session && session.user) {
             const profile = await auth.getProfile(session.user.id);
             activeUserSession = {
+              id: session.user.id,
               username: profile?.username || session.user.user_metadata?.username || session.user.email.split('@')[0],
               fullName: profile?.full_name || session.user.user_metadata?.full_name || 'Member',
               email: session.user.email
@@ -941,11 +942,20 @@
           const sb = window.CampusLink.supabase;
           try {
             // First fetch target profile user id
-            let targetUserId = null;
-            const { data: userProf } = await sb.from('profiles').select('id').ilike('username', activeUserSession.username).maybeSingle();
-            if (userProf) targetUserId = userProf.id;
+            let targetUserId = activeUserSession.id;
+            if (!targetUserId) {
+              const { data: userProf } = await sb.from('profiles').select('id').ilike('username', activeUserSession.username).maybeSingle();
+              if (userProf) targetUserId = userProf.id;
+            }
 
-            const { error } = await sb.from('students').upsert({
+            // Check if student record already exists to avoid unique constraint conflict errors
+            const { data: existingStu } = await sb.from('students')
+              .select('id')
+              .eq('school_id', activeInvite.schoolId)
+              .eq('username', activeUserSession.username)
+              .maybeSingle();
+
+            const studentPayload = {
               school_id: activeInvite.schoolId,
               user_id: targetUserId,
               academic_year_id: activeInvite.academicYearId,
@@ -962,9 +972,27 @@
               date_of_birth: dob || null,
               status: 'pending',
               invite_code: activeInvite.inviteCode
-            }, { onConflict: 'school_id,username' });
+            };
 
-            if (error) console.error("Database student onboarding upsert failed:", error);
+            let dbError;
+            if (existingStu && existingStu.id) {
+              console.log('[Student Onboarding] Existing student record found. Updating. ID:', existingStu.id);
+              const { error: updateErr } = await sb.from('students')
+                .update(studentPayload)
+                .eq('id', existingStu.id);
+              dbError = updateErr;
+            } else {
+              console.log('[Student Onboarding] No existing student record. Inserting.');
+              const { error: insertErr } = await sb.from('students')
+                .insert(studentPayload);
+              dbError = insertErr;
+            }
+
+            if (dbError) {
+              console.error("Database student onboarding failed:", dbError);
+            } else {
+              console.log('[Student Onboarding] Saved to Supabase successfully.');
+            }
           } catch (dbErr) {
             console.error("Database connection error during student onboarding:", dbErr);
           }

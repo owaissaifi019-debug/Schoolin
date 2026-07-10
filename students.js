@@ -128,8 +128,12 @@
     }
   }
 
+  function checkIsLiveMode() {
+    return !!(window.CampusLink && window.CampusLink.supabase);
+  }
+
   function loadDependencies() {
-    const isLiveMode = window.CampusLink?.supabase && (localStorage.getItem('supabase.auth.token') || sessionStorage.getItem('sb-'));
+    const isLiveMode = checkIsLiveMode();
 
     academicYears = getStored('campuslink_academic_years', isLiveMode ? [] : DEFAULT_YEARS);
     if (!isLiveMode && (!academicYears || academicYears.length === 0)) academicYears = DEFAULT_YEARS;
@@ -615,18 +619,30 @@
     var idx = students.findIndex(function(s) { return s.id === id; });
     if (idx < 0) return;
     var oldStatus = students[idx].status;
+    var username = students[idx].username;
     students[idx].status = status;
     students[idx].updatedAt = new Date().toISOString();
     saveStored('campuslink_students', students);
 
-    // Sync status change to Supabase
-    var sb = window.CampusLink?.supabase;
-    if (sb && id) {
-      sb.from('students').update({ status: status, updated_at: new Date().toISOString() }).eq('id', id)
-        .then(function(res) {
-          if (res.error) console.warn('[quickStatus] Supabase update error:', res.error);
-          else console.log('[quickStatus] Supabase status updated to:', status);
-        });
+    // Sync to Supabase in live mode
+    const isLiveMode = checkIsLiveMode();
+    if (isLiveMode) {
+      const sb = window.CampusLink.supabase;
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      let query = sb.from('students').update({ status: status });
+      if (isUUID) {
+        query = query.eq('id', id);
+      } else {
+        query = query.eq('username', username);
+      }
+      query.then(function(res) {
+        if (res.error) {
+          console.warn('[Students] Supabase status update error:', res.error);
+          toast('Failed to save approval to Supabase: ' + res.error.message, 'error');
+        } else {
+          toast('Student approved successfully in Supabase.', 'success');
+        }
+      });
     }
 
     // If approved and was pending, check for inviteCode increment
@@ -636,12 +652,6 @@
       if (invite) {
         invite.joinedCount = (invite.joinedCount || 0) + 1;
         saveStored('campuslink_invites', invites);
-        // Sync joined count to Supabase
-        if (sb) {
-          sb.from('student_invitations').update({ joined_count: invite.joinedCount })
-            .eq('invite_code', invite.inviteCode)
-            .then(function(r) { if (r.error) console.warn('[quickStatus] Invite joinedCount sync error:', r.error); });
-        }
       }
     }
 
@@ -1555,8 +1565,26 @@
 
   function handleDeleteConfirm() {
     if (!studentToDeleteId) return;
+    var matched = students.find(function(s) { return s.id === studentToDeleteId; });
     students = students.filter(function(s) { return s.id !== studentToDeleteId; });
     saveStored('campuslink_students', students);
+
+    // Sync to Supabase in live mode
+    const isLiveMode = checkIsLiveMode();
+    if (isLiveMode && matched) {
+      const sb = window.CampusLink.supabase;
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentToDeleteId);
+      let query = sb.from('students').delete();
+      if (isUUID) {
+        query = query.eq('id', studentToDeleteId);
+      } else {
+        query = query.eq('username', matched.username);
+      }
+      query.then(function(res) {
+        if (res.error) console.warn('[Students] Supabase delete error:', res.error);
+      });
+    }
+
     closeDeleteModal();
     renderActiveSubpanel();
     populateFilters();
@@ -1575,15 +1603,14 @@
     populateFilters();
     renderActiveSubpanel();
 
-    // Always sync from Supabase when configured (no broken token check)
-    if (window.CampusLink?.supabase) {
-      syncStudentsFromSupabase().then(function() {
-        return syncInvitesFromSupabase();
-      }).then(function() {
-        renderActiveSubpanel();
-        populateFilters();
-      }).catch(function(err) {
-        console.warn('[initStudentsTab] Sync failed:', err);
+    // Call Supabase sync asynchronously in live mode
+    const isLiveMode = checkIsLiveMode();
+    if (isLiveMode) {
+      syncStudentsFromSupabase().then(() => {
+        syncInvitesFromSupabase().then(() => {
+          renderActiveSubpanel();
+          populateFilters();
+        });
       });
     }
 

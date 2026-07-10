@@ -1933,7 +1933,11 @@
     const search = filterText.toLowerCase().trim();
     const filtered = currentGroupMembersList.filter(p => {
       return (p.full_name || '').toLowerCase().includes(search) || 
-             (p.username || '').toLowerCase().includes(search);
+             (p.username || '').toLowerCase().includes(search) ||
+             (p.passing_year || '').toString().toLowerCase().includes(search) ||
+             (p.class || '').toLowerCase().includes(search) ||
+             (p.department || '').toLowerCase().includes(search) ||
+             (p.user_type || '').toLowerCase().includes(search);
     });
 
     if (filtered.length === 0) {
@@ -1943,25 +1947,37 @@
 
     // Role Grouping
     const teachers = filtered.filter(p => p.user_type === 'teacher');
-    const students = filtered.filter(p => p.user_type === 'student');
     const reps = filtered.filter(p => p.user_type === 'school_representative');
     
-    // Alumni Grouping by Passing Year / Batches
+    // Grouping Collections
+    const studentsByBatch = {};
+    const ungroupedStudents = [];
     const alumniByBatch = {};
     const ungroupedAlumni = [];
     const others = [];
 
     filtered.forEach(p => {
-      if (p.user_type === 'alumni') {
+      if (p.user_type === 'student') {
         if (p.passing_year) {
-          if (!alumniByBatch[p.passing_year]) {
-            alumniByBatch[p.passing_year] = [];
+          const yearKey = p.passing_year.toString().trim();
+          if (!studentsByBatch[yearKey]) {
+            studentsByBatch[yearKey] = [];
           }
-          alumniByBatch[p.passing_year].push(p);
+          studentsByBatch[yearKey].push(p);
+        } else {
+          ungroupedStudents.push(p);
+        }
+      } else if (p.user_type === 'alumni') {
+        if (p.passing_year) {
+          const yearKey = p.passing_year.toString().trim();
+          if (!alumniByBatch[yearKey]) {
+            alumniByBatch[yearKey] = [];
+          }
+          alumniByBatch[yearKey].push(p);
         } else {
           ungroupedAlumni.push(p);
         }
-      } else if (p.user_type !== 'teacher' && p.user_type !== 'student' && p.user_type !== 'school_representative') {
+      } else if (p.user_type !== 'teacher' && p.user_type !== 'school_representative') {
         others.push(p);
       }
     });
@@ -2011,19 +2027,37 @@
     };
 
     html += renderSection('Teachers', teachers);
-    html += renderSection('Students', students);
     html += renderSection('School Representatives', reps);
 
-    // Sort passing years descending (newer batches first)
-    const sortedYears = Object.keys(alumniByBatch).map(Number).sort((a, b) => b - a);
-    sortedYears.forEach(year => {
+    // Render Students grouped by Batch/Program
+    const sortedStudentYears = Object.keys(studentsByBatch).map(Number).sort((a, b) => b - a);
+    sortedStudentYears.forEach(year => {
+      const yearKey = year.toString();
+      const list = studentsByBatch[yearKey];
+      const sample = list.find(s => s.class);
+      let title = `Batch of ${year} (Students)`;
+      if (sample && sample.class) {
+        title = `${sample.class.toUpperCase()} (${year}) (STUDENT)`;
+      }
+      html += renderSection(title, list);
+    });
+
+    if (ungroupedStudents.length > 0) {
+      html += renderSection('Students (General)', ungroupedStudents);
+    }
+
+    // Sort passing years descending (newer batches first) for Alumni
+    const sortedAlumniYears = Object.keys(alumniByBatch).map(Number).sort((a, b) => b - a);
+    sortedAlumniYears.forEach(year => {
+      const yearKey = year.toString();
+      const list = alumniByBatch[yearKey];
       const batchMatch = schoolAlumniBatches.find(b => b.passing_year === year);
       let title = `Batch of ${year} (Alumni)`;
       if (batchMatch && (batchMatch.program || batchMatch.department)) {
         const details = [batchMatch.program, batchMatch.department].filter(Boolean).join(' - ');
         title = `${details} (${year}) (Alumni)`;
       }
-      html += renderSection(title, alumniByBatch[year]);
+      html += renderSection(title, list);
     });
 
     if (ungroupedAlumni.length > 0) {
