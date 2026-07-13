@@ -113,7 +113,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (role === 'super_admin') {
       window.location.href = 'admin/index.html';
     } else {
-      window.location.href = 'index.html';
+      try {
+        const profile = await auth.getProfile(existingSession.user.id);
+        if (profile && profile.user_type === 'parent') {
+          window.location.href = 'schools.html';
+        } else {
+          window.location.href = 'index.html';
+        }
+      } catch (err) {
+        window.location.href = 'index.html';
+      }
     }
     return;
   }
@@ -550,6 +559,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
           redirectPage = 'dashboard.html';
         }
+      } else if (userType === 'parent') {
+        redirectPage = 'schools.html';
       }
 
       // Show success and redirect

@@ -2333,7 +2333,7 @@
             👤 School Representative
           </span>
         `;
-        headlineText = `School Rep at ${s.name || 'our partner school'}`;
+        headlineText = 'School Representative';
 
       } else {
         authorName = p.full_name || 'Anonymous User';
@@ -2364,13 +2364,6 @@
         }
 
         headlineText = auth.getUserTypeLabel(p.user_type);
-        const schoolName = s.name;
-        if (p.user_type === 'student' && p.class) {
-          headlineText += ` • Class ${p.class}`;
-        }
-        if (schoolName) {
-          headlineText += ` at ${schoolName}`;
-        }
       }
 
       // Topic badge row

@@ -8460,12 +8460,19 @@ select.epm-input {
   }
 
   .post-author-name {
+    display: inline !important;
     font-size: 0.88rem !important;
     font-weight: 700 !important;
     white-space: normal !important;
     overflow: visible !important;
     text-overflow: clip !important;
     max-width: none !important;
+  }
+
+  .post-author-name .verified-badge {
+    display: inline-block !important;
+    vertical-align: middle !important;
+    margin-top: -2px !important;
   }
 
   .post-author-role {
@@ -9024,6 +9031,7 @@ select.epm-input {
   }
 
   .post-author-name {
+    display: inline !important;
     font-size: 0.88rem !important;
     font-weight: 700 !important;
     color: var(--text-main) !important;
@@ -9031,6 +9039,12 @@ select.epm-input {
     white-space: normal !important;
     overflow: visible !important;
     text-overflow: clip !important;
+  }
+
+  .post-author-name .verified-badge {
+    display: inline-block !important;
+    vertical-align: middle !important;
+    margin-top: -2px !important;
   }
 
   /* More Menu Ellipsis button placement */

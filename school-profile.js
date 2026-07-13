@@ -311,6 +311,7 @@ function initSchoolProfile() {
   let currentUser = null;
   let isSchoolAdmin = false;
   let isSuperAdmin = false;
+  let hasInternalAccess = false;
 
   async function loadSchoolProfile() {
     const supabase = window.CampusLink && window.CampusLink.supabase;
@@ -467,6 +468,23 @@ function initSchoolProfile() {
             isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
             isSuperAdmin = results[3] === 'super_admin';
             
+            // Check membership of current user
+            if (supabase && auth) {
+              try {
+                const memberProfile = await auth.getProfile(currentUser.id);
+                if (memberProfile && memberProfile.school_id === dbSchool.id) {
+                  hasInternalAccess = true;
+                }
+              } catch (memberErr) {
+                console.warn('Error verifying school membership:', memberErr);
+              }
+            }
+            
+            // Admins & super admins always have internal access
+            if (isSchoolAdmin || isSuperAdmin) {
+              hasInternalAccess = true;
+            }
+            
             const followCheckRes = results[4];
             if (followCheckRes && followCheckRes.data) {
               isFollowing = true;
@@ -503,6 +521,7 @@ function initSchoolProfile() {
           console.warn('Could not resolve user role for mock school:', roleErr);
         }
       }
+      hasInternalAccess = true; // Offline/mock schools: allow access for showcase
     }
     
     // Cache profile data for SWR
@@ -969,11 +988,99 @@ function initSchoolProfile() {
       });
   }
 
+  function applyAccessRestrictions() {
+    console.log('[Phase 3 Access Restrictions] hasInternalAccess:', hasInternalAccess);
+    
+    const communityTabBtn = document.querySelector('.profile-tab-btn[data-tab="community"]');
+    const achievementsTabBtn = document.querySelector('.profile-tab-btn[data-tab="achievements"]');
+    const activitySection = document.getElementById('section-activity');
+    
+    if (!hasInternalAccess) {
+      // 1. Hide tab buttons for non-members
+      if (communityTabBtn) communityTabBtn.style.display = 'none';
+      if (achievementsTabBtn) achievementsTabBtn.style.display = 'none';
+      
+      // 2. Hide activity posts section
+      if (activitySection) activitySection.style.display = 'none';
+      
+      // 3. Force navigate to "about" tab if the active tab is hidden
+      const activeTabBtn = document.querySelector('.profile-tab-btn.active');
+      if (activeTabBtn) {
+        const activeTab = activeTabBtn.getAttribute('data-tab');
+        if (activeTab === 'community' || activeTab === 'achievements') {
+          const aboutBtn = document.querySelector('.profile-tab-btn[data-tab="about"]');
+          if (aboutBtn) {
+            aboutBtn.classList.add('active');
+            const aboutPanel = document.getElementById('panel-about');
+            if (aboutPanel) {
+              const panels = document.querySelectorAll('.profile-tab-panel');
+              panels.forEach(p => p.classList.remove('active'));
+              aboutPanel.classList.add('active');
+            }
+          }
+          activeTabBtn.classList.remove('active');
+        }
+      }
+    } else {
+      // Show tabs and activity for verified members
+      if (communityTabBtn) communityTabBtn.style.display = 'inline-flex';
+      if (achievementsTabBtn) achievementsTabBtn.style.display = 'inline-flex';
+      if (activitySection) activitySection.style.display = 'block';
+    }
+  }
+
+  function clearCommunityAndPostsForNonMembers() {
+    // 1. Set locked state inside the community panel
+    const panelCommunity = document.getElementById('panel-community');
+    if (panelCommunity) {
+      panelCommunity.innerHTML = `
+        <div class="locked-state-card" style="text-align: center; padding: 60px 20px; color: var(--text-muted); background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <span style="font-size: 3rem; display: block; margin-bottom: 16px;">🔒</span>
+          <h3 style="color: var(--dark-bg); font-weight: 800; margin-bottom: 8px; font-size: 1.3rem;">Private Community Directory</h3>
+          <p style="font-size: 0.9rem; max-width: 380px; margin: 0 auto; line-height: 1.5;">
+            The student, teacher, and alumni directories are private. You must be a verified member of this school to view the community list.
+          </p>
+        </div>
+      `;
+    }
+
+    // 2. Clear grids
+    const cmGridFaculty = document.getElementById('cm-grid-faculty');
+    const cmGridAlumni = document.getElementById('cm-grid-alumni');
+    const cmGridStudents = document.getElementById('cm-grid-students');
+    if (cmGridFaculty) cmGridFaculty.innerHTML = '';
+    if (cmGridStudents) cmGridStudents.innerHTML = '';
+    if (cmGridAlumni) cmGridAlumni.innerHTML = '';
+
+    // 3. Clear posts container
+    const postsListContainer = document.getElementById('school-activity-posts');
+    if (postsListContainer) {
+      postsListContainer.innerHTML = `
+        <div class="locked-state-card" style="text-align: center; padding: 40px 20px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: rgba(0, 0, 0, 0.02);">
+          <span style="font-size: 2rem;">🔒</span>
+          <h4 style="margin-top: 12px; margin-bottom: 6px; font-weight: 700; color: var(--dark-bg);">Private Community Activity</h4>
+          <p style="font-size: 0.88rem; color: var(--text-muted); max-width: 320px; margin: 0 auto;">
+            Internal updates and student activities are visible only to verified members of this school.
+          </p>
+        </div>
+      `;
+    }
+  }
+
   // Populate dynamic elements
   loadSchoolProfile().then(() => {
     checkJoinState();
-    loadSchoolMembers();
-    loadAndRenderSchoolPosts();
+    
+    // Apply Phase 3 access restrictions to UI
+    applyAccessRestrictions();
+
+    if (hasInternalAccess) {
+      loadSchoolMembers();
+      loadAndRenderSchoolPosts();
+    } else {
+      clearCommunityAndPostsForNonMembers();
+    }
+
     loadAndRenderSchoolEvents();
     setupStatsClickHandlers();
   });
@@ -2391,6 +2498,7 @@ submitBtn.textContent = 'Send Message Request';
   async function loadSchoolMembers() {
     const supabase = window.CampusLink && window.CampusLink.supabase;
     if (!supabase || !currentProfile || !currentProfile.id) return;
+    if (!hasInternalAccess) return;
 
     const cmGridFaculty = document.getElementById('cm-grid-faculty');
     const cmGridAlumni = document.getElementById('cm-grid-alumni');
@@ -2998,6 +3106,7 @@ submitBtn.textContent = 'Send Message Request';
   async function loadAndRenderSchoolPosts() {
     const postsListContainer = document.getElementById('school-activity-posts');
     if (!postsListContainer) return;
+    if (!hasInternalAccess) return;
 
     postsListContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted); font-size: 0.95rem; padding: 20px 0;">Loading updates...</p>';
 

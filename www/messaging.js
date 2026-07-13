@@ -31,6 +31,7 @@
   const chatRecipientName = document.getElementById('chat-recipient-name');
   const chatRecipientHeadline = document.getElementById('chat-recipient-headline');
   const chatHeaderActions = document.getElementById('chat-header-actions');
+  const chatRecipientBadges = document.getElementById('chat-recipient-badges');
   const messageRequestBar = document.getElementById('message-request-bar');
   const requestBarText = document.getElementById('request-bar-text');
   const btnAcceptRequest = document.getElementById('btn-accept-request');
@@ -1005,6 +1006,11 @@
       }
     }
 
+    // Clear badges container
+    if (chatRecipientBadges) {
+      chatRecipientBadges.innerHTML = '';
+    }
+
     // Inquiry label & Toggle Profile button in header actions
     if (chatHeaderActions) {
       chatHeaderActions.innerHTML = '';
@@ -1017,18 +1023,26 @@
         const label = labels[conv.inquiry_type] || 'Inquiry';
         const badgeSpan = document.createElement('span');
         badgeSpan.className = `inquiry-badge-tag ${conv.inquiry_type}`;
-        badgeSpan.style.cssText = 'font-size:0.8rem; padding: 6px 12px; border-radius: var(--radius-sm); margin-top: 0;';
+        badgeSpan.style.cssText = 'font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; display: inline-block; white-space: nowrap; margin: 0;';
         badgeSpan.textContent = label;
-        chatHeaderActions.appendChild(badgeSpan);
+        if (chatRecipientBadges) {
+          chatRecipientBadges.appendChild(badgeSpan);
+        } else {
+          chatHeaderActions.appendChild(badgeSpan);
+        }
       }
 
       // Add "Request Sent" badge if pending and initiated by current user
       if (conv.status === 'pending' && conv.initiator_id === currentUser.id) {
         const sentBadge = document.createElement('span');
         sentBadge.className = 'inquiry-badge-tag general_inquiry';
-        sentBadge.style.cssText = 'font-size:0.8rem; padding: 6px 12px; border-radius: var(--radius-sm); margin-top: 0; background-color: var(--warning-light, #FFFBEB); color: var(--warning, #D97706);';
+        sentBadge.style.cssText = 'font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; display: inline-block; white-space: nowrap; margin: 0; background-color: var(--warning-light, #FFFBEB); color: var(--warning, #D97706);';
         sentBadge.textContent = 'Request Sent';
-        chatHeaderActions.appendChild(sentBadge);
+        if (chatRecipientBadges) {
+          chatRecipientBadges.appendChild(sentBadge);
+        } else {
+          chatHeaderActions.appendChild(sentBadge);
+        }
       }
 
       // Add collapsible toggle button

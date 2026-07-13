@@ -61,6 +61,18 @@
   async function init() {
     if (auth) {
       currentUser = await auth.getUser();
+      if (currentUser) {
+        try {
+          const profile = await auth.getProfile(currentUser.id);
+          if (profile && profile.user_type === 'parent') {
+            console.warn('[Security Guard] Parent accounts are not permitted to access member directories. Redirecting to school discovery.');
+            window.location.href = 'schools.html';
+            return;
+          }
+        } catch (profileErr) {
+          console.warn('Error loading profile for parent check:', profileErr);
+        }
+      }
     }
 
     const cacheKeyProfiles = 'campuslink_cached_net_profiles';
@@ -267,6 +279,7 @@
           id: s.id,
           name: s.name,
           city: s.city || 'India',
+          logoUrl: s.logo_url || null,
           logoLetter: s.logo_letter || s.name.charAt(0).toUpperCase(),
           colorClass: s.color_class || 'bg-gradient-1',
           verificationBadge: s.verification_badge || 'none'
@@ -312,19 +325,48 @@
       card.className = 'suggested-school-card';
       let profileUrl = `school-profile.html?id=${school.id}`;
 
-      card.innerHTML = `
-        <div class="school-logo-box ${school.colorClass}">
-          <span>${school.logoLetter}</span>
-        </div>
-        <div class="school-details">
-          <a href="${profileUrl}" class="school-name">${school.name}${badgeHtml}</a>
-          <span class="school-location">📍 ${school.city}</span>
-        </div>
-        <button class="btn ${isFollowing ? 'btn-following' : 'btn-follow'}" 
-                data-follow-type="school" data-follow-id="${school.id}">
-          ${isFollowing ? 'Following' : 'Follow'}
-        </button>
+      // Build logo box with DOM to support onerror fallback
+      const logoBox = document.createElement('div');
+      logoBox.className = `school-logo-box ${school.colorClass || 'bg-gradient-1'}`;
+      logoBox.style.overflow = 'hidden';
+
+      if (school.logoUrl) {
+        const img = document.createElement('img');
+        img.src = school.logoUrl;
+        img.alt = school.name;
+        img.className = 'school-logo-img';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:6px;display:block;';
+        img.onerror = function() {
+          // Image failed to load — show letter fallback
+          img.remove();
+          const span = document.createElement('span');
+          span.textContent = school.logoLetter;
+          logoBox.appendChild(span);
+        };
+        logoBox.appendChild(img);
+      } else {
+        const span = document.createElement('span');
+        span.textContent = school.logoLetter;
+        logoBox.appendChild(span);
+      }
+
+      // Build the rest of the card via innerHTML
+      const detailsDiv = document.createElement('div');
+      detailsDiv.className = 'school-details';
+      detailsDiv.innerHTML = `
+        <a href="${profileUrl}" class="school-name">${school.name}${badgeHtml}</a>
+        <span class="school-location">📍 ${school.city}</span>
       `;
+
+      const followBtn = document.createElement('button');
+      followBtn.className = `btn ${isFollowing ? 'btn-following' : 'btn-follow'}`;
+      followBtn.dataset.followType = 'school';
+      followBtn.dataset.followId = school.id;
+      followBtn.textContent = isFollowing ? 'Following' : 'Follow';
+
+      card.appendChild(logoBox);
+      card.appendChild(detailsDiv);
+      card.appendChild(followBtn);
       grid.appendChild(card);
     });
   }

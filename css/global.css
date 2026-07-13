@@ -269,14 +269,79 @@ a {
   color: var(--white) !important;
 }
 
-/* --- Me Dropdown Footer: theme toggle + sign out side by side --- */
+}
+
+/* --- Me Dropdown Footer: Dark Mode + Sign Out as menu rows --- */
 .me-dropdown-footer {
   display: flex !important;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
+  flex-direction: column;
+  padding: 4px 0 0;
   border-top: 1px solid var(--border-color);
-  flex-wrap: wrap;
+}
+
+/* Dark Mode item — reuses .me-menu-item base, adds toggle pill on right */
+.me-menu-item-theme {
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-main);
+}
+
+/* Toggle pill */
+.me-theme-toggle-pill {
+  margin-left: auto;
+  width: 36px;
+  height: 20px;
+  border-radius: 99px;
+  background: var(--border-color);
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  flex-shrink: 0;
+  transition: background 280ms;
+}
+.me-theme-toggle-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  transform: translateX(0);
+  transition: transform 280ms cubic-bezier(0.4,0,0.2,1);
+}
+/* Active state when dark mode on */
+html[data-theme="dark"] .me-theme-toggle-pill {
+  background: var(--primary) !important;
+}
+html[data-theme="dark"] .me-theme-toggle-dot {
+  transform: translateX(16px);
+}
+
+/* Sign Out item — red danger row */
+.me-menu-item-signout {
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: #EF4444 !important;
+  border-radius: 0 0 12px 12px;
+}
+.me-menu-item-signout .me-menu-icon {
+  color: #EF4444 !important;
+  background: #FEF2F2 !important;
+}
+.me-menu-item-signout:hover {
+  background: #FEF2F2 !important;
+  color: #DC2626 !important;
+}
+.me-menu-item-signout:hover .me-menu-icon {
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
 }
 
 .me-menu-theme-toggle {
@@ -575,3 +640,209 @@ body.college-admin-body[data-theme-scope="dark"] {
   white-space: nowrap;
 }
 
+/* ============================================================
+   SETTINGS PANEL — Bottom Sheet (mobile) / Modal (desktop)
+   ============================================================ */
+
+/* Overlay */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 280ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.settings-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Panel */
+.settings-panel {
+  position: fixed;
+  z-index: 9999;
+  background: var(--white);
+  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 280ms ease;
+}
+
+/* Mobile: slide up from bottom */
+@media (max-width: 768px) {
+  .settings-panel {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 20px 20px 0 0;
+    max-height: 88vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    opacity: 0;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+  }
+  .settings-panel.active {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Desktop: centered modal */
+@media (min-width: 769px) {
+  .settings-panel {
+    top: 50%;
+    left: 50%;
+    width: 480px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    transform: translate(-50%, -52%) scale(0.96);
+    opacity: 0;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+  .settings-panel.active {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Settings Panel Header */
+.settings-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--white);
+  z-index: 1;
+}
+
+/* Mobile drag handle */
+.settings-panel-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 99px;
+  margin: 10px auto 0;
+}
+@media (min-width: 769px) {
+  .settings-panel-handle { display: none; }
+}
+
+.settings-panel-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dark-bg);
+}
+
+.settings-panel-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: background 180ms, color 180ms;
+  padding: 0;
+}
+.settings-panel-close:hover {
+  background: var(--light-bg);
+  color: var(--dark-bg);
+}
+
+/* Settings Sections */
+.settings-section {
+  padding: 12px 20px 4px;
+}
+.settings-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+/* Settings Row Item */
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border-color);
+  text-decoration: none;
+  color: var(--text-main);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+  text-align: left;
+  transition: color 150ms;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row:hover { color: var(--primary); }
+.settings-row:hover .settings-row-icon { color: var(--primary); background: var(--primary-light); }
+
+.settings-row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--light-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: background 150ms, color 150ms;
+}
+.settings-row-icon svg { width: 17px; height: 17px; }
+
+.settings-row-text { flex: 1; line-height: 1.3; }
+.settings-row-chevron { color: var(--text-muted); opacity: 0.4; flex-shrink: 0; }
+.settings-row-chevron svg { width: 16px; height: 16px; }
+
+/* Danger row */
+.settings-row.danger { color: #EF4444; }
+.settings-row.danger .settings-row-icon { background: #FEF2F2; color: #EF4444; }
+.settings-row.danger:hover { color: #DC2626; }
+.settings-row.danger:hover .settings-row-icon { background: #FEE2E2; color: #DC2626; }
+
+/* Dark mode */
+[data-theme="dark"] .settings-panel {
+  background: var(--white);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+[data-theme="dark"] .settings-panel-header {
+  background: var(--white);
+  border-bottom-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .settings-row-icon { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+[data-theme="dark"] .settings-row { border-color: rgba(255,255,255,0.06); color: var(--text-main); }
+[data-theme="dark"] .settings-section-label { color: rgba(255,255,255,0.35); }
+
+/* Panel bottom */
+.settings-panel-bottom {
+  padding: 16px 20px 28px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* ============================================================
+   HIDE FOOTER ON MOBILE (links moved to Settings panel)
+   ============================================================ */
+@media (max-width: 768px) {
+  footer { display: none !important; }
+}

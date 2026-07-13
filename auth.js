@@ -363,6 +363,19 @@
         const profile = await getProfile(user.id);
         const userType = profile?.user_type || user.user_metadata?.user_type || 'student';
 
+        // Hide "My Network" tab for parent role to restrict directory access
+        const networkLink = document.getElementById('nav-network-link');
+        if (networkLink) {
+          const networkLi = networkLink.closest('li');
+          if (networkLi) {
+            if (userType === 'parent') {
+              networkLi.style.setProperty('display', 'none', 'important');
+            } else {
+              networkLi.style.removeProperty('display');
+            }
+          }
+        }
+
         let classroomHref = 'classroom.html';
         let label = 'Classroom';
         let isVerifiedTeacher = true; // default for non-teachers
@@ -587,25 +600,9 @@
                     <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     <span>View Profile</span>
                   </a>
-                  <a href="#" class="me-menu-item" id="me-menu-edit-profile">
-                    <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    <span>Edit Profile</span>
-                  </a>
-                  <a href="classroom.html" class="me-menu-item" id="me-menu-classroom">
-                    <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-                    <span>Classroom Workspace</span>
-                  </a>
                   <a href="dashboard.html" class="me-menu-item" id="me-menu-dashboard" style="display: none;">
                     <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
                     <span>Dashboard</span>
-                  </a>
-                  <a href="#" class="me-menu-item" id="me-menu-notifications">
-                    <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                    <span>Notifications</span>
-                  </a>
-                  <a href="messaging.html" class="me-menu-item" id="me-menu-messages">
-                    <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <span>Messages</span>
                   </a>
                   <a href="#" class="me-menu-item" id="me-menu-settings">
                     <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -615,12 +612,13 @@
 
                 <!-- Footer Section -->
                 <div class="me-dropdown-footer">
-                  <button class="me-menu-theme-toggle" id="me-menu-theme-toggle-btn" title="Toggle dark mode" style="display:inline-flex;align-items:center;gap:8px;background:none;border:1px solid var(--border-color);border-radius:20px;padding:8px 14px;cursor:pointer;color:var(--text-main);font-size:0.8rem;font-weight:600;transition:all 200ms;">
-                    <svg id="me-theme-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                  <button class="me-menu-item me-menu-item-theme" id="me-menu-theme-toggle-btn" title="Toggle dark mode">
+                    <svg id="me-theme-icon" class="me-menu-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                     <span id="me-theme-label">Dark Mode</span>
+                    <span class="me-theme-toggle-pill"><span class="me-theme-toggle-dot"></span></span>
                   </button>
-                  <button class="me-dropdown-signout" id="me-dropdown-signout-btn">
-                    <svg class="me-signout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  <button class="me-menu-item me-menu-item-signout" id="me-dropdown-signout-btn">
+                    <svg class="me-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                     <span>Sign Out</span>
                   </button>
                 </div>
@@ -715,22 +713,13 @@
 
           const meMenuSettings = document.getElementById('me-menu-settings');
           if (meMenuSettings) {
-            if (userType === 'school_representative' || platformRole === 'school_admin') {
-              meMenuSettings.href = profile?.school_id ? `school-profile.html?id=${profile.school_id}` : `dashboard.html`;
-            } else {
-              meMenuSettings.href = `profile.html?id=${user.id}&open_edit=true`;
-              meMenuSettings.addEventListener('click', (e) => {
-                if (window.location.pathname.includes('profile.html') && window.CampusLink && window.CampusLink.openEditProfileModal) {
-                  const urlParams = new URLSearchParams(window.location.search);
-                  if (urlParams.get('id') === user.id) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    meDropdown.classList.remove('active');
-                    window.CampusLink.openEditProfileModal();
-                  }
-                }
-              });
-            }
+            meMenuSettings.removeAttribute('href');
+            meMenuSettings.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              meDropdown.classList.remove('active');
+              openSettingsPanel(user, profile, platformRole);
+            });
           }
 
           const meMenuDashboard = document.getElementById('me-menu-dashboard');
@@ -1204,5 +1193,343 @@
     getUserTypeLabel,
     getPlatformRoleLabel
   };
+
+  /* ── Settings Panel ────────────────────────────────────────────── */
+  function openSettingsPanel(user, profile, platformRole) {
+    // Remove any existing panel
+    const existing = document.getElementById('campuslink-settings-panel');
+    if (existing) { existing.remove(); }
+    const existingOverlay = document.getElementById('campuslink-settings-overlay');
+    if (existingOverlay) { existingOverlay.remove(); }
+
+    // Determine edit profile URL
+    const isSchoolAdmin = profile?.user_type === 'school_representative' || platformRole === 'school_admin';
+    const editProfileUrl = isSchoolAdmin
+      ? (profile?.school_id ? `school-profile.html?id=${profile.school_id}` : `dashboard.html`)
+      : `profile.html?id=${user.id}&open_edit=true`;
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'campuslink-settings-overlay';
+    overlay.className = 'settings-overlay';
+    document.body.appendChild(overlay);
+
+    // Create panel
+    const panel = document.createElement('div');
+    panel.id = 'campuslink-settings-panel';
+    panel.className = 'settings-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-label', 'Settings');
+    panel.innerHTML = `
+      <div class="settings-panel-handle"></div>
+      <div class="settings-panel-header">
+        <span class="settings-panel-title">⚙️ Settings</span>
+        <button class="settings-panel-close" id="settings-panel-close-btn" aria-label="Close settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Account -->
+      <div class="settings-section">
+        <div class="settings-section-label">Account</div>
+        <a href="${editProfileUrl}" class="settings-row">
+          <span class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+          <span class="settings-row-text">Edit Profile</span>
+          <span class="settings-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </a>
+        <a href="profile.html?id=${user.id}" class="settings-row">
+          <span class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          <span class="settings-row-text">View Profile</span>
+          <span class="settings-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </a>
+        <button class="settings-row" id="settings-blocked-users">
+          <span class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>
+          <span class="settings-row-text">Blocked Users</span>
+          <span class="settings-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </button>
+        <button class="settings-row" id="settings-theme-toggle">
+          <span class="settings-row-icon" id="settings-theme-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+          <span class="settings-row-text" id="settings-theme-label">Dark Mode</span>
+          <span class="settings-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </button>
+      </div>
+
+
+      <!-- Legal & Info -->
+      <div class="settings-section">
+        <div class="settings-section-label">Legal & Info</div>
+        <a href="about.html" class="settings-row">
+          <span class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+          <span class="settings-row-text">About CampusLink</span>
+          <span class="settings-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </a>
+        <a href="privacy-policy.html" class="settings-row">
+          <span class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          <span class="settings-row-text">Privacy Policy</span>
+          <span class="settings-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </a>
+        <a href="terms-and-conditions.html" class="settings-row">
+          <span class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span>
+          <span class="settings-row-text">Terms & Conditions</span>
+          <span class="settings-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </a>
+        <a href="child-safety.html" class="settings-row">
+          <span class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+          <span class="settings-row-text">Child Safety</span>
+          <span class="settings-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </a>
+        <a href="delete-account.html" class="settings-row danger">
+          <span class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span>
+          <span class="settings-row-text">Delete Account</span>
+          <span class="settings-row-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </a>
+      </div>
+
+      <div class="settings-panel-bottom">
+        CampusLink · © ${new Date().getFullYear()} · v1.0<br>
+        India's Academic Social Network
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    // Animate in (next tick)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.classList.add('active');
+        panel.classList.add('active');
+      });
+    });
+
+    // Theme toggle inside panel
+    const themeBtn = document.getElementById('settings-theme-toggle');
+    const themeIcon = document.getElementById('settings-theme-icon');
+    const themeLabel = document.getElementById('settings-theme-label');
+    function _syncThemeBtn() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      themeLabel.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      themeIcon.innerHTML = isDark
+        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+    }
+    _syncThemeBtn();
+    if (themeBtn) {
+      themeBtn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('campuslink-theme', next);
+        _syncThemeBtn();
+        // Sync dropdown theme btn too
+        const menuThemeBtn = document.getElementById('me-menu-theme-toggle-btn');
+        if (menuThemeBtn) menuThemeBtn.click && undefined; // just sync label via existing handler
+        const meThemeLabel = document.getElementById('me-theme-label');
+        if (meThemeLabel) meThemeLabel.textContent = next === 'dark' ? 'Light Mode' : 'Dark Mode';
+      });
+    }
+
+    // Blocked users click listener
+    const blockedUsersBtn = document.getElementById('settings-blocked-users');
+    if (blockedUsersBtn) {
+      blockedUsersBtn.addEventListener('click', () => {
+        openBlockedUsersModal(user);
+      });
+    }
+
+    // Close function
+    function closePanel() {
+      overlay.classList.remove('active');
+      panel.classList.remove('active');
+      setTimeout(() => {
+        overlay.remove();
+        panel.remove();
+      }, 320);
+    }
+
+    // Close handlers
+    document.getElementById('settings-panel-close-btn').addEventListener('click', closePanel);
+    overlay.addEventListener('click', closePanel);
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') {
+        closePanel();
+        document.removeEventListener('keydown', onEsc);
+      }
+    });
+  }
+
+  /* ── Blocked Users Modal ───────────────────────────────────────── */
+  function openBlockedUsersModal(user) {
+    const existing = document.getElementById('campuslink-blocked-panel');
+    if (existing) { existing.remove(); }
+    const existingOverlay = document.getElementById('campuslink-blocked-overlay');
+    if (existingOverlay) { existingOverlay.remove(); }
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'campuslink-blocked-overlay';
+    overlay.className = 'settings-overlay';
+    overlay.style.zIndex = '10001';
+    document.body.appendChild(overlay);
+
+    // Create panel
+    const panel = document.createElement('div');
+    panel.id = 'campuslink-blocked-panel';
+    panel.className = 'settings-panel';
+    panel.style.zIndex = '10002';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-label', 'Blocked Users');
+    panel.innerHTML = `
+      <div class="settings-panel-handle"></div>
+      <div class="settings-panel-header">
+        <span class="settings-panel-title">🚫 Blocked Users</span>
+        <button class="settings-panel-close" id="blocked-panel-close-btn" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="settings-section" style="padding-top:16px;">
+        <div id="blocked-users-list" class="blocked-users-container" style="display:flex; flex-direction:column; gap:12px; min-height:100px;">
+          <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.88rem;">Loading blocked users...</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.classList.add('active');
+        panel.classList.add('active');
+      });
+    });
+
+    // Close function
+    function closeBlockedPanel() {
+      overlay.classList.remove('active');
+      panel.classList.remove('active');
+      setTimeout(() => {
+        overlay.remove();
+        panel.remove();
+      }, 320);
+    }
+
+    document.getElementById('blocked-panel-close-btn').addEventListener('click', closeBlockedPanel);
+    overlay.addEventListener('click', closeBlockedPanel);
+
+    // Load blocked users data
+    (async () => {
+      const sb = getClient();
+      const listContainer = document.getElementById('blocked-users-list');
+      if (!sb || !listContainer) return;
+
+      try {
+        // 1. Fetch blocked IDs
+        const { data: blocks, error: blocksError } = await sb
+          .from('user_blocks')
+          .select('blocked_id')
+          .eq('blocker_id', user.id);
+
+        if (blocksError) throw blocksError;
+
+        if (!blocks || blocks.length === 0) {
+          listContainer.innerHTML = `<div style="text-align:center; padding:30px 20px; color:var(--text-muted); font-size:0.88rem;">No blocked users.</div>`;
+          return;
+        }
+
+        const blockedIds = blocks.map(b => b.blocked_id);
+
+        // 2. Fetch profiles
+        const { data: profiles, error: profilesError } = await sb
+          .from('profiles')
+          .select('id, full_name, avatar_url, user_type')
+          .in('id', blockedIds);
+
+        if (profilesError) throw profilesError;
+
+        if (!profiles || profiles.length === 0) {
+          listContainer.innerHTML = `<div style="text-align:center; padding:30px 20px; color:var(--text-muted); font-size:0.88rem;">No blocked users.</div>`;
+          return;
+        }
+
+        listContainer.innerHTML = '';
+        profiles.forEach(profile => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--border-color);';
+          
+          // Avatar
+          let avatarHtml = `<div style="width:36px; height:36px; border-radius:50%; background:var(--light-bg); display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--text-muted); font-size:0.9rem;">${(profile.full_name || '?').charAt(0).toUpperCase()}</div>`;
+          if (profile.avatar_url) {
+            avatarHtml = `<div style="width:36px; height:36px; border-radius:50%; background-image:url(${profile.avatar_url}); background-size:cover; background-position:center;"></div>`;
+          }
+
+          row.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+              ${avatarHtml}
+              <div style="min-width:0; flex:1;">
+                <div style="font-weight:700; font-size:0.86rem; color:var(--dark-bg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${profile.full_name || 'Anonymous User'}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:capitalize;">${profile.user_type || 'Student'}</div>
+              </div>
+            </div>
+            <button class="unblock-btn" data-id="${profile.id}" style="background:none; border:1px solid var(--border-color); padding:6px 12px; border-radius:16px; font-size:0.75rem; font-weight:700; color:var(--text-main); cursor:pointer; transition:all 150ms;">
+              Unblock
+            </button>
+          `;
+          listContainer.appendChild(row);
+        });
+
+        // Add hover effects and unblock click listeners
+        listContainer.querySelectorAll('.unblock-btn').forEach(btn => {
+          btn.addEventListener('mouseenter', () => {
+            btn.style.borderColor = '#EF4444';
+            btn.style.color = '#EF4444';
+            btn.style.background = '#FEF2F2';
+          });
+          btn.addEventListener('mouseleave', () => {
+            btn.style.borderColor = 'var(--border-color)';
+            btn.style.color = 'var(--text-main)';
+            btn.style.background = 'none';
+          });
+          btn.addEventListener('click', async () => {
+            const blockedId = btn.getAttribute('data-id');
+            btn.disabled = true;
+            btn.textContent = '...';
+
+            try {
+              const { error } = await sb
+                .from('user_blocks')
+                .delete()
+                .eq('blocker_id', user.id)
+                .eq('blocked_id', blockedId);
+
+              if (error) throw error;
+              
+              // Remove the row from UI
+              btn.parentElement.remove();
+              
+              // If no rows left, show empty state
+              if (listContainer.children.length === 0) {
+                listContainer.innerHTML = `<div style="text-align:center; padding:30px 20px; color:var(--text-muted); font-size:0.88rem;">No blocked users.</div>`;
+              }
+            } catch (err) {
+              console.error('Failed to unblock user:', err);
+              btn.disabled = false;
+              btn.textContent = 'Unblock';
+              alert('Failed to unblock: ' + err.message);
+            }
+          });
+        });
+
+      } catch (err) {
+        console.error('Failed to load blocked users:', err);
+        listContainer.innerHTML = `<div style="text-align:center; padding:20px; color:#EF4444; font-size:0.8rem;">Failed to load list.</div>`;
+      }
+    })();
+  }
 
 })();

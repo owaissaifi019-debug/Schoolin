@@ -1081,15 +1081,15 @@
 
   /* ── 5. Compact chat header with back button ── */
   .chat-header {
-    padding: 0 12px !important;
+    padding: 8px 12px !important;
     gap: 10px !important;
-    height: 56px !important;
     min-height: 56px !important;
+    height: auto !important;
     flex-shrink: 0 !important;
     border-bottom: 1px solid var(--border-color) !important;
     background: var(--white) !important;
     /* Safe area top on notched phones */
-    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px)) !important;
   }
 
   /* Back arrow: visible and properly sized */

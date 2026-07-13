@@ -398,10 +398,11 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             </button>
             <div class="chat-recipient-avatar" id="chat-recipient-avatar"></div>
-            <div class="chat-recipient-info" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center;">
-              <h4 id="chat-recipient-name" style="margin: 0; line-height: 1.2;">Recipient Name</h4>
+            <div class="chat-recipient-info" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; flex: 1; min-width: 0;">
+              <h4 id="chat-recipient-name" style="margin: 0; line-height: 1.2; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Recipient Name</h4>
               <div id="chat-recipient-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; display: none;"></div>
-              <p id="chat-recipient-headline" style="margin: 0; margin-top: 2px;">Recipient Headline details</p>
+              <p id="chat-recipient-headline" style="margin: 0; margin-top: 2px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Recipient Headline details</p>
+              <div id="chat-recipient-badges" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;"></div>
             </div>
             <div class="chat-header-actions" id="chat-header-actions">
               <!-- Toggle Profile button and rendered inquiries will go here -->

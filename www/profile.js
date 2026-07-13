@@ -270,6 +270,73 @@
         });
       }
 
+      const ddBlock = document.getElementById('dropdown-block-btn');
+      const blockUserModal = document.getElementById('block-user-modal');
+      const blockConfirmBtn = document.getElementById('block-user-modal-confirm');
+      const blockCancelBtn = document.getElementById('block-user-modal-cancel');
+
+      function closeBlockModal() {
+        if (blockUserModal) {
+          blockUserModal.classList.remove('active');
+          blockUserModal.style.display = 'none';
+        }
+        document.body.style.overflow = 'auto';
+      }
+
+      if (blockCancelBtn) blockCancelBtn.addEventListener('click', closeBlockModal);
+      if (blockUserModal) {
+        blockUserModal.addEventListener('click', (e) => {
+          if (e.target === blockUserModal) closeBlockModal();
+        });
+      }
+
+      if (ddBlock) {
+        ddBlock.addEventListener('click', () => {
+          closeDropdown();
+          if (!currentUser) {
+            showToast('You must be logged in to block a user.', 'error');
+            return;
+          }
+          if (isOwner) {
+            showToast('You cannot block yourself.', 'error');
+            return;
+          }
+          if (blockUserModal) {
+            blockUserModal.classList.add('active');
+            blockUserModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+          }
+        });
+      }
+
+      if (blockConfirmBtn) {
+        blockConfirmBtn.addEventListener('click', async () => {
+          const sb = getSupabase();
+          if (!sb) return;
+
+          blockConfirmBtn.disabled = true;
+          blockConfirmBtn.textContent = 'Blocking...';
+
+          try {
+            const { error } = await sb.from('user_blocks').insert({
+              blocker_id: currentUser.id,
+              blocked_id: profileId
+            });
+            if (error) throw error;
+            showToast('User blocked successfully.');
+            closeBlockModal();
+            setTimeout(() => {
+              window.location.href = 'index.html';
+            }, 1000);
+          } catch (err) {
+            console.error('Failed to block user:', err);
+            showToast('Failed to block user: ' + err.message, 'error');
+            blockConfirmBtn.disabled = false;
+            blockConfirmBtn.textContent = 'Block Account';
+          }
+        });
+      }
+
       if (reportUserForm) {
         reportUserForm.addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -679,6 +746,8 @@
     if (ddConnectBtn) ddConnectBtn.style.display = isVisitor ? 'flex' : 'none';
     if (ddFollowBtn) ddFollowBtn.style.display = isVisitor ? 'flex' : 'none';
     if (ddReportBtn) ddReportBtn.style.display = isVisitor ? 'flex' : 'none';
+    const ddBlockBtn = document.getElementById('dropdown-block-btn');
+    if (ddBlockBtn) ddBlockBtn.style.display = isVisitor ? 'flex' : 'none';
     if (shareBtn) shareBtn.style.display = isOwner ? 'inline-flex' : 'none';
 
     // Message Button display
