@@ -143,6 +143,19 @@ CREATE POLICY sender_modify_messages ON messages
   );
 
 
+-- Senders can delete their own messages, and Conversation Owners can delete any message in the conversation
+CREATE POLICY member_delete_messages ON messages
+  FOR DELETE
+  USING (
+    sender_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM conversations 
+      WHERE conversations.id = messages.conversation_id 
+        AND (conversations.created_by = auth.uid() OR conversations.initiator_id = auth.uid())
+    )
+  );
+
+
 -- ==========================================
 -- 4. POLICIES FOR message_reads, message_reactions, message_mentions
 -- ==========================================

@@ -18,6 +18,10 @@
   let conversationSearchQuery = '';
   let realtimeChannelMessages = null;
   let realtimeChannelConversations = null;
+  let replyingToMessageId = null;
+  let forwardingMessageId = null;
+  let selectedMobileMessageId = null;
+  let selectedMobileRowEl = null;
 
   // DOM Elements
   const conversationList = document.getElementById('conversation-list');
@@ -186,6 +190,7 @@
             sender_id,
             created_at,
             read_status,
+            parent_message_id,
             sender:profiles!sender_id (
               id,
               full_name,
@@ -392,7 +397,11 @@
       // Avatar setup
       let avatarHtml = '';
       if (other.isGroup) {
-        avatarHtml = `<div class="conversation-avatar" style="background: var(--primary-light); color: var(--primary); font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border-radius: 50%;">👥</div>`;
+        if (other.avatarUrl) {
+          avatarHtml = `<div class="conversation-avatar" style="background-image: url('${other.avatarUrl}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
+        } else {
+          avatarHtml = `<div class="conversation-avatar" style="background: var(--primary-light); color: var(--primary); font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border-radius: 50%;">👥</div>`;
+        }
       } else if (other.isSchool) {
         if (other.avatarUrl) {
           avatarHtml = `<div class="conversation-avatar" style="background-image: url(${other.avatarUrl}); border-radius:var(--radius-sm);"></div>`;
@@ -527,6 +536,7 @@
 
   // --- Select a Conversation ---
   async function selectConversation(chatId) {
+    if (window.exitMobileSelectionMode) window.exitMobileSelectionMode();
     const sb = getSupabase();
     activeChatId = chatId;
 
@@ -581,9 +591,11 @@
     if (other.isGroup) {
       let avatarHtml = '';
       if (other.avatarUrl) {
-        avatarHtml = `<div class="whatsapp-avatar-image" style="background-image: url('${other.avatarUrl}');"></div>`;
+        avatarHtml = `<div id="group-panel-avatar-img" class="whatsapp-avatar-image" style="background-image: url('${other.avatarUrl}');"></div>
+                      <div id="group-panel-avatar-letter" class="whatsapp-avatar-letter" style="display:none;">👥</div>`;
       } else {
-        avatarHtml = `<div class="whatsapp-avatar-letter">👥</div>`;
+        avatarHtml = `<div id="group-panel-avatar-img" class="whatsapp-avatar-image" style="display:none; background-size: cover; background-position: center; background-repeat: no-repeat;"></div>
+                      <div id="group-panel-avatar-letter" class="whatsapp-avatar-letter">👥</div>`;
       }
 
       contentHtml = `
@@ -598,10 +610,10 @@
         </div>
 
         <!-- WhatsApp Scroll Container -->
-        <div class="whatsapp-scroll-content" style="background:#f0f2f5; flex:1; overflow-y:auto; display:flex; flex-direction:column; padding-bottom:30px;">
+        <div class="whatsapp-scroll-content" style="background:var(--light-bg); flex:1; overflow-y:auto; display:flex; flex-direction:column; padding-bottom:30px;">
           
           <!-- Hero Section: Group Picture, Title, Subtitle -->
-          <div class="whatsapp-card" style="background:#ffffff; padding: 28px 16px 20px; text-align:center; box-shadow:0 1px 2px rgba(11,20,26,0.08);">
+          <div class="whatsapp-card" style="background:var(--white); padding: 28px 16px 20px; text-align:center; box-shadow:0 1px 2px var(--border-color);">
             <div class="whatsapp-avatar-container" style="position:relative; width:120px; height:120px; margin:0 auto 16px; cursor:pointer; border-radius:50%; overflow:hidden;" id="group-avatar-container" onclick="triggerGroupAvatarUpload('${other.id}')">
               ${avatarHtml}
               <div class="avatar-edit-overlay" id="group-avatar-edit-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
@@ -610,55 +622,55 @@
               <input type="file" id="group-avatar-file-input-${other.id}" style="display:none;" accept="image/*" onchange="handleGroupAvatarUpload('${other.id}', this.files)">
             </div>
             
-            <h2 class="whatsapp-group-title" style="font-size:1.45rem; font-weight:700; color:#111b21; margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <h2 class="whatsapp-group-title" style="font-size:1.45rem; font-weight:700; color:var(--text-main); margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
               <span id="group-panel-name-text">${other.name}</span>
               <button id="btn-edit-group-name" class="btn-whatsapp-edit" style="display:none; background:none; border:none; cursor:pointer; padding:4px;" onclick="editGroupName('${other.id}')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#667781" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
             </h2>
-            <p style="font-size:0.88rem; color:#667781; margin:6px 0 0;" id="group-panel-header-count">Group · Loading...</p>
+            <p style="font-size:0.88rem; color:var(--text-muted); margin:6px 0 0;" id="group-panel-header-count">Group · Loading...</p>
           </div>
-
+          
           <!-- Divider -->
-          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+          <div class="whatsapp-divider" style="height:12px; background:var(--light-bg); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color);"></div>
 
           <!-- Description Section -->
-          <div class="whatsapp-card" style="background:#ffffff; padding:16px; display:flex; flex-direction:column; gap:4px; box-shadow:0 1px 2px rgba(11,20,26,0.08);">
+          <div class="whatsapp-card" style="background:var(--white); padding:16px; display:flex; flex-direction:column; gap:4px; box-shadow:0 1px 2px var(--border-color);">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-              <span style="font-size:0.88rem; color:#667781; font-weight:500;">Group description</span>
+              <span style="font-size:0.88rem; color:var(--text-muted); font-weight:500;">Group description</span>
               <button id="btn-edit-group-desc" class="btn-whatsapp-edit" style="display:none; background:none; border:none; cursor:pointer; padding:4px;" onclick="editGroupDescription('${other.id}')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#667781" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
             </div>
-            <div id="group-panel-desc-text" style="font-size:0.95rem; color:#111b21; line-height:1.4; margin-top:2px;">
+            <div id="group-panel-desc-text" style="font-size:0.95rem; color:var(--text-main); line-height:1.4; margin-top:2px;">
               ${other.description || 'Add group description'}
             </div>
           </div>
 
           <!-- Divider -->
-          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+          <div class="whatsapp-divider" style="height:12px; background:var(--light-bg); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color);"></div>
 
           <!-- Settings Option Row -->
-          <div class="whatsapp-card" id="group-panel-settings-section" style="display:none; background:#ffffff; box-shadow:0 1px 2px rgba(11,20,26,0.08); padding:0 16px;">
+          <div class="whatsapp-card" id="group-panel-settings-section" style="display:none; background:var(--white); box-shadow:0 1px 2px var(--border-color); padding:0 16px;">
             <details style="width:100%; border:none; padding:16px 0;">
-              <summary style="font-size:0.95rem; color:#111b21; font-weight:500; display:flex; justify-content:space-between; align-items:center; outline:none; list-style:none; cursor:pointer;">
+              <summary style="font-size:0.95rem; color:var(--text-main); font-weight:500; display:flex; justify-content:space-between; align-items:center; outline:none; list-style:none; cursor:pointer;">
                 <div style="display:flex; align-items:center; gap:16px;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#667781" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                   <span>Group settings</span>
                 </div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#667781" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
               </summary>
-              <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px; padding-left:36px; border-top:1px solid #e9edef; padding-top:16px;">
+              <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px; padding-left:36px; border-top:1px solid var(--border-color); padding-top:16px;">
                 <div>
-                  <label style="display:block; font-size:0.85rem; font-weight:600; color:#111b21; margin-bottom:6px;">Who can send messages</label>
-                  <select id="setting-send-messages-${other.id}" style="width:100%; padding:8px 12px; font-size:0.88rem; border-radius:8px; border:1px solid #e9edef; outline:none; background:#f0f2f5; color:#111b21;" onchange="updateGroupSetting('${other.id}', 'send_messages_threshold', this.value)">
+                  <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-main); margin-bottom:6px;">Who can send messages</label>
+                  <select id="setting-send-messages-${other.id}" style="width:100%; padding:8px 12px; font-size:0.88rem; border-radius:8px; border:1px solid var(--border-color); outline:none; background:var(--light-bg); color:var(--text-main);" onchange="updateGroupSetting('${other.id}', 'send_messages_threshold', this.value)">
                     <option value="Everyone">All Participants</option>
                     <option value="Admin">Only Admins</option>
                   </select>
                 </div>
                 <div>
-                  <label style="display:block; font-size:0.85rem; font-weight:600; color:#111b21; margin-bottom:6px;">Who can edit group info</label>
-                  <select id="setting-edit-info-${other.id}" style="width:100%; padding:8px 12px; font-size:0.88rem; border-radius:8px; border:1px solid #e9edef; outline:none; background:#f0f2f5; color:#111b21;" onchange="updateGroupSetting('${other.id}', 'edit_info_threshold', this.value)">
+                  <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-main); margin-bottom:6px;">Who can edit group info</label>
+                  <select id="setting-edit-info-${other.id}" style="width:100%; padding:8px 12px; font-size:0.88rem; border-radius:8px; border:1px solid var(--border-color); outline:none; background:var(--light-bg); color:var(--text-main);" onchange="updateGroupSetting('${other.id}', 'edit_info_threshold', this.value)">
                     <option value="Everyone">All Participants</option>
                     <option value="Admin">Only Admins</option>
                   </select>
@@ -668,12 +680,12 @@
           </div>
 
           <!-- Divider -->
-          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+          <div class="whatsapp-divider" style="height:12px; background:var(--light-bg); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color);"></div>
 
           <!-- Participants List Card -->
-          <div class="whatsapp-card" style="background:#ffffff; box-shadow:0 1px 2px rgba(11,20,26,0.08); padding: 16px 16px 8px;">
+          <div class="whatsapp-card" style="background:var(--white); box-shadow:0 1px 2px var(--border-color); padding: 16px 16px 8px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-              <span id="group-panel-member-count" style="font-size:0.95rem; font-weight:600; color:#111b21;">Participants</span>
+              <span id="group-panel-member-count" style="font-size:0.95rem; font-weight:600; color:var(--text-main);">Participants</span>
             </div>
             
             <div style="display:flex; flex-direction:column; gap:6px;">
@@ -688,7 +700,7 @@
               </div>
 
               <!-- Invite via Link Row -->
-              <div style="display:flex; align-items:center; gap:16px; padding:10px 0; cursor:pointer; border-bottom:1px solid #f0f2f5;" onclick="copyGroupInviteLink('${other.id}')">
+              <div style="display:flex; align-items:center; gap:16px; padding:10px 0; cursor:pointer; border-bottom:1px solid var(--border-color);" onclick="copyGroupInviteLink('${other.id}')">
                 <div style="width:40px; height:40px; border-radius:50%; background:var(--primary); color:#ffffff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
                 </div>
@@ -699,16 +711,16 @@
 
               <!-- Real members injected here -->
               <div id="group-panel-members-list" style="display:flex; flex-direction:column; overflow-y:auto; max-height:350px; margin-top:8px;">
-                <div style="text-align:center; padding:12px; color:#8696a0; font-size:0.88rem;">Loading participants...</div>
+                <div style="text-align:center; padding:12px; color:var(--text-muted); font-size:0.88rem;">Loading participants...</div>
               </div>
             </div>
           </div>
 
           <!-- Divider -->
-          <div class="whatsapp-divider" style="height:12px; background:#f0f2f5; border-top:1px solid rgba(11,20,26,0.08); border-bottom:1px solid rgba(11,20,26,0.08);"></div>
+          <div class="whatsapp-divider" style="height:12px; background:var(--light-bg); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color);"></div>
 
           <!-- Exit / Block Group Rows (WhatsApp style) -->
-          <div class="whatsapp-card" style="background:#ffffff; box-shadow:0 1px 2px rgba(11,20,26,0.08); padding:0 16px;">
+          <div class="whatsapp-card" style="background:var(--white); box-shadow:0 1px 2px var(--border-color); padding:0 16px;">
             <div style="display:flex; align-items:center; gap:16px; padding:16px 0; color:#ea0038; cursor:pointer;" onclick="exitGroup('${other.id}')">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
               <span style="font-size:0.98rem; font-weight:600;">Exit group</span>
@@ -949,14 +961,22 @@
       if (other.isGroup) {
         chatRecipientAvatar.className = 'chat-recipient-avatar';
         chatRecipientAvatar.style.borderRadius = '50%';
-        chatRecipientAvatar.style.background = 'var(--primary-light)';
-        chatRecipientAvatar.style.color = 'var(--primary)';
-        chatRecipientAvatar.style.display = 'flex';
-        chatRecipientAvatar.style.alignItems = 'center';
-        chatRecipientAvatar.style.justifyContent = 'center';
-        chatRecipientAvatar.style.fontSize = '1.25rem';
-        chatRecipientAvatar.textContent = '👥';
-        chatRecipientAvatar.style.backgroundImage = 'none';
+        if (other.avatarUrl) {
+          chatRecipientAvatar.style.backgroundImage = `url('${other.avatarUrl}')`;
+          chatRecipientAvatar.style.backgroundSize = 'cover';
+          chatRecipientAvatar.style.backgroundPosition = 'center';
+          chatRecipientAvatar.textContent = '';
+          chatRecipientAvatar.style.backgroundColor = 'transparent';
+        } else {
+          chatRecipientAvatar.style.background = 'var(--primary-light)';
+          chatRecipientAvatar.style.color = 'var(--primary)';
+          chatRecipientAvatar.style.display = 'flex';
+          chatRecipientAvatar.style.alignItems = 'center';
+          chatRecipientAvatar.style.justifyContent = 'center';
+          chatRecipientAvatar.style.fontSize = '1.25rem';
+          chatRecipientAvatar.textContent = '👥';
+          chatRecipientAvatar.style.backgroundImage = 'none';
+        }
       } else if (other.isSchool) {
         if (other.avatarUrl) {
           chatRecipientAvatar.className = 'chat-recipient-avatar';
@@ -1161,6 +1181,8 @@
 
       // Bubble layout
       const isSent = msg.sender_id === currentUser.id;
+      const isConvOwner = activeConv && (activeConv.created_by === currentUser.id || activeConv.initiator_id === currentUser.id);
+      const canDelete = isSent || isConvOwner;
       
       // Determine if we need to show sender name (Group chats received messages)
       let senderNameHtml = '';
@@ -1191,6 +1213,7 @@
       }
 
       const row = document.createElement('div');
+      row.id = `msg-${msg.id}`;
       row.className = `message-bubble-row ${isSent ? 'sent' : 'received'}`;
 
       const timeStr = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1211,20 +1234,99 @@
         cleanMsg = cleanMsg.substring(cleanMsg.indexOf(']') + 2);
       }
 
+      const starredKey = `starred_messages_${currentUser.id}`;
+      let starredIds = [];
+      try {
+        starredIds = JSON.parse(localStorage.getItem(starredKey)) || [];
+      } catch (e) {
+        starredIds = [];
+      }
+      const isStarred = starredIds.includes(msg.id);
+      const starText = isStarred ? 'Unstar' : 'Star';
+
+      let replyQuoteHtml = '';
+      if (msg.parent_message_id) {
+        const parentMsg = messages.find(m => m.id === msg.parent_message_id);
+        if (parentMsg) {
+          let parentSenderName = 'Someone';
+          if (parentMsg.sender_id === currentUser.id) {
+            parentSenderName = 'You';
+          } else if (parentMsg.sender) {
+            parentSenderName = parentMsg.sender.full_name || 'Member';
+          } else if (activeConv && activeConv.conversation_participants) {
+            const p = activeConv.conversation_participants.find(cp => cp.profile && cp.profile.id === parentMsg.sender_id);
+            if (p && p.profile) parentSenderName = p.profile.full_name || 'Member';
+          }
+
+          let parentText = parentMsg.message || '';
+          if (parentText.startsWith('[Inquiry:')) {
+            parentText = parentText.substring(parentText.indexOf(']') + 2);
+          }
+          if (parentText.length > 60) parentText = parentText.substring(0, 60) + '...';
+
+          replyQuoteHtml = isSent
+            ? `
+              <div class="message-reply-quote" onclick="scrollToMessage('${msg.parent_message_id}')" style="background: rgba(255,255,255,0.18); border-left: 3px solid rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; font-size: 0.78rem; cursor: pointer; display: flex; flex-direction: column;">
+                <span style="font-weight: 700; color: rgba(255,255,255,0.95); font-size: 0.72rem;">${parentSenderName}</span>
+                <span style="color: rgba(255,255,255,0.8); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">${parentText}</span>
+              </div>
+            `
+            : `
+              <div class="message-reply-quote" onclick="scrollToMessage('${msg.parent_message_id}')" style="background: rgba(37,99,235,0.08); border-left: 3px solid var(--primary); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; font-size: 0.78rem; cursor: pointer; display: flex; flex-direction: column;">
+                <span style="font-weight: 700; color: var(--primary); font-size: 0.72rem;">${parentSenderName}</span>
+                <span style="color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">${parentText}</span>
+              </div>
+            `;
+        }
+      }
+
+      const starIndicatorHtml = isStarred ? `
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#D97706" stroke="#D97706" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      ` : '';
+
       row.innerHTML = `
         <div class="message-bubble-wrapper" style="position: relative;">
           <div class="message-bubble" style="position: relative; padding-right: 32px;">
             ${senderNameHtml}
-            <span class="message-text-content">${cleanMsg}</span>
-            <button class="message-options-btn" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 4px; cursor: pointer; color: inherit; opacity: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; line-height: 1; border-radius: 50%; transition: opacity 0.2s;" onclick="toggleMessageMenu(event, '${msg.id}')">
-              ⋮
+            ${replyQuoteHtml}
+            <span class="message-text-content">${linkifyText(cleanMsg)}</span>
+            <button class="message-options-btn" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; width: 24px; height: 24px; cursor: pointer; color: inherit; opacity: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; transition: opacity 0.2s, background-color 0.2s;" onclick="toggleMessageMenu(event, '${msg.id}')" aria-label="Message options">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
-            <div id="menu-${msg.id}" class="message-dropdown-menu" style="display: none; position: absolute; right: 0; top: 100%; background: var(--white); border: 1px solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); z-index: 99; min-width: 100px; padding: 4px 0;">
-              <a href="#" style="display: block; padding: 8px 12px; font-size: 0.8rem; color: var(--text-main); text-decoration: none;" onclick="copyMessageText(event, '${msg.id}')">Copy</a>
-              ${isSent ? `<a href="#" style="display: block; padding: 8px 12px; font-size: 0.8rem; color: #EF4444; text-decoration: none;" onclick="deleteMessage(event, '${msg.id}')">Delete</a>` : ''}
+            <div id="menu-${msg.id}" class="message-dropdown-menu" style="display: none; position: absolute; right: 0; top: 100%; background: var(--white); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 99; min-width: 130px; padding: 4px 0;">
+              <a href="#" style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 0.8rem; color: var(--text-main); text-decoration: none; transition: background 0.15s;" onclick="copyMessageText(event, '${msg.id}', this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.7; flex-shrink: 0;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span>Copy</span>
+              </a>
+              <a href="#" style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 0.8rem; color: var(--text-main); text-decoration: none; transition: background 0.15s;" onclick="replyToMessage(event, '${msg.id}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.7; flex-shrink: 0;"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                <span>Reply</span>
+              </a>
+              <a href="#" style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 0.8rem; color: var(--text-main); text-decoration: none; transition: background 0.15s;" onclick="openForwardModal(event, '${msg.id}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.7; flex-shrink: 0;"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>
+                <span>Forward</span>
+              </a>
+              <a href="#" style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 0.8rem; color: var(--text-main); text-decoration: none; transition: background 0.15s;" onclick="toggleStarMessage(event, '${msg.id}')">
+                ${isStarred 
+                  ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #D97706; flex-shrink: 0;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`
+                  : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.7; flex-shrink: 0;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`
+                }
+                <span>${starText}</span>
+              </a>
+              <a href="#" style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 0.8rem; color: var(--text-main); text-decoration: none; transition: background 0.15s;" onclick="showMessageInfo(event, '${msg.id}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.7; flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span>Info</span>
+              </a>
+              ${canDelete ? `
+                <a href="#" style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 0.8rem; color: #EF4444; text-decoration: none; transition: background 0.15s;" onclick="deleteMessage(event, '${msg.id}')">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  <span>Delete</span>
+                </a>
+              ` : ''}
             </div>
           </div>
           <div class="message-time-meta">
+            ${starIndicatorHtml}
             <span>${timeStr}</span>
             ${ticksHtml}
           </div>
@@ -1232,6 +1334,44 @@
       `;
 
       messageHistory.appendChild(row);
+
+      // Async: inject link preview if message contains a URL
+      const msgUrl = extractFirstUrl(cleanMsg);
+      if (msgUrl) {
+        (async () => {
+          let preview = _previewCache[msgUrl];
+          if (!preview) {
+            preview = await buildMessageLinkPreviewHtml(msgUrl);
+            if (preview) _previewCache[msgUrl] = preview;
+          }
+          if (preview) injectLinkPreviewIntoRow(row, preview, isSent);
+        })();
+      }
+
+      // Mobile long-press selection event listeners
+      const bubble = row.querySelector('.message-bubble');
+      if (bubble) {
+        let pressTimer = null;
+        const startPress = (e) => {
+          if (window.innerWidth > 768) return;
+          pressTimer = setTimeout(() => {
+            selectMessageForMobileActions(msg.id, row);
+          }, 500);
+        };
+
+        const cancelPress = () => {
+          clearTimeout(pressTimer);
+        };
+
+        bubble.addEventListener('touchstart', startPress);
+        bubble.addEventListener('touchend', cancelPress);
+        bubble.addEventListener('touchmove', cancelPress);
+
+        bubble.addEventListener('mousedown', startPress);
+        bubble.addEventListener('mouseup', cancelPress);
+        bubble.addEventListener('mouseleave', cancelPress);
+        bubble.addEventListener('mousemove', cancelPress);
+      }
     });
 
     // Scroll to bottom
@@ -1579,7 +1719,9 @@
             // Clear datasets, reload conversations, and activate chat
             delete chatSendForm.dataset.newChatRecipient;
             chatMessageInput.value = '';
-            
+            dismissLinkPreview();
+            _linkPreviewDismissed = false; _lastPreviewUrl = null;
+
             showToast(convStatus === 'accepted' ? 'Message sent!' : 'Message request sent!');
             activeChatId = conv.id;
             await loadConversations();
@@ -1598,6 +1740,9 @@
               message: messageText,
               read_status: false
             };
+            if (replyingToMessageId) {
+              msgPayload.parent_message_id = replyingToMessageId;
+            }
 
             let notificationRecipientId = null;
 
@@ -1606,7 +1751,6 @@
               msgPayload.receiver_school_id = null;
             } else if (other.isSchool) {
               msgPayload.receiver_school_id = other.id;
-              // Fetch the admin user ID of the school to trigger notifications, but do NOT insert it as receiver_id in messages table
               const { data: sch } = await sb.from('schools').select('admin_user_id').eq('id', other.id).maybeSingle();
               notificationRecipientId = sch?.admin_user_id || null;
             } else {
@@ -1619,6 +1763,8 @@
               .insert(msgPayload);
 
             if (msgError) throw msgError;
+
+            cancelReply();
 
             console.log('Message created successfully (Scenario B):', msgPayload);
 
@@ -1681,6 +1827,9 @@
               .eq('id', activeChatId);
 
             chatMessageInput.value = '';
+            dismissLinkPreview();
+            _linkPreviewDismissed = false; _lastPreviewUrl = null;
+
           }
         } catch (err) {
           console.error('Failed to send message:', err);
@@ -1698,6 +1847,34 @@
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             chatSendForm.dispatchEvent(new Event('submit'));
+          }
+        });
+
+        // Detect URLs while typing and show link preview
+        chatMessageInput.addEventListener('input', () => {
+          const text = chatMessageInput.value;
+          const url = extractFirstUrl(text);
+          if (!url) {
+            _linkPreviewDismissed = false;
+            _lastPreviewUrl = null;
+            const container = document.getElementById('link-preview-container');
+            if (container) container.style.display = 'none';
+            return;
+          }
+          if (url === _lastPreviewUrl || _linkPreviewDismissed) return;
+          clearTimeout(_linkPreviewDebounce);
+          _linkPreviewDebounce = setTimeout(async () => {
+            _lastPreviewUrl = url;
+            const data = await fetchLinkPreview(url);
+            if (data && !_linkPreviewDismissed) showInputLinkPreview(data, url);
+          }, 700);
+        });
+
+        // Reset dismiss flag when input cleared
+        chatMessageInput.addEventListener('input', () => {
+          if (!chatMessageInput.value.trim()) {
+            _linkPreviewDismissed = false;
+            _lastPreviewUrl = null;
           }
         });
       }
@@ -1791,6 +1968,13 @@
   // ── Message Bubble Dropdown Options ──
   window.toggleMessageMenu = function(event, msgId) {
     event.stopPropagation();
+    if (window.innerWidth <= 768) {
+      const rowEl = document.getElementById(`msg-${msgId}`);
+      if (rowEl) {
+        selectMessageForMobileActions(msgId, rowEl);
+      }
+      return;
+    }
     // Close any other open message menus first
     document.querySelectorAll('.message-dropdown-menu').forEach(m => {
       if (m.id !== 'menu-' + msgId) m.style.display = 'none';
@@ -1807,17 +1991,45 @@
     document.querySelectorAll('.message-dropdown-menu').forEach(m => m.style.display = 'none');
   });
 
-  window.copyMessageText = function(event, msgId) {
-    event.preventDefault();
-    event.stopPropagation();
-    const menu = document.getElementById('menu-' + msgId);
-    if (menu) {
-      const bubble = menu.closest('.message-bubble');
+  window.copyMessageText = function(event, msgId, triggerBtn) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const rowEl = document.getElementById(`msg-${msgId}`);
+    if (rowEl) {
+      const bubble = rowEl.querySelector('.message-bubble');
       if (bubble) {
         const textContentSpan = bubble.querySelector('.message-text-content');
         const text = textContentSpan ? textContentSpan.textContent.trim() : bubble.textContent.trim();
         navigator.clipboard.writeText(text).then(() => {
-          showToast('Message copied to clipboard!', 'success');
+          const btn = triggerBtn || document.getElementById('mobile-action-copy');
+          if (btn) {
+            const isLink = btn.tagName === 'A';
+            if (isLink) {
+              // Dropdown link: flash green "✓ Copied" text
+              const originalText = btn.textContent;
+              const originalColor = btn.style.color;
+              btn.textContent = '✓ Copied';
+              btn.style.color = '#22c55e';
+              btn.style.fontWeight = '600';
+              setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.color = originalColor;
+                btn.style.fontWeight = '';
+              }, 1500);
+            } else {
+              // Icon button: swap to green checkmark SVG
+              const originalSvg = btn.innerHTML;
+              btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+              btn.style.transform = 'scale(1.3)';
+              btn.style.transition = 'transform 0.15s ease';
+              setTimeout(() => {
+                btn.innerHTML = originalSvg;
+                btn.style.transform = 'scale(1)';
+              }, 1500);
+            }
+          }
         }).catch(err => {
           console.error('Failed to copy message:', err);
         });
@@ -1826,8 +2038,10 @@
   };
 
   window.deleteMessage = async function(event, msgId) {
-    event.preventDefault();
-    event.stopPropagation();
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     if (!confirm('Are you sure you want to delete this message?')) return;
     
     const sb = getSupabase();
@@ -1855,6 +2069,638 @@
       console.error('Failed to delete message:', err);
       showToast('Failed to delete message: ' + err.message, 'error');
     }
+  };
+
+  window.replyToMessage = function(event, msgId) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const menu = document.getElementById(`menu-${msgId}`);
+    if (menu) menu.style.display = 'none';
+
+    if (!activeConv) return;
+    const msg = activeConv.messages.find(m => m.id === msgId);
+    if (!msg) return;
+
+    replyingToMessageId = msgId;
+
+    let senderName = 'Someone';
+    if (msg.sender_id === currentUser.id) {
+      senderName = 'You';
+    } else if (msg.sender) {
+      senderName = msg.sender.full_name || 'Member';
+    } else if (activeConv.conversation_participants) {
+      const p = activeConv.conversation_participants.find(cp => cp.profile && cp.profile.id === msg.sender_id);
+      if (p && p.profile) senderName = p.profile.full_name || 'Member';
+    }
+
+    let cleanMsg = msg.message;
+    if (cleanMsg.startsWith('[Inquiry:')) {
+      cleanMsg = cleanMsg.substring(cleanMsg.indexOf(']') + 2);
+    }
+
+    const replyContainer = document.getElementById('reply-preview-container');
+    const replySender = document.getElementById('reply-preview-sender');
+    const replyText = document.getElementById('reply-preview-text');
+
+    if (replyContainer && replySender && replyText) {
+      replySender.textContent = senderName;
+      replyText.textContent = cleanMsg;
+      replyContainer.style.display = 'flex';
+    }
+
+    if (chatMessageInput) {
+      chatMessageInput.focus();
+    }
+  };
+
+  window.cancelReply = function() {
+    replyingToMessageId = null;
+    const replyContainer = document.getElementById('reply-preview-container');
+    if (replyContainer) {
+      replyContainer.style.display = 'none';
+    }
+  };
+
+  // ── Link Preview Feature ─────────────────────────────────────────────────
+  let _linkPreviewDebounce = null;
+  let _linkPreviewDismissed = false;
+  let _lastPreviewUrl = null;
+
+  // Normalise a raw URL match to a full href (add https:// if missing)
+  function normaliseUrl(raw) {
+    return /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
+  }
+
+  // Regex that matches: https://... | http://... | www.foo.bar | foo.com/... | foo.org
+  const URL_REGEX = /(https?:\/\/[^\s<>"']+|(?:www\.)[^\s<>"']+|[a-zA-Z0-9][a-zA-Z0-9-]*\.(?:com|org|net|io|edu|gov|co|app|dev|in|uk|de|fr|au|ca|us|info|biz|me|tv|ai|tech|online|site|blog|store|shop|news|pk|ae|sa)(?:\/[^\s<>"']*)?)/gi;
+
+  // Convert plain URLs in text to clickable <a> tags
+  function linkifyText(text) {
+    URL_REGEX.lastIndex = 0;
+    return text.replace(URL_REGEX, (raw) => {
+      const href = normaliseUrl(raw);
+      const display = raw.length > 50 ? raw.substring(0, 47) + '...' : raw;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline; word-break: break-all;" onclick="event.stopPropagation();">${display}</a>`;
+    });
+  }
+
+  // Extract first URL from text and return as a full https:// URL
+  function extractFirstUrl(text) {
+    URL_REGEX.lastIndex = 0;
+    const match = URL_REGEX.exec(text);
+    return match ? normaliseUrl(match[0]) : null;
+  }
+
+  // Fetch OG / metadata for a URL via microlink.io (free, CORS-enabled)
+  async function fetchLinkPreview(url) {
+    try {
+      const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (json.status !== 'success') return null;
+      return json.data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Show link preview card above the input
+  function showInputLinkPreview(data, url) {
+    const container = document.getElementById('link-preview-container');
+    const card = document.getElementById('link-preview-card');
+    if (!container || !card) return;
+    const img = data.image?.url || data.logo?.url || '';
+    const title = data.title || url;
+    const desc = data.description ? data.description.substring(0, 100) + (data.description.length > 100 ? '…' : '') : '';
+    const site = data.publisher || new URL(url).hostname;
+    card.innerHTML = `
+      ${img ? `<img src="${img}" alt="" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;">` : ''}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:0.72rem;color:var(--primary);font-weight:600;margin-bottom:2px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${site}</div>
+        <div style="font-size:0.82rem;font-weight:700;color:var(--text-main);margin-bottom:3px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${title}</div>
+        ${desc ? `<div style="font-size:0.75rem;color:var(--text-muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${desc}</div>` : ''}
+      </div>
+    `;
+    container.style.display = 'flex';
+  }
+
+  window.dismissLinkPreview = function() {
+    _linkPreviewDismissed = true;
+    const container = document.getElementById('link-preview-container');
+    if (container) container.style.display = 'none';
+  };
+
+  // Build inline link-preview card HTML for a message (shown below message text)
+  async function buildMessageLinkPreviewHtml(url) {
+    const data = await fetchLinkPreview(url);
+    if (!data) return null;
+    const img = data.image?.url || data.logo?.url || '';
+    const title = data.title || url;
+    const desc = data.description ? data.description.substring(0, 120) + (data.description.length > 120 ? '…' : '') : '';
+    const site = data.publisher || new URL(url).hostname;
+    return { img, title, desc, site, url };
+  }
+
+  // Cache for fetched previews to avoid re-fetching on re-render
+  const _previewCache = {};
+
+  // Inject a link preview card into an existing rendered message row
+  function injectLinkPreviewIntoRow(rowEl, previewData, isSent) {
+    const existingPreview = rowEl.querySelector('.msg-link-preview');
+    if (existingPreview) return; // already injected
+    const bubble = rowEl.querySelector('.message-bubble');
+    if (!bubble) return;
+    const { img, title, desc, site, url } = previewData;
+    const bgColor     = isSent ? 'rgba(255,255,255,0.15)' : 'var(--light-bg)';
+    const borderColor = isSent ? 'rgba(255,255,255,0.4)'  : 'var(--border-color)';
+    const titleColor  = isSent ? 'rgba(255,255,255,0.95)' : 'var(--text-main)';
+    const descColor   = isSent ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)';
+    const siteColor   = isSent ? 'rgba(255,255,255,0.6)'  : 'var(--primary)';
+    const urlColor    = isSent ? 'rgba(255,255,255,0.7)'  : 'var(--primary)';
+
+    const previewEl = document.createElement('a');
+    previewEl.href = url;
+    previewEl.target = '_blank';
+    previewEl.rel = 'noopener noreferrer';
+    previewEl.className = 'msg-link-preview';
+    previewEl.style.cssText = `display:block;text-decoration:none;background:${bgColor};border:1px solid ${borderColor};border-radius:8px;overflow:hidden;margin-bottom:6px;cursor:pointer;`;
+    previewEl.innerHTML = `
+      ${img ? `<img src="${img}" alt="" style="width:100%;max-height:160px;object-fit:cover;display:block;">` : ''}
+      <div style="padding:8px 10px;">
+        <div style="font-size:0.68rem;color:${siteColor};font-weight:600;margin-bottom:2px;">${site}</div>
+        <div style="font-size:0.82rem;font-weight:700;color:${titleColor};margin-bottom:3px;line-height:1.3;">${title}</div>
+        ${desc ? `<div style="font-size:0.72rem;color:${descColor};line-height:1.4;margin-bottom:4px;">${desc}</div>` : ''}
+        <div style="font-size:0.68rem;color:${urlColor};margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${url}</div>
+      </div>
+    `;
+    previewEl.addEventListener('click', e => e.stopPropagation());
+
+    // WhatsApp style: card goes BEFORE the message text span
+    // so layout is: [preview card] → [URL text below]
+    const textSpan = bubble.querySelector('.message-text-content');
+    if (textSpan) {
+      bubble.insertBefore(previewEl, textSpan);
+      // Make the raw URL text below appear smaller and muted
+      textSpan.style.cssText = `font-size:0.78rem;color:${urlColor};display:block;margin-top:2px;word-break:break-all;`;
+    } else {
+      const optionsBtn = bubble.querySelector('.message-options-btn');
+      if (optionsBtn) bubble.insertBefore(previewEl, optionsBtn);
+      else bubble.appendChild(previewEl);
+    }
+  }
+
+
+
+  window.toggleStarMessage = function(event, msgId) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const menu = document.getElementById(`menu-${msgId}`);
+    if (menu) menu.style.display = 'none';
+
+    const starredKey = `starred_messages_${currentUser.id}`;
+    let starredIds = [];
+    try {
+      starredIds = JSON.parse(localStorage.getItem(starredKey)) || [];
+    } catch (e) {
+      starredIds = [];
+    }
+
+    const idx = starredIds.indexOf(msgId);
+    if (idx > -1) {
+      starredIds.splice(idx, 1);
+      showToast('Message unstarred', 'info');
+    } else {
+      starredIds.push(msgId);
+      showToast('Message starred', 'success');
+    }
+
+    localStorage.setItem(starredKey, JSON.stringify(starredIds));
+
+    if (activeConv) {
+      renderMessageHistory(activeConv.messages);
+    }
+  };
+
+  window.showMessageInfo = function(event, msgId) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const menu = document.getElementById(`menu-${msgId}`);
+    if (menu) menu.style.display = 'none';
+
+    if (!activeConv) return;
+    const msg = activeConv.messages?.find(m => m.id === msgId);
+    if (!msg) return;
+
+    const isSentByMe = msg.sender_id === currentUser?.id;
+
+    const msgDate = new Date(msg.created_at);
+    const dateStr = msgDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const timeStr = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Participant stats (for group or DM)
+    const participants = (activeConv.conversation_participants || []).filter(p => p.profile?.id !== currentUser?.id);
+    const total = participants.length || 1;
+    // For now use read_status as proxy for "seen by recipient";
+    // in a group all we know is the global read_status flag
+    const seenCount  = msg.read_status ? total : 0;
+    const delivCount = total; // always delivered if message exists
+    const pendCount  = total - seenCount;
+    const seenPct    = Math.round((seenCount  / total) * 100);
+    const delivPct   = Math.round((delivCount / total) * 100);
+
+    // Build participant rows for the seen/delivered lists
+    const seenRows = participants.map(p => {
+      const name   = p.profile?.full_name || 'Member';
+      const avatar = p.profile?.avatar_url;
+      const initials = name.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-color);">
+          ${ avatar
+            ? `<div style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;"><img src="${avatar}" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;"></div>`
+            : `<div style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0;">${initials}</div>`
+          }
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.85rem;font-weight:600;color:var(--text-main);">${name}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">${msg.read_status ? 'Seen · ' + timeStr : 'Delivered'}</div>
+          </div>
+          ${ msg.read_status
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+          }
+        </div>
+      `;
+    }).join('');
+
+
+    // Create or reuse the bottom sheet
+    let sheet = document.getElementById('msg-info-sheet');
+    if (!sheet) {
+      sheet = document.createElement('div');
+      sheet.id = 'msg-info-sheet';
+      document.body.appendChild(sheet);
+    }
+
+    sheet.innerHTML = `
+      <!-- Backdrop -->
+      <div id="msg-info-backdrop" onclick="closeMsgInfoSheet()" style="
+        position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;
+        opacity:0;transition:opacity 0.3s ease;
+      "></div>
+      <!-- Sheet -->
+      <div id="msg-info-panel" style="
+        position:fixed;bottom:0;left:0;right:0;
+        background:#fff;border-radius:18px 18px 0 0;
+        box-shadow:0 -4px 32px rgba(0,0,0,0.18);
+        z-index:9999;max-height:80vh;display:flex;flex-direction:column;
+        transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.32,0.72,0,1);
+      ">
+        <!-- Handle bar -->
+        <div style="display:flex;justify-content:center;padding:10px 0 4px;">
+          <div style="width:40px;height:4px;border-radius:2px;background:#d1d5db;"></div>
+        </div>
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 12px;border-bottom:1px solid var(--border-color);">
+          <h3 style="margin:0;font-size:1rem;font-weight:700;color:var(--text-main);">Message Info</h3>
+          <button onclick="closeMsgInfoSheet()" style="background:none;border:none;padding:4px;cursor:pointer;color:var(--text-muted);font-size:1.2rem;line-height:1;">✕</button>
+        </div>
+        <!-- Scrollable body -->
+        <div style="overflow-y:auto;flex:1;padding:0 18px 24px;">
+
+          <!-- Message preview bubble -->
+          <div style="margin:14px 0;padding:10px 14px;background:#f0f7ff;border-left:3px solid var(--primary);border-radius:8px;font-size:0.85rem;color:var(--text-main);line-height:1.5;">
+            ${msg.message.substring(0, 200)}${msg.message.length > 200 ? '…' : ''}
+          </div>
+
+          ${ isSentByMe ? `
+          <!-- Stats row -->
+          <div style="display:flex;gap:12px;margin-bottom:20px;">
+            <!-- Read -->
+            <div style="flex:1;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px 14px;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:800;color:#16a34a;">${seenPct}%</div>
+              <div style="font-size:0.72rem;color:#15803d;font-weight:600;margin-top:2px;">Seen</div>
+              <div style="font-size:0.68rem;color:#4ade80;margin-top:1px;">${seenCount}/${total}</div>
+            </div>
+            <!-- Delivered -->
+            <div style="flex:1;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:800;color:#2563eb;">${delivPct}%</div>
+              <div style="font-size:0.72rem;color:#1d4ed8;font-weight:600;margin-top:2px;">Delivered</div>
+              <div style="font-size:0.68rem;color:#93c5fd;margin-top:1px;">${delivCount}/${total}</div>
+            </div>
+            <!-- Pending -->
+            <div style="flex:1;background:#fafafa;border:1px solid var(--border-color);border-radius:12px;padding:12px 14px;text-align:center;">
+              <div style="font-size:1.5rem;font-weight:800;color:var(--text-muted);">${pendCount}</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;margin-top:2px;">Pending</div>
+              <div style="font-size:0.68rem;color:#d1d5db;margin-top:1px;">not yet</div>
+            </div>
+          </div>
+
+          <!-- Participants list -->
+          ${ participants.length > 0 ? `
+          <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">
+            ${ msg.read_status ? 'Read by' : 'Delivered to' }
+          </div>
+          ${seenRows}
+          ` : '' }
+          ` : `
+          <!-- Received message info -->
+          <div style="text-align:center;padding:16px 0;color:var(--text-muted);font-size:0.85rem;">
+            Received from sender
+          </div>
+          ` }
+
+          <!-- Meta row -->
+          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-color);display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;">
+              <span style="color:var(--text-muted);font-weight:600;">Sent</span>
+              <span style="color:var(--text-main);">${dateStr} · ${timeStr}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;">
+              <span style="color:var(--text-muted);font-weight:600;">Status</span>
+              <span style="color:var(--text-main);">${msg.read_status ? '✓✓ Read' : '✓ Delivered'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Show with animation
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => {
+      const backdrop = document.getElementById('msg-info-backdrop');
+      const panel    = document.getElementById('msg-info-panel');
+      if (backdrop) backdrop.style.opacity = '1';
+      if (panel)    panel.style.transform  = 'translateY(0)';
+    });
+  };
+
+  window.closeMsgInfoSheet = function() {
+    const backdrop = document.getElementById('msg-info-backdrop');
+    const panel    = document.getElementById('msg-info-panel');
+    if (backdrop) backdrop.style.opacity = '0';
+    if (panel)    panel.style.transform  = 'translateY(100%)';
+    setTimeout(() => {
+      const sheet = document.getElementById('msg-info-sheet');
+      if (sheet) sheet.innerHTML = '';
+      document.body.style.overflow = '';
+    }, 380);
+  };
+
+
+  window.openForwardModal = function(event, msgId) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const menu = document.getElementById(`menu-${msgId}`);
+    if (menu) menu.style.display = 'none';
+
+    forwardingMessageId = msgId;
+
+    const modal = document.getElementById('forward-message-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      modal.classList.add('active');
+      setTimeout(() => {
+        modal.style.opacity = '1';
+        modal.style.visibility = 'visible';
+      }, 50);
+    }
+
+    renderForwardChatsList();
+  };
+
+  window.closeForwardModal = function() {
+    forwardingMessageId = null;
+    const modal = document.getElementById('forward-message-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.opacity = '0';
+      modal.style.visibility = 'hidden';
+      setTimeout(() => {
+        modal.style.display = 'none';
+      }, 300);
+    }
+  };
+
+  window.filterForwardChats = function() {
+    const search = document.getElementById('forward-search-input').value.toLowerCase().trim();
+    renderForwardChatsList(search);
+  };
+
+  window.renderForwardChatsList = function(filterText = '') {
+    const listContainer = document.getElementById('forward-chats-list');
+    if (!listContainer) return;
+
+    if (conversations.length === 0) {
+      listContainer.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:0.88rem;">No active chats to forward to.</div>';
+      return;
+    }
+
+    const filtered = conversations.filter(c => {
+      const other = getOtherParticipant(c);
+      return other.name.toLowerCase().includes(filterText);
+    });
+
+    if (filtered.length === 0) {
+      listContainer.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:0.88rem;">No matching chats.</div>';
+      return;
+    }
+
+    listContainer.innerHTML = filtered.map(c => {
+      const other = getOtherParticipant(c);
+      let avatarHtml = '';
+      if (other.isGroup) {
+        avatarHtml = `<div style="width: 36px; height: 36px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; flex-shrink: 0;">👥</div>`;
+      } else if (other.avatarUrl) {
+        avatarHtml = `<div style="width: 36px; height: 36px; border-radius: 50%; background-image: url('${other.avatarUrl}'); background-size: cover; background-position: center; flex-shrink: 0;"></div>`;
+      } else {
+        avatarHtml = `<div style="width: 36px; height: 36px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; flex-shrink: 0;">${other.logoLetter}</div>`;
+      }
+
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1;">
+            ${avatarHtml}
+            <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${other.name}</span>
+          </div>
+          <button class="forward-send-btn" onclick="executeForward('${c.id}')">Send</button>
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.executeForward = async function(targetConvId) {
+    if (!forwardingMessageId) return;
+
+    const sb = getSupabase();
+    if (!sb || !currentUser) return;
+
+    const activeConv = conversations.find(c => c.messages.some(m => m.id === forwardingMessageId));
+    if (!activeConv) {
+      showToast('Message not found', 'error');
+      return;
+    }
+
+    const msg = activeConv.messages.find(m => m.id === forwardingMessageId);
+    if (!msg) return;
+
+    let messageText = msg.message;
+    
+    const targetConv = conversations.find(c => c.id === targetConvId);
+    if (!targetConv) return;
+    const targetOther = getOtherParticipant(targetConv);
+
+    const msgPayload = {
+      conversation_id: targetConvId,
+      sender_id: currentUser.id,
+      message: messageText,
+      read_status: false
+    };
+
+    if (targetOther.isGroup) {
+      msgPayload.receiver_id = null;
+      msgPayload.receiver_school_id = null;
+    } else if (targetOther.isSchool) {
+      msgPayload.receiver_school_id = targetOther.id;
+    } else {
+      msgPayload.receiver_id = targetOther.id;
+    }
+
+    try {
+      const { error } = await sb
+        .from('messages')
+        .insert(msgPayload);
+
+      if (error) throw error;
+
+      showToast('Message forwarded!', 'success');
+      closeForwardModal();
+      await loadConversations();
+    } catch (err) {
+      console.error('Failed to forward message:', err);
+      showToast('Failed to forward message: ' + err.message, 'error');
+    }
+  };
+
+  window.scrollToMessage = function(msgId) {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const bubble = el.querySelector('.message-bubble');
+      if (bubble) {
+        const originalBg = bubble.style.backgroundColor;
+        bubble.style.backgroundColor = '#FEF08A';
+        setTimeout(() => {
+          bubble.style.backgroundColor = originalBg;
+        }, 1500);
+      }
+    }
+  };
+
+  function selectMessageForMobileActions(msgId, rowEl) {
+    try {
+      exitMobileSelectionMode();
+
+      selectedMobileMessageId = msgId;
+      selectedMobileRowEl = rowEl;
+
+      const bubble = rowEl.querySelector('.message-bubble');
+      if (bubble) {
+        bubble.style.backgroundColor = 'rgba(99, 102, 241, 0.12)';
+        bubble.style.border = '1.5px solid var(--primary)';
+      }
+
+      const mobileBar = document.getElementById('mobile-action-bar');
+      if (mobileBar) {
+        mobileBar.style.display = 'flex';
+      }
+
+      const replyBtn = document.getElementById('mobile-action-reply');
+      const starBtn = document.getElementById('mobile-action-star');
+      const copyBtn = document.getElementById('mobile-action-copy');
+      const forwardBtn = document.getElementById('mobile-action-forward');
+      const infoBtn = document.getElementById('mobile-action-info');
+      const deleteBtn = document.getElementById('mobile-action-delete');
+
+      // Find the message defensively
+      let msg = null;
+      if (activeConv && activeConv.messages) {
+        msg = activeConv.messages.find(m => m.id === msgId);
+      }
+      if (!msg && conversations) {
+        for (const c of conversations) {
+          if (c.messages) {
+            msg = c.messages.find(m => m.id === msgId);
+            if (msg) break;
+          }
+        }
+      }
+
+      if (replyBtn) {
+        if (msg) {
+          replyBtn.style.display = 'flex';
+          replyBtn.onclick = (e) => { replyToMessage(e, msgId); exitMobileSelectionMode(); };
+        } else {
+          replyBtn.style.display = 'none';
+        }
+      }
+      
+      const starredKey = currentUser ? `starred_messages_${currentUser.id}` : 'starred_messages_default';
+      let starredIds = [];
+      try {
+        starredIds = JSON.parse(localStorage.getItem(starredKey)) || [];
+      } catch (e) {}
+      const isStarred = starredIds.includes(msgId);
+      if (starBtn) {
+        starBtn.onclick = (e) => { toggleStarMessage(e, msgId); exitMobileSelectionMode(); };
+        const starSvg = starBtn.querySelector('svg');
+        if (starSvg) {
+          starSvg.setAttribute('fill', isStarred ? '#ffffff' : 'none');
+        }
+      }
+
+      if (copyBtn) copyBtn.onclick = (e) => { copyMessageText(e, msgId, copyBtn); setTimeout(() => exitMobileSelectionMode(), 1600); };
+      if (forwardBtn) forwardBtn.onclick = (e) => { openForwardModal(e, msgId); exitMobileSelectionMode(); };
+      if (infoBtn) infoBtn.onclick = (e) => { showMessageInfo(e, msgId); exitMobileSelectionMode(); };
+
+      if (deleteBtn) {
+        const isSent = msg && currentUser && msg.sender_id === currentUser.id;
+        const isConvOwner = activeConv && currentUser && (activeConv.created_by === currentUser.id || activeConv.initiator_id === currentUser.id);
+        const canDelete = isSent || isConvOwner;
+
+        if (canDelete) {
+          deleteBtn.style.display = 'flex';
+          deleteBtn.onclick = (e) => { deleteMessage(e, msgId); exitMobileSelectionMode(); };
+        } else {
+          deleteBtn.style.display = 'none';
+        }
+      }
+    } catch (err) {
+      console.error("selectMessageForMobileActions error:", err);
+      showToast("Selection error: " + err.message, "error");
+    }
+  }
+
+  window.exitMobileSelectionMode = function() {
+    if (selectedMobileRowEl) {
+      const bubble = selectedMobileRowEl.querySelector('.message-bubble');
+      if (bubble) {
+        bubble.style.backgroundColor = '';
+        bubble.style.border = '';
+      }
+    }
+    const mobileBar = document.getElementById('mobile-action-bar');
+    if (mobileBar) {
+      mobileBar.style.display = 'none';
+    }
+    selectedMobileMessageId = null;
+    selectedMobileRowEl = null;
   };
 
   // ── Multi-Step Conversation Creator State ──
@@ -2518,10 +3364,10 @@
             <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; flex-grow: 1;">
               ${avatarDiv}
               <div style="display: flex; flex-direction: column; overflow: hidden;">
-                <span style="font-size: 0.95rem; font-weight: 600; color: #111b21; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                   ${name}${isCurrentUser ? ' (You)' : ''}
                 </span>
-                <span style="font-size: 0.8rem; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                   ${username || 'Available'}
                 </span>
               </div>
@@ -2530,7 +3376,7 @@
               ${role === 'Admin' || role === 'Owner' ? `
                 <span class="whatsapp-admin-badge">Group admin</span>
               ` : `
-                <span style="font-size: 0.72rem; color: #667781; background: #f0f2f5; padding: 2px 6px; border-radius: 4px;">
+                <span style="font-size: 0.72rem; color: var(--text-muted); background: var(--light-bg); padding: 2.5px 8px; border-radius: 99px; font-weight: 500;">
                   ${roleLabel}
                 </span>
               `}

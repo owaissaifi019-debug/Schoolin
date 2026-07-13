@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    // Immediate theme synchronization to prevent flash of light mode
+    (function() {
+      const savedTheme = localStorage.getItem('campuslink-theme');
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      const currentTheme = savedTheme || systemTheme;
+      document.documentElement.setAttribute('data-theme', currentTheme);
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>College Admin Dashboard | CampusLink</title>
+</head>
+<body class="college-admin-body" style="margin: 0; padding: 0;">
+
+  <div id="loader-screen" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; z-index: 999999; font-family: sans-serif;">
+    <div style="text-align: center;">
+      <div style="font-size: 2.2rem; font-weight: 800; color: #0056B3; letter-spacing: -1px; margin-bottom: 8px;">CampusLink</div>
+      <div style="font-size: 0.9rem; color: #64748B;">Preparing College Portal...</div>
+    </div>
+  </div>
+
+  <div id="college-dashboard-root"></div>
+
+  <script>
+    async function loadDashboard() {
+      try {
+        console.log('[College Loader] Fetching base school dashboard layout...');
+        const response = await fetch('dashboard.html?t=' + Date.now());
+        if (!response.ok) throw new Error('Failed to fetch dashboard.html template');
+        
+        let html = await response.text();
+        
+        // Terminology translations
+        html = html.replaceAll('School Admin Dashboard | CampusLink', 'College Admin Dashboard | CampusLink');
+        html = html.replaceAll('Manage your school\'s events', 'Manage your college\'s events');
+        html = html.replaceAll('School Portal', 'College Portal');
+        html = html.replaceAll('School Admin', 'College Admin');
+        html = html.replaceAll('School Profile', 'College Profile');
+        html = html.replaceAll('School Profile Settings', 'College Profile Settings');
+        html = html.replaceAll('School Logo', 'College Logo');
+        html = html.replaceAll('School Name', 'College Name');
+        html = html.replaceAll('School Representative', 'College Representative');
+        html = html.replaceAll('School Partner', 'College Partner');
+        html = html.replaceAll('My School', 'My College');
+        html = html.replaceAll('Edit School', 'Edit College');
+        html = html.replaceAll('Describe your school\'s vision', 'Describe your college\'s vision');
+        html = html.replaceAll('Manage your school\'s academic structure', 'Manage your college\'s academic structure');
+        html = html.replaceAll('school-profile.html', 'college-profile.html');
+        html = html.replaceAll('Academic Year', 'Batch Year');
+        html = html.replaceAll('Class &amp; Section', 'Program &amp; Section');
+        html = html.replaceAll('Class & Section', 'Program & Section');
+        // NOTE: body class replacement on the HTML string is intentionally omitted —
+        // the <body> tag is stripped when injected via innerHTML into a div.
+        // school-admin-body is instead added directly to document.body below.
+        
+        // Inject HTML template first
+        document.getElementById('college-dashboard-root').innerHTML = html;
+
+        // ── THE CRITICAL FIX ──────────────────────────────────────────────────────
+        // The <body> tag in the fetched HTML is stripped by innerHTML. We must add
+        // school-admin-body directly to document.body so every CSS layout rule in
+        // admin.css, dashboard.css, and inline <style> blocks applies correctly.
+        // college-admin-body is already present (set in the static HTML file).
+        document.body.classList.add('school-admin-body');
+        document.body.style.overflow = 'hidden'; // matches school dashboard's inline style
+        // ─────────────────────────────────────────────────────────────────────────
+        
+        // Sequentially execute script tags
+        const scriptElements = Array.from(document.getElementById('college-dashboard-root').querySelectorAll('script'));
+        for (const script of scriptElements) {
+          await new Promise((resolve) => {
+            const newScript = document.createElement('script');
+            if (script.src) {
+              if (script.src.includes('dashboard.js') || script.src.includes('college-dashboard.js')) {
+                console.log('[College Loader] Intercepting dashboard.js to translate terminology...');
+                fetch('dashboard.js?t=' + Date.now())
+                  .then(res => res.text())
+                  .then(js => {
+                    // Translate redirection guard logic
+                    js = js.replace(
+                      `if (school.institution_type && school.institution_type !== 'school') {
+      window.location.href = 'college-dashboard.html';
+      return;
+    }`,
+                      `if (!school.institution_type || school.institution_type === 'school') {
+      window.location.href = 'dashboard.html';
+      return;
+    }`
+                    );
+
+                    js = js.replaceAll('School Admin Dashboard', 'College Admin Dashboard');
+                    js = js.replaceAll('School Profile Settings', 'College Profile Settings');
+                    js = js.replaceAll('School Representative', 'College Representative');
+                    js = js.replaceAll('School Admin', 'College Admin');
+                    js = js.replaceAll('School Partner', 'College Partner');
+                    js = js.replaceAll('School Profile', 'College Profile');
+                    js = js.replaceAll('My School', 'My College');
+                    js = js.replaceAll('Edit School', 'Edit College');
+                    js = js.replaceAll('No school associated with this administrator account.', 'No college associated with this administrator account.');
+                    js = js.replaceAll('Administrator account has no associated school record.', 'Administrator account has no associated college record.');
+                    js = js.replaceAll('Loading school...', 'Loading college...');
+                    js = js.replaceAll('Academic Year', 'Batch Year');
+                    js = js.replaceAll('Class &amp; Section', 'Program &amp; Section');
+                    js = js.replaceAll('Class & Section', 'Program & Section');
+
+                    newScript.textContent = js;
+                    document.body.appendChild(newScript);
+                    resolve();
+                  })
+                  .catch(err => {
+                    console.error('[College Loader] Failed to translate dashboard.js:', err);
+                    resolve();
+                  });
+              } else {
+                newScript.src = script.src;
+                newScript.onload = () => resolve();
+                newScript.onerror = () => resolve();
+                document.body.appendChild(newScript);
+              }
+            } else {
+              newScript.textContent = script.textContent;
+              document.body.appendChild(newScript);
+              resolve();
+            }
+          });
+        }
+        
+        console.log('[College Loader] All scripts executed. Dispatching DOMContentLoaded...');
+        document.dispatchEvent(new Event('DOMContentLoaded'));
+        
+        // Remove the loader screen only after everything is initialized
+        const loader = document.getElementById('loader-screen');
+        if (loader) loader.remove();
+      } catch (err) {
+        console.error('[College Loader] Critical Error:', err);
+        document.getElementById('loader-screen').innerHTML = `
+          <div style="text-align: center; color: #EF4444; padding: 20px;">
+            <h3>Failed to load College Dashboard</h3>
+            <p>${err.message}</p>
+          </div>
+        `;
+      }
+    }
+    
+    window.addEventListener('DOMContentLoaded', loadDashboard);
+  </script>
+</body>
+</html>

@@ -112,6 +112,19 @@
     const sb = getClient();
     if (!sb) return;
 
+    // Clear all profile cache from sessionStorage
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith(PROFILE_CACHE_KEY)) {
+          sessionStorage.removeItem(key);
+          i--; // adjust index since we removed a key
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to clear cached profiles:', e);
+    }
+
     await sb.auth.signOut();
     window.location.href = AUTH_REDIRECT_HOME;
   }
@@ -236,8 +249,22 @@
     });
   }
 
+  const PROFILE_CACHE_KEY = 'campuslink_cached_profile_';
+
   // ── Get Role/Profile helpers ─────────────────────────────
   async function getProfile(userId) {
+    if (!userId) return null;
+
+    // Check sessionStorage cache first
+    try {
+      const cached = sessionStorage.getItem(PROFILE_CACHE_KEY + userId);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached profile:', e);
+    }
+
     const sb = getClient();
     if (!sb) return null;
     const { data, error } = await sb
@@ -249,6 +276,16 @@
       console.warn('Could not fetch user profile:', error.message);
       return null;
     }
+
+    // Save to sessionStorage cache
+    if (data) {
+      try {
+        sessionStorage.setItem(PROFILE_CACHE_KEY + userId, JSON.stringify(data));
+      } catch (e) {
+        console.warn('Failed to cache profile in sessionStorage:', e);
+      }
+    }
+
     return data;
   }
 
@@ -340,62 +377,95 @@
           let isVerifiedStatus = false;
           let assignedClassroomId = null;
 
-          const displayName = profile?.full_name || user.user_metadata?.full_name || user.email || 'teacher';
-          const teachersRaw = localStorage.getItem('campuslink_teachers');
-          const teachers = teachersRaw ? JSON.parse(teachersRaw) : [];
-          const matchingTeacher = teachers.find(t => 
-            t.fullName.toLowerCase() === displayName?.toLowerCase() || 
-            t.email?.toLowerCase() === user.email?.toLowerCase()
-          );
-
-          if (matchingTeacher) {
-            isVerifiedStatus = matchingTeacher.verificationStatus === 'verified';
-            const classroomsRaw = localStorage.getItem('campuslink_classrooms');
-            const classrooms = classroomsRaw ? JSON.parse(classroomsRaw) : [];
-            const assignedClassroomLocal = classrooms.find(cr => cr.classTeacherId === matchingTeacher.id);
-            if (assignedClassroomLocal) {
-              assignedClassroomId = assignedClassroomLocal.id;
-              const classesRaw = localStorage.getItem('campuslink_classes');
-              const classes = classesRaw ? JSON.parse(classesRaw) : [];
-              const cls = classes.find(c => c.id === assignedClassroomLocal.classId);
-              const className = cls ? cls.name : 'Class';
-              label = `Classroom (${className}-${assignedClassroomLocal.sectionId})`;
-            } else {
-              const subjectsRaw = localStorage.getItem('campuslink_classroom_subjects');
-              const subjects = subjectsRaw ? JSON.parse(subjectsRaw) : [];
-              const assignedSubLocal = subjects.find(cs => cs.teacherId === matchingTeacher.id && cs.status === 'active');
-              if (assignedSubLocal) {
-                assignedClassroomId = assignedSubLocal.classroomId;
-                const cr = classrooms.find(c => c.id === assignedSubLocal.classroomId);
-                const classesRaw = localStorage.getItem('campuslink_classes');
-                const classes = classesRaw ? JSON.parse(classesRaw) : [];
-                const cls = cr ? classes.find(c => c.id === cr.classId) : null;
-                const className = cls ? cls.name : 'Class';
-                const sectionId = cr ? (cr.sectionId || cr.section || 'A') : 'A';
-                label = `Classroom (${className}-${sectionId})`;
-              }
+          // 1. Query teacher profile from database
+          try {
+            const { data, error } = await supabase
+              .from('teachers')
+              .select('*')
+              .eq('user_id', profile.id)
+              .maybeSingle();
+            if (!error && data) {
+              isVerifiedStatus = data.verification_status === 'verified';
             }
-          } else if (profile?.school_id || (displayName && displayName.toLowerCase() === 'teacher')) {
-            isVerifiedStatus = true;
-            const classroomsRaw = localStorage.getItem('campuslink_classrooms');
-            const classrooms = classroomsRaw ? JSON.parse(classroomsRaw) : [];
-            const assignedClassroomLocal = classrooms[0];
-            if (assignedClassroomLocal) {
-              assignedClassroomId = assignedClassroomLocal.id;
-              const classesRaw = localStorage.getItem('campuslink_classes');
-              const classes = classesRaw ? JSON.parse(classesRaw) : [];
-              const cls = classes.find(c => c.id === assignedClassroomLocal.classId);
-              const className = cls ? cls.name : 'Class';
-              label = `Classroom (${className}-${assignedClassroomLocal.sectionId})`;
+          } catch (e) {
+            console.warn('Error fetching teacher info:', e);
+          }
+
+          // 2. Query assigned classroom from classrooms table in database (Class Teacher)
+          try {
+            const { data, error } = await supabase
+              .from('classrooms')
+              .select('id, grade, section')
+              .eq('class_teacher_id', profile.id)
+              .eq('is_archived', false)
+              .maybeSingle();
+            if (!error && data) {
+              assignedClassroomId = data.id;
+            }
+          } catch (e) {
+            console.warn('Error fetching assigned classroom:', e);
+          }
+
+          // 3. Query assigned classrooms where they are Subject Teacher
+          if (!assignedClassroomId) {
+            try {
+              const { data, error } = await supabase
+                .from('classroom_subject_teachers')
+                .select('classroom_id')
+                .eq('teacher_id', profile.id)
+                .limit(1)
+                .maybeSingle();
+              if (!error && data) {
+                assignedClassroomId = data.classroom_id;
+              }
+            } catch (e) {
+              console.warn('Error fetching assigned subject classroom:', e);
+            }
+          }
+
+          // Fallback to local storage if DB query yielded nothing
+          if (!assignedClassroomId) {
+            const displayName = profile?.full_name || user.user_metadata?.full_name || user.email || 'teacher';
+            const teachersRaw = localStorage.getItem('campuslink_teachers');
+            const teachers = teachersRaw ? JSON.parse(teachersRaw) : [];
+            const matchingTeacher = teachers.find(t => 
+              t.fullName.toLowerCase() === displayName?.toLowerCase() || 
+              t.email?.toLowerCase() === user.email?.toLowerCase()
+            );
+
+            if (matchingTeacher) {
+              isVerifiedStatus = matchingTeacher.verificationStatus === 'verified';
+              const classroomsRaw = localStorage.getItem('campuslink_classrooms');
+              const classrooms = classroomsRaw ? JSON.parse(classroomsRaw) : [];
+              const assignedClassroomLocal = classrooms.find(cr => cr.classTeacherId === matchingTeacher.id);
+              if (assignedClassroomLocal) {
+                assignedClassroomId = assignedClassroomLocal.id;
+              } else {
+                const subjectsRaw = localStorage.getItem('campuslink_classroom_subjects');
+                const subjects = subjectsRaw ? JSON.parse(subjectsRaw) : [];
+                const assignedSubLocal = subjects.find(cs => cs.teacherId === matchingTeacher.id && cs.status === 'active');
+                if (assignedSubLocal) {
+                  assignedClassroomId = assignedSubLocal.classroomId;
+                }
+              }
+            } else if (profile?.school_id || (displayName && displayName.toLowerCase() === 'teacher')) {
+              isVerifiedStatus = true;
+              const classroomsRaw = localStorage.getItem('campuslink_classrooms');
+              const classrooms = classroomsRaw ? JSON.parse(classroomsRaw) : [];
+              const assignedClassroomLocal = classrooms[0];
+              if (assignedClassroomLocal) {
+                assignedClassroomId = assignedClassroomLocal.id;
+              }
             }
           }
 
           if (isVerifiedStatus && assignedClassroomId) {
             isVerifiedTeacher = true;
+            // Redirect to classroom.html (Coming Soon page) instead of workspace query
             classroomHref = 'classroom.html';
           } else {
             isVerifiedTeacher = false;
-            classroomHref = 'classroom.html';
+            classroomHref = 'classroom.html'; // Always go to coming soon page
             if (isVerifiedStatus && !assignedClassroomId) {
               lockedTitle = 'Waiting for classroom assignment from admin.';
             } else {
@@ -595,6 +665,31 @@
             profileUrl = profile?.school_id ? `school-profile.html?id=${profile.school_id}` : `dashboard.html`;
           }
 
+          const meMenuClassroom = document.getElementById('me-menu-classroom');
+          if (meMenuClassroom) {
+            if (isDisallowedRole) {
+              meMenuClassroom.style.display = 'none';
+              const notice = document.getElementById('me-menu-classroom-unverified-notice');
+              if (notice) notice.remove();
+            } else if (userType === 'teacher' && !isVerifiedTeacher) {
+              meMenuClassroom.style.display = 'none';
+              const existingNotice = document.getElementById('me-menu-classroom-unverified-notice');
+              if (existingNotice) {
+                existingNotice.innerHTML = `<span>⚠️</span> ${lockedTitle}`;
+              } else {
+                const notice = document.createElement('div');
+                notice.id = 'me-menu-classroom-unverified-notice';
+                notice.style.cssText = 'background: #FFFBEB; border: 1px dashed #F59E0B; border-radius: 8px; padding: 10px; margin: 8px; font-size: 0.75rem; color: #B45309; font-weight: 600; text-align: center; display: flex; align-items: center; gap: 6px; justify-content: center;';
+                notice.innerHTML = `<span>⚠️</span> ${lockedTitle}`;
+                meMenuClassroom.parentNode.insertBefore(notice, meMenuClassroom);
+              }
+            } else {
+              meMenuClassroom.style.display = 'flex';
+              const notice = document.getElementById('me-menu-classroom-unverified-notice');
+              if (notice) notice.remove();
+            }
+          }
+
           const meMenuProfile = document.getElementById('me-menu-view-profile');
           if (meMenuProfile) meMenuProfile.href = profileUrl;
 
@@ -635,31 +730,6 @@
                   }
                 }
               });
-            }
-          }
-
-          const meMenuClassroom = document.getElementById('me-menu-classroom');
-          if (meMenuClassroom) {
-            if (isDisallowedRole) {
-              meMenuClassroom.style.display = 'none';
-              const notice = document.getElementById('me-menu-classroom-unverified-notice');
-              if (notice) notice.remove();
-            } else if (userType === 'teacher' && !isVerifiedTeacher) {
-              meMenuClassroom.style.display = 'none';
-              const existingNotice = document.getElementById('me-menu-classroom-unverified-notice');
-              if (existingNotice) {
-                existingNotice.innerHTML = `<span>⚠️</span> ${lockedTitle}`;
-              } else {
-                const notice = document.createElement('div');
-                notice.id = 'me-menu-classroom-unverified-notice';
-                notice.style.cssText = 'background: #FFFBEB; border: 1px dashed #F59E0B; border-radius: 8px; padding: 10px; margin: 8px; font-size: 0.75rem; color: #B45309; font-weight: 600; text-align: center; display: flex; align-items: center; gap: 6px; justify-content: center;';
-                notice.innerHTML = `<span>⚠️</span> ${lockedTitle}`;
-                meMenuClassroom.parentNode.insertBefore(notice, meMenuClassroom);
-              }
-            } else {
-              meMenuClassroom.style.display = 'flex';
-              const notice = document.getElementById('me-menu-classroom-unverified-notice');
-              if (notice) notice.remove();
             }
           }
 
@@ -714,379 +784,425 @@
                   : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
               });
             });
-          });
+          }
+
+          // Bind dropdown toggle
+          if (meBtn && !meBtn.dataset.listenerBound) {
+            meBtn.dataset.listenerBound = 'true';
+            meBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              
+              // Close notification panel if it is open
+              if (window.CampusLink && window.CampusLink.notifications && window.CampusLink.notifications.closePanel) {
+                window.CampusLink.notifications.closePanel();
+              }
+              
+              meDropdown.classList.toggle('active');
+            });
+
+            document.addEventListener('click', (e) => {
+              if (!meDropdown.contains(e.target) && !meBtn.contains(e.target)) {
+                meDropdown.classList.remove('active');
+              }
+            });
+
+            document.addEventListener('keydown', (e) => {
+              if (e.key === 'Escape') {
+                meDropdown.classList.remove('active');
+              }
+            });
+          }
+
+          // Bind signout button
+          const signoutBtn = document.getElementById('me-dropdown-signout-btn');
+          if (signoutBtn && !signoutBtn.dataset.listenerBound) {
+            signoutBtn.dataset.listenerBound = 'true';
+            signoutBtn.addEventListener('click', async (e) => {
+              e.preventDefault();
+              await signOut();
+            });
+          }
         }
 
-        // Bind dropdown toggle
-        if (meBtn && !meBtn.dataset.listenerBound) {
-          meBtn.dataset.listenerBound = 'true';
-          meBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            meDropdown.classList.toggle('active');
-          });
-
-          document.addEventListener('click', (e) => {
-            if (!meDropdown.contains(e.target) && !meBtn.contains(e.target)) {
-              meDropdown.classList.remove('active');
-            }
-          });
-
-          document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-              meDropdown.classList.remove('active');
-            }
-          });
+        // Show mobile bottom navigation
+        const mobileNav = document.querySelector('.mobile-bottom-nav');
+        if (mobileNav) {
+          mobileNav.classList.add('visible');
+          document.body.classList.add('has-bottom-nav');
         }
 
-        // Bind signout button
-        const signoutBtn = document.getElementById('me-dropdown-signout-btn');
-        if (signoutBtn && !signoutBtn.dataset.listenerBound) {
-          signoutBtn.dataset.listenerBound = 'true';
-          signoutBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await signOut();
-          });
+        // Backward compatibility for legacy elements if present on some pages
+        const loginBtn = document.getElementById('nav-btn-signin');
+        const joinBtn = document.getElementById('nav-btn-join');
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (joinBtn) joinBtn.style.display = 'none';
+
+      } else {
+        // User is not logged in
+        memberOnlyEls.forEach(el => { el.style.setProperty('display', 'none', 'important'); });
+        guestOnlyEls.forEach(el => { 
+          if (el.tagName === 'LI') {
+            el.style.setProperty('display', 'inline-flex', 'important');
+          } else {
+            el.style.setProperty('display', 'block', 'important');
+          }
+        });
+
+        // Hide mobile bottom navigation
+        const mobileNav = document.querySelector('.mobile-bottom-nav');
+        if (mobileNav) {
+          mobileNav.classList.remove('visible');
+          document.body.classList.remove('has-bottom-nav');
+        }
+
+        // Backward compatibility for legacy elements
+        const loginBtn = document.getElementById('nav-btn-signin');
+        const joinBtn = document.getElementById('nav-btn-join');
+        if (loginBtn) {
+          loginBtn.style.display = 'inline-flex';
+          loginBtn.href = AUTH_REDIRECT_LOGIN;
+          if (!loginBtn.querySelector('svg')) {
+            loginBtn.textContent = 'Sign In';
+          }
+        }
+        if (joinBtn) {
+          joinBtn.style.display = 'inline-flex';
         }
       }
-
-      // Show mobile bottom navigation
-      const mobileNav = document.querySelector('.mobile-bottom-nav');
-      if (mobileNav) {
-        mobileNav.classList.add('visible');
-        document.body.classList.add('has-bottom-nav');
-      }
-
-      // Backward compatibility for legacy elements if present on some pages
-      const loginBtn = document.getElementById('nav-btn-signin');
-      const joinBtn = document.getElementById('nav-btn-join');
-      if (loginBtn) loginBtn.style.display = 'none';
-      if (joinBtn) joinBtn.style.display = 'none';
-
-    } else {
-      // User is not logged in
-      memberOnlyEls.forEach(el => { el.style.setProperty('display', 'none', 'important'); });
-      guestOnlyEls.forEach(el => { 
-        if (el.tagName === 'LI') {
-          el.style.setProperty('display', 'inline-flex', 'important');
-        } else {
-          el.style.setProperty('display', 'block', 'important');
-        }
-      });
-
-      // Hide mobile bottom navigation
-      const mobileNav = document.querySelector('.mobile-bottom-nav');
-      if (mobileNav) {
-        mobileNav.classList.remove('visible');
-        document.body.classList.remove('has-bottom-nav');
-      }
-
-      // Backward compatibility for legacy elements
-      const loginBtn = document.getElementById('nav-btn-signin');
-      const joinBtn = document.getElementById('nav-btn-join');
-      if (loginBtn) {
-        loginBtn.style.display = 'inline-flex';
-        loginBtn.href = AUTH_REDIRECT_LOGIN;
-        if (!loginBtn.querySelector('svg')) {
-          loginBtn.textContent = 'Sign In';
-        }
-      }
-      if (joinBtn) {
-        joinBtn.style.display = 'inline-flex';
-      }
+    } catch (err) {
+      console.error('Error updating auth nav state:', err);
     }
-  } catch (err) {
-    console.error('Error updating auth nav state:', err);
-  }
-}
-
-function initMobileBottomNav() {
-  const mobileNav = document.querySelector('.mobile-bottom-nav');
-  if (!mobileNav) return;
-
-  const path = window.location.pathname;
-  const page = path.split('/').pop() || 'index.html';
-
-  let activeId = 'mobile-nav-home';
-  if (page.includes('schools.html') || page.includes('school-profile.html')) {
-    activeId = 'mobile-nav-schools';
-  } else if (page.includes('networking.html')) {
-    activeId = 'mobile-nav-network';
-  } else if (page.includes('messaging.html')) {
-    activeId = 'mobile-nav-messages';
-  } else if (page.includes('profile.html')) {
-    activeId = 'mobile-nav-profile';
   }
 
-  const activeItem = document.getElementById(activeId);
-  if (activeItem) {
-    activeItem.classList.add('active');
-  }
-}
+  function initMobileBottomNav() {
+    const mobileNav = document.querySelector('.mobile-bottom-nav');
+    if (!mobileNav) return;
 
-// Global search input handling
-document.addEventListener('DOMContentLoaded', () => {
-  initMobileBottomNav();
+    const path = window.location.pathname;
+    const page = path.split('/').pop() || 'index.html';
 
-  const globalSearch = document.getElementById('global-search-input');
-  if (globalSearch) {
-    // Check if there is a 'search' parameter in the URL on load
-    const urlParams = new URLSearchParams(window.location.search);
-    const searchParam = urlParams.get('search');
-    if (searchParam) {
-      globalSearch.value = searchParam;
-      
-      // Auto-populate local page search inputs if they exist
-      const pageSearchInputs = [
-        'net-search-input',
-        'school-search-input',
-        'event-search-input',
-        'admission-search-input'
-      ];
-      
-      for (const id of pageSearchInputs) {
-        const localInput = document.getElementById(id);
-        if (localInput) {
-          localInput.value = searchParam;
-          // Let the local page script load and bind first
-          setTimeout(() => {
-            localInput.value = searchParam;
-            localInput.dispatchEvent(new Event('input', { bubbles: true }));
-          }, 100);
-          break; // assume one search page input per page
-        }
-      }
+    let activeId = 'mobile-nav-home';
+    if (page.includes('schools.html') || page.includes('school-profile.html')) {
+      activeId = 'mobile-nav-schools';
+    } else if (page.includes('networking.html')) {
+      activeId = 'mobile-nav-network';
+    } else if (page.includes('messaging.html')) {
+      activeId = 'mobile-nav-messages';
+    } else if (page.includes('profile.html')) {
+      activeId = 'mobile-nav-profile';
     }
 
-    globalSearch.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const query = globalSearch.value.trim();
+    const activeItem = document.getElementById(activeId);
+    if (activeItem) {
+      activeItem.classList.add('active');
+    }
+  }
+
+  // Global search input handling
+  document.addEventListener('DOMContentLoaded', () => {
+    initMobileBottomNav();
+
+    const globalSearch = document.getElementById('global-search-input');
+    if (globalSearch) {
+      // Check if there is a 'search' parameter in the URL on load
+      const urlParams = new URLSearchParams(window.location.search);
+      const searchParam = urlParams.get('search');
+      if (searchParam) {
+        globalSearch.value = searchParam;
         
-        // Determine if we are on a page that already has search
+        // Auto-populate local page search inputs if they exist
         const pageSearchInputs = [
           'net-search-input',
           'school-search-input',
           'event-search-input',
           'admission-search-input'
         ];
-        let localInputFound = false;
+        
         for (const id of pageSearchInputs) {
           const localInput = document.getElementById(id);
           if (localInput) {
-            localInput.value = query;
-            localInput.dispatchEvent(new Event('input', { bubbles: true }));
-            localInputFound = true;
-            break;
+            localInput.value = searchParam;
+            // Let the local page script load and bind first
+            setTimeout(() => {
+              localInput.value = searchParam;
+              localInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 100);
+            break; // assume one search page input per page
           }
         }
-        
-        if (!localInputFound) {
-          // If we are not on a search page, redirect to networking.html with search query
-          window.location.href = `networking.html?search=${encodeURIComponent(query)}`;
+      }
+
+      globalSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const query = globalSearch.value.trim();
+          
+          // Determine if we are on a page that already has search
+          const pageSearchInputs = [
+            'net-search-input',
+            'school-search-input',
+            'event-search-input',
+            'admission-search-input'
+          ];
+          let localInputFound = false;
+          for (const id of pageSearchInputs) {
+            const localInput = document.getElementById(id);
+            if (localInput) {
+              localInput.value = query;
+              localInput.dispatchEvent(new Event('input', { bubbles: true }));
+              localInputFound = true;
+              break;
+            }
+          }
+          
+          if (!localInputFound) {
+            // If we are not on a search page, redirect to networking.html with search query
+            window.location.href = `networking.html?search=${encodeURIComponent(query)}`;
+          }
         }
-      }
+      });
+    }
+  });
+
+  // ── Capacitor Android Hardware Back Button Handling ─────────────────
+  let lastBackPressTime = 0;
+
+  function isRootPage() {
+    const pathname = window.location.pathname.toLowerCase();
+    return pathname === '' ||
+           pathname.endsWith('/') ||
+           pathname.endsWith('/index.html') ||
+           pathname.endsWith('/admin/index.html') ||
+           pathname.endsWith('/admin/');
+  }
+
+  function showExitToast(message) {
+    let toast = document.getElementById('back-exit-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'back-exit-toast';
+      toast.style.position = 'fixed';
+      toast.style.bottom = '80px'; // above bottom nav
+      toast.style.left = '50%';
+      toast.style.transform = 'translateX(-50%) translateY(20px)';
+      toast.style.backgroundColor = 'rgba(15, 23, 42, 0.9)'; // Premium dark slate
+      toast.style.color = '#ffffff';
+      toast.style.padding = '12px 24px';
+      toast.style.borderRadius = '30px';
+      toast.style.fontSize = '0.9rem';
+      toast.style.fontWeight = '600';
+      toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1)';
+      toast.style.zIndex = '99999';
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      toast.style.pointerEvents = 'none';
+      toast.style.textAlign = 'center';
+      toast.style.whiteSpace = 'nowrap';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    
+    // Force reflow
+    toast.offsetHeight;
+    
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+
+    if (window.exitToastTimeout) {
+      clearTimeout(window.exitToastTimeout);
+    }
+    window.exitToastTimeout = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(20px)';
+    }, 2000);
+  }
+
+  function checkAndCloseOverlays() {
+    // 1. Check open modals (elements with .modal-overlay that are visible/active)
+    const activeModals = Array.from(document.querySelectorAll('.modal-overlay')).filter(modal => {
+      return modal.classList.contains('active') || (modal.style.display && modal.style.display !== 'none');
     });
-  }
-});
 
-// ── Capacitor Android Hardware Back Button Handling ─────────────────
-let lastBackPressTime = 0;
-
-function isRootPage() {
-  const pathname = window.location.pathname.toLowerCase();
-  return pathname === '' ||
-         pathname.endsWith('/') ||
-         pathname.endsWith('/index.html') ||
-         pathname.endsWith('/admin/index.html') ||
-         pathname.endsWith('/admin/');
-}
-
-function showExitToast(message) {
-  let toast = document.getElementById('back-exit-toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'back-exit-toast';
-    toast.style.position = 'fixed';
-    toast.style.bottom = '80px'; // above bottom nav
-    toast.style.left = '50%';
-    toast.style.transform = 'translateX(-50%) translateY(20px)';
-    toast.style.backgroundColor = 'rgba(15, 23, 42, 0.9)'; // Premium dark slate
-    toast.style.color = '#ffffff';
-    toast.style.padding = '12px 24px';
-    toast.style.borderRadius = '30px';
-    toast.style.fontSize = '0.9rem';
-    toast.style.fontWeight = '600';
-    toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1)';
-    toast.style.zIndex = '99999';
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    toast.style.pointerEvents = 'none';
-    toast.style.textAlign = 'center';
-    toast.style.whiteSpace = 'nowrap';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = message;
-  
-  // Force reflow
-  toast.offsetHeight;
-  
-  toast.style.opacity = '1';
-  toast.style.transform = 'translateX(-50%) translateY(0)';
-
-  if (window.exitToastTimeout) {
-    clearTimeout(window.exitToastTimeout);
-  }
-  window.exitToastTimeout = setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(-50%) translateY(20px)';
-  }, 2000);
-}
-
-function checkAndCloseOverlays() {
-  // 1. Check open modals (elements with .modal-overlay that are visible/active)
-  const activeModals = Array.from(document.querySelectorAll('.modal-overlay')).filter(modal => {
-    return modal.classList.contains('active') || (modal.style.display && modal.style.display !== 'none');
-  });
-
-  if (activeModals.length > 0) {
-    const activeModal = activeModals[activeModals.length - 1]; // Close topmost modal
-    // Search for close/cancel buttons inside this modal
-    const closeBtn = activeModal.querySelector('.modal-close-btn, [id*="close"], [id*="cancel"], .btn-modal-close, .epm-close, button[class*="close"], button[class*="cancel"]');
-    if (closeBtn) {
-      closeBtn.click();
-    } else {
-      // Fallback: click the overlay itself
-      activeModal.click();
-    }
-    return true;
-  }
-
-  // 2. Check dialogs
-  const activeDialogs = Array.from(document.querySelectorAll('[role="dialog"], .dialog, .dialog-overlay')).filter(dialog => {
-    return dialog.classList.contains('active') || (dialog.style.display && dialog.style.display !== 'none');
-  });
-
-  if (activeDialogs.length > 0) {
-    const activeDialog = activeDialogs[activeDialogs.length - 1];
-    const closeBtn = activeDialog.querySelector('.close-btn, [id*="close"], [id*="cancel"], button[class*="close"], button[class*="cancel"]');
-    if (closeBtn) {
-      closeBtn.click();
-    } else {
-      activeDialog.click();
-    }
-    return true;
-  }
-
-  // 3. Check open sidebars
-  // Admin dashboard / School Admin sidebar (uses .admin-sidebar-open class on body)
-  const isAdminSidebarOpen = document.body.classList.contains('admin-sidebar-open') || 
-                             document.querySelector('.admin-sidebar-open');
-  if (isAdminSidebarOpen) {
-    const closeBtn = document.getElementById('admin-sidebar-close') || 
-                     document.querySelector('.admin-sidebar-close') || 
-                     document.getElementById('admin-sidebar-overlay');
-    if (closeBtn) {
-      closeBtn.click();
-      return true;
-    }
-    // Fallback manual removal
-    document.querySelectorAll('.admin-sidebar-open').forEach(el => el.classList.remove('admin-sidebar-open'));
-    document.querySelectorAll('.admin-sidebar-overlay-visible').forEach(el => el.classList.remove('admin-sidebar-overlay-visible'));
-    document.body.classList.remove('admin-sidebar-open');
-    document.body.style.overflow = '';
-    return true;
-  }
-
-  // Student mobile navigation menu sidebar (uses mobile-nav-active class on body or .nav-links.active)
-  const isMobileNavActive = document.body.classList.contains('mobile-nav-active') || 
-                            document.querySelector('.nav-links.active');
-  if (isMobileNavActive) {
-    const mobileToggle = document.querySelector('.mobile-toggle');
-    if (mobileToggle) {
-      mobileToggle.click();
-      return true;
-    }
-    // Fallback manual removal
-    document.querySelectorAll('.nav-links.active').forEach(el => el.classList.remove('active'));
-    document.body.classList.remove('mobile-nav-active');
-    return true;
-  }
-
-  return false;
-}
-
-function handleBackButton() {
-  if (checkAndCloseOverlays()) {
-    console.log('[Capacitor BackButton] Overlay closed.');
-    return;
-  }
-
-  const pathname = window.location.pathname.toLowerCase();
-  if (pathname.endsWith('/dashboard.html')) {
-    console.log('[Capacitor BackButton] Dashboard page. Navigating to home.');
-    window.location.href = 'index.html';
-    return;
-  }
-
-  if (isRootPage()) {
-    const currentTime = Date.now();
-    if (currentTime - lastBackPressTime < 2000) {
-      console.log('[Capacitor BackButton] Exiting application.');
-      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-        window.Capacitor.Plugins.App.exitApp();
+    if (activeModals.length > 0) {
+      const activeModal = activeModals[activeModals.length - 1]; // Close topmost modal
+      // Search for close/cancel buttons inside this modal
+      const closeBtn = activeModal.querySelector('.modal-close-btn, [id*="close"], [id*="cancel"], .btn-modal-close, .epm-close, button[class*="close"], button[class*="cancel"]');
+      if (closeBtn) {
+        closeBtn.click();
+      } else {
+        // Fallback: click the overlay itself
+        activeModal.click();
       }
-    } else {
-      lastBackPressTime = currentTime;
-      showExitToast('Press back again to exit.');
+      return true;
     }
-  } else {
-    if (window.history && window.history.length > 1) {
-      console.log('[Capacitor BackButton] Navigating back in history.');
-      window.history.back();
-    } else {
-      console.log('[Capacitor BackButton] No history. Navigating to home.');
+
+    // 2. Check dialogs
+    const activeDialogs = Array.from(document.querySelectorAll('[role="dialog"], .dialog, .dialog-overlay')).filter(dialog => {
+      return dialog.classList.contains('active') || (dialog.style.display && dialog.style.display !== 'none');
+    });
+
+    if (activeDialogs.length > 0) {
+      const activeDialog = activeDialogs[activeDialogs.length - 1];
+      const closeBtn = activeDialog.querySelector('.close-btn, [id*="close"], [id*="cancel"], button[class*="close"], button[class*="cancel"]');
+      if (closeBtn) {
+        closeBtn.click();
+      } else {
+        activeDialog.click();
+      }
+      return true;
+    }
+
+    // 3. Check open sidebars
+    // Admin dashboard / School Admin sidebar (uses .admin-sidebar-open class on body)
+    const isAdminSidebarOpen = document.body.classList.contains('admin-sidebar-open') || 
+                               document.querySelector('.admin-sidebar-open');
+    if (isAdminSidebarOpen) {
+      const closeBtn = document.getElementById('admin-sidebar-close') || 
+                       document.querySelector('.admin-sidebar-close') || 
+                       document.getElementById('admin-sidebar-overlay');
+      if (closeBtn) {
+        closeBtn.click();
+        return true;
+      }
+      // Fallback manual removal
+      document.querySelectorAll('.admin-sidebar-open').forEach(el => el.classList.remove('admin-sidebar-open'));
+      document.querySelectorAll('.admin-sidebar-overlay-visible').forEach(el => el.classList.remove('admin-sidebar-overlay-visible'));
+      document.body.classList.remove('admin-sidebar-open');
+      document.body.style.overflow = '';
+      return true;
+    }
+
+    // Student mobile navigation menu sidebar (uses mobile-nav-active class on body or .nav-links.active)
+    const isMobileNavActive = document.body.classList.contains('mobile-nav-active') || 
+                              document.querySelector('.nav-links.active');
+    if (isMobileNavActive) {
+      const mobileToggle = document.querySelector('.mobile-toggle');
+      if (mobileToggle) {
+        mobileToggle.click();
+        return true;
+      }
+      // Fallback manual removal
+      document.querySelectorAll('.nav-links.active').forEach(el => el.classList.remove('active'));
+      document.body.classList.remove('mobile-nav-active');
+      return true;
+    }
+
+    return false;
+  }
+
+  function handleBackButton() {
+    if (checkAndCloseOverlays()) {
+      console.log('[Capacitor BackButton] Overlay closed.');
+      return;
+    }
+
+    const pathname = window.location.pathname.toLowerCase();
+    if (pathname.endsWith('/dashboard.html')) {
+      console.log('[Capacitor BackButton] Dashboard page. Navigating to home.');
       window.location.href = 'index.html';
+      return;
+    }
+
+    if (isRootPage()) {
+      const currentTime = Date.now();
+      if (currentTime - lastBackPressTime < 2000) {
+        console.log('[Capacitor BackButton] Exiting application.');
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+          window.Capacitor.Plugins.App.exitApp();
+        }
+      } else {
+        lastBackPressTime = currentTime;
+        showExitToast('Press back again to exit.');
+      }
+    } else {
+      if (window.history && window.history.length > 1) {
+        console.log('[Capacitor BackButton] Navigating back in history.');
+        window.history.back();
+      } else {
+        console.log('[Capacitor BackButton] No history. Navigating to home.');
+        window.location.href = 'index.html';
+      }
     }
   }
-}
 
-function initCapacitorBackButton() {
-  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-    console.log('[Capacitor BackButton] Initializing App plugin hardware backButton listener.');
-    window.Capacitor.Plugins.App.addListener('backButton', () => {
-      handleBackButton();
-    });
-  } else {
-    // In case registration timing is delayed, wait for DOMContentLoaded
-    document.addEventListener('DOMContentLoaded', () => {
+  function initCapacitorEvents() {
+    function registerAppListeners() {
       if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-        console.log('[Capacitor BackButton] Initializing App plugin hardware backButton listener on DOMContentLoaded.');
+        console.log('[Capacitor Events] Registering App plugin event listeners.');
+        
+        // 1. Hardware Back Button handler
         window.Capacitor.Plugins.App.addListener('backButton', () => {
           handleBackButton();
         });
+
+        // 2. Deep Linking (App Link / Custom Scheme) handler
+        window.Capacitor.Plugins.App.addListener('appUrlOpen', (data) => {
+          console.log('[Capacitor DeepLink] URL opened app:', data.url);
+          try {
+            const urlStr = data.url;
+            if (urlStr.includes('join-school.html') || urlStr.includes('join-school')) {
+              let code = '';
+              const match = urlStr.match(/[?&]code=([^&#]+)/);
+              if (match && match[1]) {
+                code = match[1];
+              }
+              if (code) {
+                console.log('[Capacitor DeepLink] Matching code found, routing to join-school.html?code=' + code);
+                window.location.href = 'join-school.html?code=' + encodeURIComponent(code);
+              }
+            }
+          } catch (err) {
+            console.error('[Capacitor DeepLink] Error handling deep link:', err);
+          }
+        });
       }
-    });
+    }
+
+    registerAppListeners();
+    // Fallback in case registration timing is delayed
+    document.addEventListener('DOMContentLoaded', registerAppListeners);
   }
-}
 
-initCapacitorBackButton();
+  initCapacitorEvents();
 
-// ── Expose API ───────────────────────────────────────────
-window.CampusLink = window.CampusLink || {};
-window.CampusLink.auth = {
-  signUp,
-  signIn,
-  signOut,
-  getSession,
-  getUser,
-  getSchoolForUser,
-  requireAuth,
-  onAuthStateChange,
-  updateNavAuthState,
-  getProfile,
-  getUserRole,
-  getUserType,
-  getUserTypeLabel,
-  getPlatformRoleLabel
-};
+  // ── Dynamic App Logo & Favicon Integration ───────────────────────
+  function injectAppLogoAndFavicon() {
+    const isInsideAdmin = window.location.pathname.includes('/admin/');
+    const logoPath = isInsideAdmin ? '../logo.png' : 'logo.png';
+
+    // 1. Inject Favicon
+    let favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      favicon.type = 'image/png';
+      document.head.appendChild(favicon);
+    }
+    favicon.href = logoPath;
+  }
+
+  // Run as early as possible and retry on DOMContentLoaded
+  injectAppLogoAndFavicon();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectAppLogoAndFavicon);
+  }
+
+  // ── Expose API ───────────────────────────────────────────
+  window.CampusLink = window.CampusLink || {};
+  window.CampusLink.auth = {
+    signUp,
+    signIn,
+    signOut,
+    getSession,
+    getUser,
+    getSchoolForUser,
+    requireAuth,
+    onAuthStateChange,
+    updateNavAuthState,
+    getProfile,
+    getUserRole,
+    getUserType,
+    getUserTypeLabel,
+    getPlatformRoleLabel
+  };
 
 })();

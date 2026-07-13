@@ -490,6 +490,10 @@ async function initAdmin() {
         pageTitle = 'User Reports Moderation';
         await loadUserReports();
       }
+      if (tabTarget === 'push-notifications') {
+        pageTitle = 'Send Broadcast Push Notifications';
+        initPushNotificationsTab();
+      }
       if (topBarTitle) topBarTitle.textContent = pageTitle;
       const mobTitle = document.getElementById('mobile-header-title');
       if (mobTitle) mobTitle.textContent = pageTitle;
@@ -4162,6 +4166,117 @@ async function initAdmin() {
       if (window.hideAuthOverlayTransition) {
         window.hideAuthOverlayTransition();
       }
+    }
+  }
+
+  // ── Push Notifications Tab Controller ───────────────────────────
+  function initPushNotificationsTab() {
+    const pushTitle = document.getElementById('push-title');
+    const pushMessage = document.getElementById('push-message');
+    const pushLink = document.getElementById('push-link');
+    
+    const previewTitle = document.getElementById('preview-title');
+    const previewBody = document.getElementById('preview-body');
+    const previewLinkContainer = document.getElementById('preview-link-container');
+    const previewLinkVal = document.getElementById('preview-link-val');
+
+    function updatePreview() {
+      if (previewTitle && pushTitle) {
+        previewTitle.textContent = pushTitle.value.trim() || 'Notification Title';
+      }
+      if (previewBody && pushMessage) {
+        previewBody.textContent = pushMessage.value.trim() || 'Type a title and body to see this live preview update. The notification will reach all devices instantly.';
+      }
+      if (previewLinkContainer && previewLinkVal && pushLink) {
+        const val = pushLink.value.trim();
+        if (val) {
+          previewLinkVal.textContent = val;
+          previewLinkContainer.style.display = 'flex';
+        } else {
+          previewLinkContainer.style.display = 'none';
+        }
+      }
+    }
+
+    if (pushTitle) pushTitle.addEventListener('input', updatePreview);
+    if (pushMessage) pushMessage.addEventListener('input', updatePreview);
+    if (pushLink) pushLink.addEventListener('input', updatePreview);
+
+    // Bind form submit
+    const form = document.getElementById('push-notification-form');
+    if (form && !form.dataset.bound) {
+      form.dataset.bound = 'true';
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const targetRole = document.getElementById('push-target-role').value;
+        const title = pushTitle.value.trim();
+        const body = pushMessage.value.trim();
+        const link = pushLink.value.trim();
+
+        if (!title || !body) {
+          showToast('Please fill in title and body.', 'error');
+          return;
+        }
+
+        const btn = document.getElementById('btn-send-push');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span>Sending...</span> <span class="spinner" style="width: 14px; height: 14px; border-width: 1.5px; border-top-color: white; border-radius: 50%; display: inline-block;"></span>`;
+
+        try {
+          showToast('Fetching recipient profiles...', 'info');
+          
+          // 1. Fetch profiles based on targeting role
+          let query = supabase.from('profiles').select('id');
+          if (targetRole !== 'all') {
+            query = query.eq('user_type', targetRole);
+          }
+          const { data: users, error: fetchErr } = await query;
+          if (fetchErr) throw fetchErr;
+
+          if (!users || users.length === 0) {
+            showToast('No target users found for this role.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            return;
+          }
+
+          showToast(`Broadcasting to ${users.length} users...`, 'info');
+
+          // 2. Perform bulk insertion in notifications table
+          const chunkSize = 100;
+          let successCount = 0;
+          for (let i = 0; i < users.length; i += chunkSize) {
+            const chunk = users.slice(i, i + chunkSize);
+            const payloads = chunk.map(u => ({
+              user_id: u.id,
+              actor_id: session.user.id,
+              type: 'message',
+              title: title,
+              body: body,
+              link: link || '',
+              is_read: false
+            }));
+
+            const { error: insertErr } = await supabase
+              .from('notifications')
+              .insert(payloads);
+
+            if (insertErr) throw insertErr;
+            successCount += chunk.length;
+          }
+
+          showToast(`Successfully broadcasted push notification to ${successCount} devices!`, 'success');
+          form.reset();
+          updatePreview();
+        } catch (err) {
+          console.error('Failed to send broadcast push notification:', err);
+          showToast(`Failed to send broadcast: ${err.message}`, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      });
     }
   }
 }

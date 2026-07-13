@@ -2,16 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('campuslink-theme');
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      const currentTheme = savedTheme || systemTheme;
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      
+      const setupThemeToggle = () => {
+        const toggleTheme = () => {
+          const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
+          const nextTheme = activeTheme === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', nextTheme);
+          localStorage.setItem('campuslink-theme', nextTheme);
+          updateUI(nextTheme);
+        };
+
+        const updateUI = (theme) => {
+          const toggleBtns = document.querySelectorAll('.theme-toggle-btn');
+          toggleBtns.forEach(btn => {
+            btn.innerHTML = theme === 'dark' 
+              ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>` 
+              : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+            btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+          });
+        };
+
+        updateUI(currentTheme);
+
+        document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
+          btn.onclick = (e) => {
+            e.preventDefault();
+            toggleTheme();
+          };
+        });
+
+        // Double click/tap on logo to toggle theme with single-click disambiguation
+        const logoSelectors = [
+          '#header-logo',
+          '.header-logo-box',
+          '.logo',
+          '.auth-mobile-logo',
+          '.mobile-header-brand',
+          '.logo-brand-wrapper',
+          '.mobile-school-logo',
+          '.mobile-school-name'
+        ];
+        
+        logoSelectors.forEach(selector => {
+          document.querySelectorAll(selector).forEach(logo => {
+            let clickTimeout = null;
+            let clickCount = 0;
+            let lastTapTime = 0;
+            
+            // Touch double-tap for mobile view
+            logo.addEventListener('touchstart', (e) => {
+              const now = Date.now();
+              if (now - lastTapTime < 300 && now - lastTapTime > 0) {
+                e.preventDefault();
+                toggleTheme();
+              }
+              lastTapTime = now;
+            }, { passive: false });
+
+            // Desktop click disambiguation
+            logo.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              clickCount++;
+              
+              if (clickCount === 1) {
+                clickTimeout = setTimeout(() => {
+                  clickCount = 0;
+                  const href = logo.getAttribute('href');
+                  if (href) {
+                    window.location.href = href;
+                  }
+                }, 250);
+              } else if (clickCount === 2) {
+                clearTimeout(clickTimeout);
+                clickCount = 0;
+                toggleTheme();
+              }
+            });
+          });
+        });
+      };
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupThemeToggle);
+      } else {
+        setupThemeToggle();
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Networking | CampusLink</title>
   <meta name="description" content="Discover and connect with students, teachers, alumni, and schools on CampusLink. Build your academic network across India.">
   
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="css/core/variables.css">
-  <link rel="stylesheet" href="css/core/reset.css">
-  <link rel="stylesheet" href="css/core/typography.css">
-  <link rel="stylesheet" href="css/core/utilities.css">
-  <link rel="stylesheet" href="css/core/animations.css">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/networking.css">
   <link rel="stylesheet" href="style.css?v=3.0">
   <style>
     /* --- Mobile Touch Responsiveness Overlay & Sheet Fixes --- */
@@ -141,6 +234,9 @@
                 </div>
               </div>
             </div>
+          </li>
+          <li class="theme-toggle-item" style="margin-right: 8px;">
+            <button class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle theme">🌙</button>
           </li>
           <li class="member-only nav-me-item" id="nav-me-item">
             <button class="nav-me-btn" id="nav-me-btn">
@@ -314,6 +410,41 @@
             </div>
             <div class="invitations-list" id="connections-requests-grid">
               <!-- Request cards will be injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Suggested Connections Section (New premium tabbed interface) -->
+          <div class="suggested-connections-card" id="suggested-connections-card" style="display: none;">
+            <div class="suggested-header-row">
+              <h2 class="suggested-section-title">Suggested Connections</h2>
+              
+              <!-- Tab controls -->
+              <div class="suggested-tabs-container">
+                <button class="suggested-tab active" data-tab="pymk">
+                  People You May Know
+                </button>
+                <button class="suggested-tab" data-tab="mutuals">
+                  Mutual Connections
+                </button>
+                <button class="suggested-tab" data-tab="school">
+                  From Your School
+                </button>
+                <button class="suggested-tab" data-tab="active">
+                  Recently Active
+                </button>
+              </div>
+            </div>
+            
+            <!-- Cards list / grid container -->
+            <div class="suggested-grid" id="suggested-grid">
+              <!-- Dynamically populated cards -->
+            </div>
+            
+            <!-- Empty state for suggested connections -->
+            <div class="suggested-empty-state" id="suggested-empty-state" style="display: none;">
+              <div class="empty-icon">👥</div>
+              <h3>No suggestions in this category</h3>
+              <p>Try exploring other categories or updating your profile to get better recommendations.</p>
             </div>
           </div>
 
@@ -519,7 +650,7 @@
   <script src="mobile-nav.js"></script>
 
   <!-- Page JS Script -->
-  <script src="networking.js?v=1.4"></script>
+  <script src="networking.js?v=1.5"></script>
 
 </body>
 </html>

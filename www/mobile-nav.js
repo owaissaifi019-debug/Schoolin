@@ -129,17 +129,7 @@
             document.body.style.overflow = 'hidden';
             setTimeout(() => {
               const textarea = document.getElementById('post-content-textarea');
-              if (textarea) {
-                textarea.focus();
-                // Bind MentionAutocomplete if not already done
-                if (!textarea.hasMentionAutocomplete && window.MentionAutocomplete) {
-                  textarea.hasMentionAutocomplete = true;
-                  new window.MentionAutocomplete(textarea, (item) => {
-                    textarea.selectedMentions = textarea.selectedMentions || [];
-                    textarea.selectedMentions.push(item);
-                  });
-                }
-              }
+              if (textarea) textarea.focus();
             }, 100);
           } else {
             // On other pages: navigate to home with openPost flag
@@ -164,17 +154,7 @@
             createPostModal.classList.add('active');
             document.body.style.overflow = 'hidden';
             const textarea = document.getElementById('post-content-textarea');
-            if (textarea) {
-              textarea.focus();
-              // Bind MentionAutocomplete if not already done
-              if (!textarea.hasMentionAutocomplete && window.MentionAutocomplete) {
-                textarea.hasMentionAutocomplete = true;
-                new window.MentionAutocomplete(textarea, (item) => {
-                  textarea.selectedMentions = textarea.selectedMentions || [];
-                  textarea.selectedMentions.push(item);
-                });
-              }
-            }
+            if (textarea) textarea.focus();
             // Clean URL
             window.history.replaceState({}, '', window.location.pathname);
           }

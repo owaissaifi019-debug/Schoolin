@@ -1,5 +1,8 @@
-document.addEventListener('DOMContentLoaded', async () => {
+async function initAdmin() {
   'use strict';
+
+  // Hide the body by default for security to prevent layout leaks
+  document.body.classList.remove('auth-passed');
 
   // ── Element References ──────────────────────────────────
   const authOverlay = document.getElementById('auth-loading-overlay');
@@ -93,6 +96,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   let allApplications = [];
   let allContactRequests = [];
   let allRegistrations = [];
+
+  // Alumni Caches
+  let allAlumniBatches = [];
+  let allAlumniRequests = [];
+  let allAlumniInvites = [];
+  let allAlumniMembers = [];
   
   // ── Auth Page Guard ──────────────────────────────────────
   const auth = window.CampusLink && window.CampusLink.auth;
@@ -155,6 +164,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+    window.hideAuthOverlayTransition = function() {
+      const authOverlay = document.getElementById('auth-loading-overlay');
+      const sidebarLogo = document.querySelector('.dashboard-sidebar .logo-brand-wrapper');
+      const loadingTextEl = document.querySelector('.loading-logo-text');
+      const loaderCard = document.querySelector('.auth-loading-card');
+
+      // A. Reveal dashboard content first so the browser can calculate its layout & positions
+      document.body.classList.add('auth-passed');
+
+      if (sidebarLogo && loadingTextEl && window.getComputedStyle(sidebarLogo.closest('.dashboard-sidebar')).display !== 'none') {
+        const startRect = loadingTextEl.getBoundingClientRect();
+        const targetRect = sidebarLogo.getBoundingClientRect();
+
+        const deltaX = targetRect.left - startRect.left;
+        const deltaY = targetRect.top - startRect.top;
+        
+        const startFontSize = parseFloat(window.getComputedStyle(loadingTextEl).fontSize) || 35;
+        const targetFontSize = parseFloat(window.getComputedStyle(sidebarLogo.querySelector('.logo') || sidebarLogo).fontSize) || 21;
+        const scale = targetFontSize / startFontSize;
+
+        // B. Temporarily hide sidebar logo so there are no duplicate overlapping logos during transition
+        sidebarLogo.style.opacity = '0';
+
+        if (loaderCard) {
+          const sub = loaderCard.querySelector('.auth-loading-text');
+          const bar = loaderCard.querySelector('.auth-loading-bar-wrapper');
+          if (sub) sub.style.opacity = '0';
+          if (bar) bar.style.opacity = '0';
+        }
+
+        const dotsEl = loadingTextEl.querySelector('.loading-dots');
+        if (dotsEl) {
+          dotsEl.style.transition = 'opacity 0.3s ease';
+          dotsEl.style.opacity = '0';
+        }
+
+        if (authOverlay) {
+          authOverlay.style.transition = 'background-color 0.8s cubic-bezier(0.25, 1, 0.5, 1)';
+          authOverlay.style.backgroundColor = 'transparent';
+        }
+
+        // C. Animate text position & scale
+        loadingTextEl.style.transition = 'transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.8s ease';
+        loadingTextEl.style.transformOrigin = 'top left';
+        loadingTextEl.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${scale})`;
+
+        setTimeout(() => {
+          sidebarLogo.style.opacity = '';
+          if (authOverlay) authOverlay.remove();
+        }, 850);
+      } else {
+        if (authOverlay) {
+          authOverlay.classList.add('fade-out');
+          setTimeout(() => { authOverlay.remove(); }, 400);
+        }
+      }
+    };
+
   // Dynamic UI Setup depending on Role
   if (role === 'school_admin') {
     // Hide forbidden sidebar links
@@ -173,10 +240,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     
     // Show school admin sidebar links
-    const showLinks = ['tab-link-profile', 'tab-link-settings'];
+    const showLinks = ['tab-link-profile', 'tab-link-settings', 'tab-link-alumni', 'school-admin-community-header'];
     showLinks.forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.style.display = 'flex';
+      if (el) {
+        if (id === 'school-admin-community-header') {
+          el.style.display = 'block';
+        } else {
+          el.style.display = 'flex';
+        }
+      }
     });
     
     // Hide global statistics cards on Overview
@@ -360,8 +433,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (regCount) regCount.textContent = allRegistrations.length;
   }
 
-  if (authOverlay) {
-    authOverlay.style.display = 'none';
+  if (window.hideAuthOverlayTransition) {
+    window.hideAuthOverlayTransition();
   }
 
   // ── Date Display ─────────────────────────────────────────
@@ -393,6 +466,10 @@ document.addEventListener('DOMContentLoaded', async () => {
        let pageTitle = currentUserProfile.platform_role === 'school_admin' ? 'School Admin Dashboard' : 'Super Admin Dashboard';
       if (tabTarget === 'profile') pageTitle = 'School Profile Settings';
       if (tabTarget === 'settings') pageTitle = 'School Settings';
+      if (tabTarget === 'alumni') {
+        pageTitle = 'Alumni Management';
+        loadAlumniDashboard();
+      }
       if (tabTarget === 'schools') pageTitle = 'School Registry Management';
       if (tabTarget === 'suggestions') pageTitle = 'School Suggestions Inbox';
       if (tabTarget === 'events') pageTitle = 'Event & Fest Registry';
@@ -408,6 +485,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tabTarget === 'moderation') {
         pageTitle = 'Content Moderation Panel';
         await loadModerationReports();
+      }
+      if (tabTarget === 'user-reports') {
+        pageTitle = 'User Reports Moderation';
+        await loadUserReports();
+      }
+      if (tabTarget === 'push-notifications') {
+        pageTitle = 'Send Broadcast Push Notifications';
+        initPushNotificationsTab();
       }
       if (topBarTitle) topBarTitle.textContent = pageTitle;
       const mobTitle = document.getElementById('mobile-header-title');
@@ -858,6 +943,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td style="font-weight: 700; color: var(--dark-bg);">${school.name}</td>
         <td>${school.city || 'N/A'}</td>
         <td><span class="badge-status status-approved" style="background-color: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight:700;">${school.board || 'CBSE'}</span></td>
+        <td>
+          <select class="select-institution-type" data-id="${school.id}" ${selectDisabledAttr} style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; background: ${selectBackground}; color: ${selectColor}; outline: none; cursor: ${selectCursor};">
+            <option value="school" ${school.institution_type === 'school' || !school.institution_type ? 'selected' : ''}>School</option>
+            <option value="Central University" ${school.institution_type === 'Central University' ? 'selected' : ''}>Central University</option>
+            <option value="State University" ${school.institution_type === 'State University' ? 'selected' : ''}>State University</option>
+            <option value="Private University" ${school.institution_type === 'Private University' ? 'selected' : ''}>Private University</option>
+            <option value="Deemed-to-be University" ${school.institution_type === 'Deemed-to-be University' ? 'selected' : ''}>Deemed-to-be University</option>
+            <option value="Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)" ${school.institution_type === 'Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)' ? 'selected' : ''}>Institute of National Importance</option>
+            <option value="Government College" ${school.institution_type === 'Government College' ? 'selected' : ''}>Government College</option>
+            <option value="Private College" ${school.institution_type === 'Private College' ? 'selected' : ''}>Private College</option>
+            <option value="Polytechnic" ${school.institution_type === 'Polytechnic' ? 'selected' : ''}>Polytechnic</option>
+            <option value="Other" ${school.institution_type === 'Other' ? 'selected' : ''}>Other</option>
+          </select>
+        </td>
         <td><span class="badge-status ${statusBadgeClass}" style="font-weight:700;">${statusLabel}</span></td>
         <td>
           <select class="select-school-badge" data-id="${school.id}" ${selectDisabledAttr} style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.8rem; background: ${selectBackground}; color: ${selectColor}; outline: none; cursor: ${selectCursor};">
@@ -908,6 +1007,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const id = select.getAttribute('data-id');
         const newBadge = select.value;
         await updateSchoolBadge(id, newBadge);
+      });
+    });
+
+    // Bind institution type change dropdowns
+    schoolsTbody.querySelectorAll('.select-institution-type').forEach(select => {
+      select.addEventListener('change', async (e) => {
+        const id = select.getAttribute('data-id');
+        const newType = select.value;
+        await updateInstitutionType(id, newType);
       });
     });
   }
@@ -1087,6 +1195,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
       console.error('Failed to update school badge:', e);
       showToast(`Failed to update school badge: ${e.message}`, 'error');
+    }
+  }
+
+  async function updateInstitutionType(schoolId, newType) {
+    if (!supabase) return;
+    const canChange = currentUserProfile && currentUserProfile.platform_role === 'super_admin';
+    if (!canChange) {
+      showToast('Access Denied: Only super admins can change institution types.', 'error');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({ institution_type: newType })
+        .eq('id', schoolId);
+
+      if (error) throw error;
+
+      showToast(`Institution type updated to ${newType.toUpperCase()}!`, 'success');
+      await loadSchoolsData();
+    } catch (e) {
+      console.error('Failed to update institution type:', e);
+      showToast(`Failed to update institution type: ${e.message}`, 'error');
     }
   }
 
@@ -1535,8 +1667,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       await loadSystemStats();
       await loadUsersData();
     } catch (e) {
-      console.error('Failed to delete user:', e);
-      showToast(`Failed to delete user: ${e.message}`, 'error');
+      console.warn('Failed to delete user via Edge Function, trying database fallback:', e);
+      try {
+        const { error: dbError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+        if (dbError) throw dbError;
+
+        showToast('User profile deleted from database (fallback)!', 'success');
+        await loadSystemStats();
+        await loadUsersData();
+      } catch (fallbackErr) {
+        console.error('Failed delete fallback:', fallbackErr);
+        showToast(`Failed to delete user: ${e.message}`, 'error');
+      }
     }
   }
 
@@ -2522,9 +2667,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ── Content Moderation Functions ─────────────────────────
+  let currentModerationFilter = 'pending';
+  let allModerationReports = {};
+
   async function loadModerationReports() {
     if (!supabase) return;
-    const listContainer = document.getElementById('reported-posts-list');
+    const listContainer = document.getElementById('moderation-list');
     if (!listContainer) return;
 
     try {
@@ -2554,7 +2702,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         grouped[r.post_id].push(r);
       });
 
-      renderModerationReports(grouped);
+      allModerationReports = grouped;
+      renderModerationReports();
     } catch (e) {
       console.error('Failed to load moderation reports:', e);
       listContainer.innerHTML = `
@@ -2565,28 +2714,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function renderModerationReports(groupedReports) {
-    const listContainer = document.getElementById('reported-posts-list');
+  function renderModerationReports() {
+    const listContainer = document.getElementById('moderation-list');
     if (!listContainer) return;
     listContainer.innerHTML = '';
 
-    const postIds = Object.keys(groupedReports);
-    // Filter only postIds that have at least one 'pending' report
-    const pendingPostIds = postIds.filter(postId => 
-      groupedReports[postId].some(r => r.status === 'pending')
+    const postIds = Object.keys(allModerationReports);
+    // Filter only postIds that have at least one report matching the current filter status
+    const filteredPostIds = postIds.filter(postId => 
+      allModerationReports[postId].some(r => r.status === currentModerationFilter)
     );
 
-    if (pendingPostIds.length === 0) {
+    if (filteredPostIds.length === 0) {
       listContainer.innerHTML = `
         <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">
-          🎉 No reported content pending review. All clear!
+          🎉 No reported content in this category. All clear!
         </div>
       `;
       return;
     }
 
-    pendingPostIds.forEach(postId => {
-      const reports = groupedReports[postId].filter(r => r.status === 'pending');
+    filteredPostIds.forEach(postId => {
+      const reports = allModerationReports[postId].filter(r => r.status === currentModerationFilter);
       const firstReport = reports[0];
       const postContent = firstReport.post_content || '[No Content]';
       const authorName = firstReport.author ? (firstReport.author.full_name || 'Anonymous') : 'Anonymous';
@@ -2612,13 +2761,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         minute: '2-digit'
       });
 
+      let badgeText = 'PENDING REVIEW';
+      let badgeClass = 'status-rejected';
+      if (currentModerationFilter === 'ignored') {
+        badgeText = 'IGNORED';
+        badgeClass = 'status-approved';
+      } else if (currentModerationFilter === 'deleted') {
+        badgeText = 'REMOVED';
+        badgeClass = 'status-rejected';
+      }
+
+      let actionButtonsHtml = '';
+      if (currentModerationFilter === 'pending') {
+        actionButtonsHtml = `
+          <button class="btn btn-secondary btn-view-reported-post" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Details</button>
+          <button class="btn btn-secondary btn-ignore-report" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); border-color: #D1D5DB; color: #374151; background: transparent;">Ignore Report</button>
+          <button class="btn btn-primary btn-delete-reported-post" data-post-id="${postId}" data-author-id="${authorId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); background-color: #EF4444; border-color: #EF4444; color: white;">Delete Post</button>
+        `;
+      } else {
+        actionButtonsHtml = `<span style="font-size: 0.8rem; color: var(--text-muted);">Resolved</span>`;
+      }
+
       const card = document.createElement('div');
       card.className = 'dash-table-card moderation-card';
       card.style = 'padding: 20px; border-left: 4px solid #EF4444; margin-bottom: 16px; transition: all 0.3s ease; text-align: left;';
       card.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
           <div>
-            <span class="badge-status status-rejected" style="font-weight: 700; background-color: #FEF2F2; color: #EF4444; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem;">PENDING REVIEW</span>
+            <span class="badge-status ${badgeClass}" style="font-weight: 700; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem;">${badgeText}</span>
             <span style="margin-left: 8px; font-weight: 700; color: #EF4444; font-size: 0.8rem; background-color: #FEF2F2; padding: 3px 8px; border-radius: 4px;">Reports: ${reportCount}</span>
           </div>
           <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Latest report: ${formattedDate}</span>
@@ -2644,9 +2814,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
         
         <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px; flex-wrap: wrap;">
-          <button class="btn btn-secondary btn-view-reported-post" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm);">View Details</button>
-          <button class="btn btn-secondary btn-ignore-report" data-post-id="${postId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); border-color: #D1D5DB; color: #374151; background: transparent;">Ignore Report</button>
-          <button class="btn btn-primary btn-delete-reported-post" data-post-id="${postId}" data-author-id="${authorId}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); background-color: #EF4444; border-color: #EF4444; color: white;">Delete Post</button>
+          ${actionButtonsHtml}
         </div>
       `;
       listContainer.appendChild(card);
@@ -2656,7 +2824,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     listContainer.querySelectorAll('.btn-view-reported-post').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const postId = btn.getAttribute('data-post-id');
-        openReportedPostDetailsModal(postId, groupedReports[postId]);
+        openReportedPostDetailsModal(postId, allModerationReports[postId]);
       });
     });
 
@@ -2670,17 +2838,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     listContainer.querySelectorAll('.btn-delete-reported-post').forEach(btn => {
-      console.log('[Delete Binding] Binding click handler for reported post delete button:', btn.getAttribute('data-post-id'));
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
-        console.log('[Delete Click] Reported post delete button clicked:', btn);
         const postId = btn.getAttribute('data-post-id');
         const authorId = btn.getAttribute('data-author-id');
-        console.log('[Delete Click] Retrieved attributes - postId:', postId, 'authorId:', authorId);
         await deletePostWorkflow(postId, authorId);
       });
     });
   }
+
+  // Expose filter helper globally
+  window.setModerationFilter = function(filter) {
+    currentModerationFilter = filter;
+    
+    // Toggle active classes on filter buttons
+    const btnPending = document.getElementById('btn-mod-pending');
+    const btnIgnored = document.getElementById('btn-mod-ignored');
+    const btnDeleted = document.getElementById('btn-mod-deleted');
+    
+    if (btnPending) btnPending.classList.remove('active');
+    if (btnIgnored) btnIgnored.classList.remove('active');
+    if (btnDeleted) btnDeleted.classList.remove('active');
+    
+    if (filter === 'pending' && btnPending) btnPending.classList.add('active');
+    if (filter === 'ignored' && btnIgnored) btnIgnored.classList.add('active');
+    if (filter === 'deleted' && btnDeleted) btnDeleted.classList.add('active');
+    
+    renderModerationReports();
+  };
 
   async function ignorePostReports(postId) {
     if (!supabase) return;
@@ -2763,28 +2948,1341 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // ── Initial Data Load ────────────────────────────────────
-  if (supabase) {
-    if (currentUserProfile.platform_role === 'school_admin') {
-      // For school admin, only load events, registrations, admissions, applications, contact requests
-      await loadEventsData();
-      await loadRegistrationsData();
-      await loadAdmissionsData();
-      await loadApplicationsData();
-      await loadContactRequestsData();
-    } else {
-      await loadSystemStats();
-      await loadSchoolsData();
-      await loadUsersData(); // Loaded before suggestions so email lookup works
-      await loadSuggestionsData();
-      await loadEventsData();
-      await loadRegistrationsData();
-      await loadAdmissionsData();
-      await loadApplicationsData();
-      await loadPostsData();
-      await loadContactRequestsData();
-      await loadModerationReports();
-      renderAnalytics();
+  // ── User Reports Moderation Functions ─────────────────────────
+  let currentUserReportsFilter = 'pending';
+  let allUserReports = [];
+
+  async function loadUserReports() {
+    if (!supabase) return;
+    const tbody = document.getElementById('user-reports-tbody');
+    if (!tbody) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_reports')
+        .select(`
+          *,
+          reported_user:profiles!reported_user_id (
+            id,
+            full_name,
+            email
+          ),
+          reporter:profiles!reporter_id (
+            id,
+            full_name,
+            email
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      allUserReports = data || [];
+      renderUserReports();
+    } catch (e) {
+      console.error('Failed to load user reports:', e);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px; color: #EF4444;">
+            Failed to fetch user reports: ${e.message}
+          </td>
+        </tr>
+      `;
     }
   }
-});
+
+  function renderUserReports() {
+    const tbody = document.getElementById('user-reports-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const filtered = allUserReports.filter(r => r.status === currentUserReportsFilter);
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No user reports found in this category.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    filtered.forEach(r => {
+      const tr = document.createElement('tr');
+      const createdDate = new Date(r.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+
+      const reportedName = r.reported_user ? (r.reported_user.full_name || 'N/A') : 'Deleted User';
+      const reportedEmail = r.reported_user ? (r.reported_user.email || 'N/A') : 'N/A';
+      const reporterName = r.reporter ? (r.reporter.full_name || 'Anonymous') : 'Anonymous';
+
+      let statusBadgeClass = 'status-pending';
+      if (r.status === 'dismissed') statusBadgeClass = 'status-approved';
+      if (r.status === 'action_taken') statusBadgeClass = 'status-rejected';
+
+      let actionButtons = '';
+      if (r.status === 'pending') {
+        actionButtons = `
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-dismiss-user-report" data-id="${r.id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); border-color: #D1D5DB; color: #374151;">
+              Dismiss
+            </button>
+            <button class="btn btn-secondary btn-delete-reported-user" data-id="${r.id}" data-user-id="${r.reported_user_id}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-sm); background-color: #FEF2F2; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">
+              Delete Account
+            </button>
+          </div>
+        `;
+      } else {
+        actionButtons = `<span style="font-size: 0.8rem; color: var(--text-muted);">Resolved</span>`;
+      }
+
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${reportedName}<br><span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${reportedEmail}</span></td>
+        <td>${reporterName}</td>
+        <td><span class="badge-status status-pending" style="background-color: rgba(239, 68, 68, 0.08); color: #EF4444; font-weight:700;">${r.reason}</span></td>
+        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.details || ''}">${r.details || 'N/A'}</td>
+        <td>${createdDate}</td>
+        <td><span class="badge-status ${statusBadgeClass}" style="font-weight:700;">${r.status.toUpperCase()}</span></td>
+        <td>${actionButtons}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Bind action buttons
+    tbody.querySelectorAll('.btn-dismiss-user-report').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = btn.getAttribute('data-id');
+        await resolveUserReport(id, 'dismissed');
+      });
+    });
+
+    tbody.querySelectorAll('.btn-delete-reported-user').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const reportId = btn.getAttribute('data-id');
+        const userId = btn.getAttribute('data-user-id');
+        if (confirm('Are you sure you want to permanently delete this user account? This will remove their authentication record, cascade delete their profile, and delete all associated data across the entire platform.')) {
+          await resolveUserReport(reportId, 'action_taken', userId);
+        }
+      });
+    });
+  }
+
+  async function resolveUserReport(reportId, action, userId = null) {
+    if (!supabase) return;
+
+    try {
+      if (action === 'action_taken' && userId) {
+        // Try deleting the user using our edge function
+        try {
+          const { error: deleteError } = await supabase.functions.invoke('delete-user', {
+            body: { userId }
+          });
+          if (deleteError) throw deleteError;
+          showToast('User account successfully deleted from database and platform!', 'success');
+        } catch (funcErr) {
+          console.warn('Failed to delete user via Edge Function, trying database fallback:', funcErr);
+          // Try fallback database delete
+          const { error: dbError } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', userId);
+          if (dbError) throw dbError;
+          showToast('User profile deleted from database (fallback)!', 'success');
+        }
+      } else if (action === 'dismissed') {
+        const { error } = await supabase
+          .from('user_reports')
+          .update({
+            status: 'dismissed',
+            resolved_at: new Date().toISOString(),
+            resolved_by: (await supabase.auth.getSession()).data.session?.user?.id || null
+          })
+          .eq('id', reportId);
+
+        if (error) throw error;
+        showToast('Report dismissed successfully.', 'success');
+      }
+
+      await loadUserReports();
+      await loadSystemStats();
+      await loadUsersData();
+    } catch (e) {
+      console.error('Failed to resolve user report:', e);
+      showToast(`Failed to resolve report: ${e.message}`, 'error');
+    }
+  }
+
+  // Expose filter helper globally
+  window.setUserReportsFilter = function(filter) {
+    currentUserReportsFilter = filter;
+    
+    // Toggle active classes on filter buttons
+    const btnPending = document.getElementById('btn-user-rep-pending');
+    const btnDismissed = document.getElementById('btn-user-rep-dismissed');
+    const btnAction = document.getElementById('btn-user-rep-action');
+    
+    if (btnPending) btnPending.classList.remove('active');
+    if (btnDismissed) btnDismissed.classList.remove('active');
+    if (btnAction) btnAction.classList.remove('active');
+    
+    if (filter === 'pending' && btnPending) btnPending.classList.add('active');
+    if (filter === 'dismissed' && btnDismissed) btnDismissed.classList.add('active');
+    if (filter === 'action_taken' && btnAction) btnAction.classList.add('active');
+    
+    renderUserReports();
+  };
+
+  // ── Alumni Management Functions ──────────────────────────────────
+
+  // Local beautiful toast implementation
+  function showToast(message, type = 'success') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast-alert toast-alert-${type}`;
+    let icon = '✓';
+    if (type === 'info') icon = 'ℹ';
+    if (type === 'error') icon = '⚠';
+    toast.innerHTML = `
+      <span style="font-weight:700; font-size:1.1rem; margin-right:8px;">${icon}</span>
+      <div>${message}</div>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 50);
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 400);
+    }, 4000);
+  }
+
+  // Setup Subtab navigation clicks
+  const alumniSubTabBtns = document.querySelectorAll('.alumni-sub-tab-btn');
+  const alumniSubPanels = document.querySelectorAll('.alumni-sub-panel');
+  
+  alumniSubTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-subtab');
+      alumniSubTabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      alumniSubPanels.forEach(p => {
+        p.classList.remove('active');
+        if (p.id === `${target}-subtab`) {
+          p.classList.add('active');
+        }
+      });
+    });
+  });
+
+  async function loadAlumniDashboard() {
+    if (!supabase || !userSchool) return;
+
+    try {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isRealUUID = uuidRegex.test(userSchool.id);
+
+      // 1. Fetch batches
+      let batches = [];
+      if (isRealUUID) {
+        try {
+          const { data, error: bErr } = await supabase
+            .from('alumni_batches')
+            .select('*')
+            .eq('school_id', userSchool.id)
+            .order('passing_year', { ascending: false });
+          if (!bErr) batches = data || [];
+        } catch(e) {}
+      }
+      let localBatches = [];
+      try { localBatches = JSON.parse(localStorage.getItem('campuslink_alumni_batches') || '[]'); } catch(e) {}
+      const mappedLocalBatches = localBatches.filter(b => b.school_id === userSchool.id || b.schoolId === userSchool.id).map(b => ({
+        id: b.id,
+        school_id: b.school_id || b.schoolId,
+        passing_year: b.passing_year || b.passingYear,
+        department: b.department || null,
+        program: b.program || null,
+        description: b.description || null,
+        cover_image: b.cover_image || b.coverImage || null,
+        created_at: b.created_at || b.createdAt || new Date().toISOString()
+      }));
+      allAlumniBatches = [...batches, ...mappedLocalBatches];
+
+      // 2. Fetch invites
+      let invites = [];
+      if (isRealUUID) {
+        try {
+          const { data, error: iErr } = await supabase
+            .from('alumni_invites')
+            .select('*')
+            .eq('school_id', userSchool.id);
+          if (!iErr) invites = data || [];
+        } catch(e) {}
+      }
+      let localInvites = [];
+      try { localInvites = JSON.parse(localStorage.getItem('campuslink_alumni_invites') || '[]'); } catch(e) {}
+      const mappedLocalInvites = localInvites.filter(i => i.schoolId === userSchool.id || i.school_id === userSchool.id).map(i => ({
+        id: i.id,
+        school_id: i.schoolId || i.school_id,
+        batch_id: i.batchId || i.batch_id || null,
+        invite_code: i.inviteCode || i.invite_code,
+        status: i.status || 'active',
+        uses_count: i.usesCount || i.uses_count || 0,
+        created_at: i.createdAt || i.created_at || new Date().toISOString()
+      }));
+      allAlumniInvites = [...invites, ...mappedLocalInvites];
+
+      // 3. Fetch requests
+      let requests = [];
+      if (isRealUUID) {
+        try {
+          const { data, error: rErr } = await supabase
+            .from('alumni_requests')
+            .select('*')
+            .eq('school_id', userSchool.id)
+            .order('created_at', { ascending: false });
+          if (!rErr) requests = data || [];
+        } catch(e) {}
+      }
+      let localRequests = [];
+      try { localRequests = JSON.parse(localStorage.getItem('campuslink_alumni_requests') || '[]'); } catch(e) {}
+      const mappedLocalRequests = localRequests.filter(r => r.school_id === userSchool.id).map(r => ({
+        id: r.id,
+        school_id: r.school_id,
+        batch_id: r.batch_id,
+        invite_id: r.invite_id,
+        user_id: r.user_id,
+        full_name: r.full_name,
+        email: r.email,
+        username: r.username,
+        passing_year: r.passing_year,
+        department: r.department,
+        program: r.program,
+        status: r.status,
+        created_at: r.created_at || new Date().toISOString()
+      }));
+      allAlumniRequests = [...requests, ...mappedLocalRequests];
+
+      // 4. Fetch members
+      let members = [];
+      if (isRealUUID) {
+        try {
+          const { data, error: mErr } = await supabase
+            .from('alumni_members')
+            .select('id, batch_id, user_id')
+            .eq('school_id', userSchool.id);
+          if (!mErr) members = data || [];
+        } catch(e) {}
+      }
+      let localMembers = [];
+      try { localMembers = JSON.parse(localStorage.getItem('campuslink_alumni_members') || '[]'); } catch(e) {}
+      const mappedLocalMembers = localMembers.filter(m => m.school_id === userSchool.id).map(m => ({
+        id: m.id,
+        batch_id: m.batch_id,
+        user_id: m.user_id
+      }));
+      allAlumniMembers = [...members, ...mappedLocalMembers];
+
+      // Update badge counts & statistics
+      updateAlumniStats();
+      renderAlumniBatches();
+      renderAlumniInvites();
+      renderAlumniRequests();
+
+    } catch (err) {
+      console.error('Error loading alumni dashboard:', err);
+      showToast('Failed to load alumni dashboard: ' + err.message, 'error');
+    }
+  }
+
+  function updateAlumniStats() {
+    // Total Alumni
+    const totalAlumni = allAlumniMembers.length;
+    document.getElementById('alumni-stat-total').textContent = totalAlumni;
+
+    // Total Batches
+    const totalBatches = allAlumniBatches.length;
+    document.getElementById('alumni-stat-batches').textContent = totalBatches;
+
+    // Pending Requests
+    const pendingRequests = allAlumniRequests.filter(r => r.status === 'pending');
+    document.getElementById('alumni-stat-pending').textContent = pendingRequests.length;
+
+    // Update Pending Requests Badges in subtabs
+    const badge = document.getElementById('alumni-req-count-badge');
+    if (badge) {
+      if (pendingRequests.length > 0) {
+        badge.textContent = pendingRequests.length;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    // Most Active Batch (batch with highest members)
+    let activeBatchText = 'None';
+    if (allAlumniBatches.length > 0 && allAlumniMembers.length > 0) {
+      const counts = {};
+      allAlumniMembers.forEach(m => {
+        counts[m.batch_id] = (counts[m.batch_id] || 0) + 1;
+      });
+      let maxCount = 0;
+      let maxBatchId = null;
+      Object.keys(counts).forEach(bid => {
+        if (counts[bid] > maxCount) {
+          maxCount = counts[bid];
+          maxBatchId = bid;
+        }
+      });
+      if (maxBatchId) {
+        const activeBatch = allAlumniBatches.find(b => b.id === maxBatchId);
+        if (activeBatch) {
+          activeBatchText = `Batch ${activeBatch.passing_year} (${maxCount} members)`;
+        }
+      }
+    }
+    document.getElementById('alumni-stat-active-batch').textContent = activeBatchText;
+
+    // Newest Batch (most recently created batch)
+    let newestBatchText = 'None';
+    if (allAlumniBatches.length > 0) {
+      const sorted = [...allAlumniBatches].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const newest = sorted[0];
+      newestBatchText = `Batch ${newest.passing_year}`;
+      if (newest.department) newestBatchText += ` (${newest.department})`;
+    }
+    document.getElementById('alumni-stat-newest-batch').textContent = newestBatchText;
+  }
+
+  function renderAlumniBatches() {
+    const tbody = document.getElementById('alumni-batches-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (allAlumniBatches.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">No graduation batches created yet. Click "+ Create Batch" to get started.</td></tr>`;
+      return;
+    }
+
+    allAlumniBatches.forEach(b => {
+      // Find members count
+      const memberCount = allAlumniMembers.filter(m => m.batch_id === b.id).length;
+      
+      // Find invite link details
+      const invite = allAlumniInvites.find(i => i.batch_id === b.id);
+      let inviteStatusHtml = '<span class="badge-status status-pending">No Link</span>';
+
+      if (invite) {
+        const isExpired = invite.expires_at && new Date(invite.expires_at) < new Date();
+        if (invite.status === 'disabled') {
+          inviteStatusHtml = '<span class="badge-status status-rejected">Disabled</span>';
+        } else if (isExpired) {
+          inviteStatusHtml = '<span class="badge-status status-rejected">Expired</span>';
+        } else {
+          inviteStatusHtml = '<span class="badge-status status-approved">Active</span>';
+        }
+      }
+
+      const dateStr = new Date(b.created_at).toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric'
+      });
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">Batch ${b.passing_year}</td>
+        <td>${b.department || '—'}</td>
+        <td>${b.program || '—'}</td>
+        <td><span class="badge-status status-approved" style="font-weight:700;">${memberCount} Members</span></td>
+        <td>${inviteStatusHtml}</td>
+        <td>${dateStr}</td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-members" data-id="${b.id}" data-year="${b.passing_year}" style="padding: 4px 8px; font-size: 0.75rem;">View Members</button>
+            <button class="btn btn-secondary btn-edit-batch" data-id="${b.id}" style="padding: 4px 8px; font-size: 0.75rem;">Edit</button>
+            ${invite ? `
+              <button class="btn btn-secondary btn-copy-invite" data-code="${invite.invite_code}" style="padding: 4px 8px; font-size: 0.75rem;">📋 Copy Link</button>
+              <button class="btn btn-secondary btn-qr-invite" data-code="${invite.invite_code}" data-year="${b.passing_year}" style="padding: 4px 8px; font-size: 0.75rem;">📱 QR</button>
+              <button class="btn btn-secondary btn-toggle-invite" data-id="${invite.id}" data-status="${invite.status}" style="padding: 4px 8px; font-size: 0.75rem;">
+                ${invite.status === 'active' ? 'Deactivate' : 'Activate'}
+              </button>
+            ` : ''}
+            <button class="btn btn-secondary btn-delete-batch" data-id="${b.id}" style="padding: 4px 8px; font-size: 0.75rem; border-color: rgba(239, 68, 68, 0.2); color: #EF4444;">Delete</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Bind action buttons
+    tbody.querySelectorAll('.btn-members').forEach(btn => {
+      btn.addEventListener('click', () => openViewMembersModal(btn.getAttribute('data-id'), btn.getAttribute('data-year')));
+    });
+
+    tbody.querySelectorAll('.btn-edit-batch').forEach(btn => {
+      btn.addEventListener('click', () => openEditBatchModal(btn.getAttribute('data-id')));
+    });
+
+    tbody.querySelectorAll('.btn-copy-invite').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.getAttribute('data-code');
+        const url = `${window.location.origin}/join-alumni.html?code=${code}`;
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('Alumni invite link copied to clipboard!');
+        }).catch(err => {
+          showToast('Failed to copy: ' + err.message, 'error');
+        });
+      });
+    });
+
+    tbody.querySelectorAll('.btn-qr-invite').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.getAttribute('data-code');
+        const year = btn.getAttribute('data-year');
+        openQRCodeModal(code, `Batch of ${year}`);
+      });
+    });
+
+    tbody.querySelectorAll('.btn-toggle-invite').forEach(btn => {
+      btn.addEventListener('click', () => toggleInviteLink(btn.getAttribute('data-id'), btn.getAttribute('data-status')));
+    });
+
+    tbody.querySelectorAll('.btn-delete-batch').forEach(btn => {
+      btn.addEventListener('click', () => deleteBatch(btn.getAttribute('data-id')));
+    });
+  }
+
+  function renderAlumniInvites() {
+    const tbody = document.getElementById('alumni-invites-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (allAlumniInvites.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">No invite links found. Create a batch to automatically generate invite links.</td></tr>`;
+      return;
+    }
+
+    allAlumniInvites.forEach(invite => {
+      const batch = allAlumniBatches.find(b => b.id === invite.batch_id);
+      const batchYear = batch ? batch.passing_year : 'Unknown';
+      const deptDetails = batch ? `${batch.department || '—'} / ${batch.program || '—'}` : '—';
+      
+      const isExpired = invite.expires_at && new Date(invite.expires_at) < new Date();
+      let statusHtml = '';
+      if (invite.status === 'disabled') {
+        statusHtml = '<span class="badge-status status-rejected">Disabled</span>';
+      } else if (isExpired) {
+        statusHtml = '<span class="badge-status status-rejected">Expired</span>';
+      } else {
+        statusHtml = '<span class="badge-status status-approved">Active</span>';
+      }
+
+      const expiryStr = invite.expires_at ? new Date(invite.expires_at).toLocaleDateString('en-IN') : 'Never';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-family: monospace; font-size: 0.9rem; font-weight:700; color:var(--primary);">${invite.invite_code}</td>
+        <td style="font-weight: 700;">Batch ${batchYear}</td>
+        <td>${deptDetails}</td>
+        <td>${statusHtml}</td>
+        <td><span class="badge-status status-approved">${invite.uses_count} Uses</span></td>
+        <td>${expiryStr}</td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-copy" data-code="${invite.invite_code}" style="padding: 4px 8px; font-size: 0.75rem;">Copy URL</button>
+            <button class="btn btn-secondary btn-qr" data-code="${invite.invite_code}" data-year="${batchYear}" style="padding: 4px 8px; font-size: 0.75rem;">QR Code</button>
+            <button class="btn btn-secondary btn-toggle" data-id="${invite.id}" data-status="${invite.status}" style="padding: 4px 8px; font-size: 0.75rem;">
+              ${invite.status === 'active' ? 'Disable' : 'Enable'}
+            </button>
+            <button class="btn btn-secondary btn-regenerate" data-id="${invite.id}" style="padding: 4px 8px; font-size: 0.75rem; border-color: rgba(245, 158, 11, 0.2); color: #D97706;">Regenerate</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.btn-copy').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.getAttribute('data-code');
+        const url = `${window.location.origin}/join-alumni.html?code=${code}`;
+        navigator.clipboard.writeText(url).then(() => {
+          showToast('Alumni invite URL copied to clipboard!');
+        });
+      });
+    });
+
+    tbody.querySelectorAll('.btn-qr').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.getAttribute('data-code');
+        const year = btn.getAttribute('data-year');
+        openQRCodeModal(code, `Batch of ${year}`);
+      });
+    });
+
+    tbody.querySelectorAll('.btn-toggle').forEach(btn => {
+      btn.addEventListener('click', () => toggleInviteLink(btn.getAttribute('data-id'), btn.getAttribute('data-status')));
+    });
+
+    tbody.querySelectorAll('.btn-regenerate').forEach(btn => {
+      btn.addEventListener('click', () => regenerateInviteLink(btn.getAttribute('data-id')));
+    });
+  }
+
+  function renderAlumniRequests() {
+    const tbody = document.getElementById('alumni-requests-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (allAlumniRequests.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">No alumni requests found.</td></tr>`;
+      return;
+    }
+
+    allAlumniRequests.forEach(r => {
+      const gradDetails = `Batch ${r.passing_year} ${r.department ? `(${r.department})` : ''}`;
+      const dateStr = new Date(r.created_at).toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric'
+      });
+
+      let statusHtml = '';
+      if (r.status === 'approved') {
+        statusHtml = '<span class="badge-status status-approved">Approved</span>';
+      } else if (r.status === 'rejected') {
+        statusHtml = '<span class="badge-status status-rejected">Rejected</span>';
+      } else if (r.status === 'info_requested') {
+        statusHtml = '<span class="badge-status status-pending" style="background-color: rgba(245, 158, 11, 0.1); color: #D97706;">Info Requested</span>';
+      } else {
+        statusHtml = '<span class="badge-status status-pending">Pending</span>';
+      }
+
+      const isPending = r.status === 'pending' || r.status === 'info_requested';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: var(--dark-bg);">${r.full_name}</td>
+        <td>@${r.username}</td>
+        <td>${r.email}</td>
+        <td>${gradDetails}</td>
+        <td>${dateStr}</td>
+        <td>${statusHtml}</td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            ${isPending ? `
+              <button class="btn btn-primary btn-approve" data-id="${r.id}" style="padding: 4px 8px; font-size: 0.75rem; background: var(--success);">Approve</button>
+              <button class="btn btn-secondary btn-reject" data-id="${r.id}" style="padding: 4px 8px; font-size: 0.75rem; color: #EF4444; border-color: rgba(239, 68, 68, 0.2);">Reject</button>
+              <button class="btn btn-secondary btn-info" data-id="${r.id}" style="padding: 4px 8px; font-size: 0.75rem;">Request Info</button>
+            ` : `
+              <span style="font-size: 0.8rem; color: var(--text-muted); padding: 4px 8px;">Action Completed</span>
+            `}
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.btn-approve').forEach(btn => {
+      btn.addEventListener('click', () => approveAlumniRequest(btn.getAttribute('data-id')));
+    });
+
+    tbody.querySelectorAll('.btn-reject').forEach(btn => {
+      btn.addEventListener('click', () => rejectAlumniRequest(btn.getAttribute('data-id')));
+    });
+
+    tbody.querySelectorAll('.btn-info').forEach(btn => {
+      btn.addEventListener('click', () => requestMoreInfo(btn.getAttribute('data-id')));
+    });
+  }
+
+  // --- Modal actions ---
+  const createBatchModal = document.getElementById('create-alumni-batch-modal');
+  const editBatchModal = document.getElementById('edit-alumni-batch-modal');
+  const qrCodeModal = document.getElementById('alumni-qr-code-modal');
+  const viewMembersModal = document.getElementById('view-alumni-members-modal');
+
+  // Bind close buttons
+  document.getElementById('btn-create-alumni-batch')?.addEventListener('click', () => {
+    if (createBatchModal) createBatchModal.style.display = 'flex';
+  });
+  document.getElementById('create-batch-modal-close')?.addEventListener('click', () => {
+    if (createBatchModal) createBatchModal.style.display = 'none';
+  });
+  document.getElementById('btn-cancel-create-batch')?.addEventListener('click', () => {
+    if (createBatchModal) createBatchModal.style.display = 'none';
+  });
+  
+  document.getElementById('edit-batch-modal-close')?.addEventListener('click', () => {
+    if (editBatchModal) editBatchModal.style.display = 'none';
+  });
+  document.getElementById('btn-cancel-edit-batch')?.addEventListener('click', () => {
+    if (editBatchModal) editBatchModal.style.display = 'none';
+  });
+
+  document.getElementById('qr-modal-close')?.addEventListener('click', () => {
+    if (qrCodeModal) qrCodeModal.style.display = 'none';
+  });
+
+  document.getElementById('view-members-modal-close')?.addEventListener('click', () => {
+    if (viewMembersModal) viewMembersModal.style.display = 'none';
+  });
+
+  // Batch Form Submissions
+  document.getElementById('create-alumni-batch-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabase || !userSchool) return;
+
+    const passingYear = parseInt(document.getElementById('create-batch-year').value);
+    const department = document.getElementById('create-batch-dept').value.trim();
+    const program = document.getElementById('create-batch-prog').value.trim();
+    const description = document.getElementById('create-batch-desc').value.trim();
+    const coverImage = document.getElementById('create-batch-cover').value.trim();
+
+    try {
+      // 1. Create batch
+      const { data: newBatch, error: bErr } = await supabase
+        .from('alumni_batches')
+        .insert({
+          school_id: userSchool.id,
+          passing_year: passingYear,
+          department: department || null,
+          program: program || null,
+          description: description || null,
+          cover_image: coverImage || null,
+          created_by: session.user.id
+        })
+        .select()
+        .single();
+      
+      if (bErr) {
+        if (bErr.code === '23505') {
+          throw new Error('A batch with this graduation year, department, and program already exists.');
+        }
+        throw bErr;
+      }
+
+      // 2. Automatically generate secure random invite link code
+      const randStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const inviteCode = `ALM-${randStr}-${passingYear}`;
+
+      const { error: iErr } = await supabase
+        .from('alumni_invites')
+        .insert({
+          batch_id: newBatch.id,
+          school_id: userSchool.id,
+          invite_code: inviteCode,
+          status: 'active',
+          created_by: session.user.id
+        });
+
+      if (iErr) throw iErr;
+
+      showToast('Graduation batch and invite link successfully created!');
+      if (createBatchModal) createBatchModal.style.display = 'none';
+      document.getElementById('create-alumni-batch-form').reset();
+      await loadAlumniDashboard();
+      openQRCodeModal(inviteCode, `Batch of ${passingYear}`);
+
+    } catch (err) {
+      console.error('Failed to create batch', err);
+      showToast('Error creating batch: ' + err.message, 'error');
+    }
+  });
+
+  function openEditBatchModal(batchId) {
+    const batch = allAlumniBatches.find(b => b.id === batchId);
+    if (!batch) return;
+
+    document.getElementById('edit-batch-id').value = batch.id;
+    document.getElementById('edit-batch-year').value = batch.passing_year;
+    document.getElementById('edit-batch-dept').value = batch.department || '';
+    document.getElementById('edit-batch-prog').value = batch.program || '';
+    document.getElementById('edit-batch-desc').value = batch.description || '';
+    document.getElementById('edit-batch-cover').value = batch.cover_image || '';
+
+    if (editBatchModal) editBatchModal.style.display = 'flex';
+  }
+
+  document.getElementById('edit-alumni-batch-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    const id = document.getElementById('edit-batch-id').value;
+    const passingYear = parseInt(document.getElementById('edit-batch-year').value);
+    const department = document.getElementById('edit-batch-dept').value.trim();
+    const program = document.getElementById('edit-batch-prog').value.trim();
+    const description = document.getElementById('edit-batch-desc').value.trim();
+    const coverImage = document.getElementById('edit-batch-cover').value.trim();
+
+    try {
+      const { error } = await supabase
+        .from('alumni_batches')
+        .update({
+          passing_year: passingYear,
+          department: department || null,
+          program: program || null,
+          description: description || null,
+          cover_image: coverImage || null
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      showToast('Graduation batch successfully updated!');
+      if (editBatchModal) editBatchModal.style.display = 'none';
+      await loadAlumniDashboard();
+
+    } catch (err) {
+      console.error('Failed to update batch', err);
+      showToast('Error updating batch: ' + err.message, 'error');
+    }
+  });
+
+  async function deleteBatch(batchId) {
+    if (!supabase) return;
+    if (!confirm('Are you sure you want to delete this batch? All members, invitations, and requests associated with this batch will be permanently removed.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('alumni_batches')
+        .delete()
+        .eq('id', batchId);
+      if (error) throw error;
+
+      showToast('Graduation batch deleted successfully.');
+      await loadAlumniDashboard();
+    } catch (err) {
+      console.error('Failed to delete batch', err);
+      showToast('Error deleting batch: ' + err.message, 'error');
+    }
+  }
+
+  async function toggleInviteLink(inviteId, currentStatus) {
+    if (!supabase) return;
+    const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+
+    try {
+      const { error } = await supabase
+        .from('alumni_invites')
+        .update({ status: newStatus })
+        .eq('id', inviteId);
+      if (error) throw error;
+
+      showToast(`Invite link ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully!`);
+      await loadAlumniDashboard();
+    } catch (err) {
+      console.error('Failed to update invite status', err);
+      showToast('Error updating invite status: ' + err.message, 'error');
+    }
+  }
+
+  async function regenerateInviteLink(inviteId) {
+    if (!supabase) return;
+    if (!confirm('Are you sure you want to regenerate this invite link? The old link code will stop working immediately, and a new code will be generated.')) return;
+
+    try {
+      const invite = allAlumniInvites.find(i => i.id === inviteId);
+      if (!invite) return;
+      const batch = allAlumniBatches.find(b => b.id === invite.batch_id);
+      const batchYear = batch ? batch.passing_year : '2024';
+
+      const randStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const newCode = `ALM-${randStr}-${batchYear}`;
+
+      const { error } = await supabase
+        .from('alumni_invites')
+        .update({
+          invite_code: newCode,
+          status: 'active',
+          uses_count: 0
+        })
+        .eq('id', inviteId);
+      
+      if (error) throw error;
+
+      showToast('Invite link regenerated successfully!');
+      await loadAlumniDashboard();
+    } catch (err) {
+      console.error('Failed to regenerate invite link', err);
+      showToast('Error regenerating invite link: ' + err.message, 'error');
+    }
+  }
+
+  function openQRCodeModal(code, title) {
+    const url = `${window.location.origin}/join-alumni.html?code=${code}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}`;
+    
+    document.getElementById('qr-modal-title').textContent = `${title} Invite QR`;
+    document.getElementById('qr-modal-url').textContent = url;
+    
+    const qrImg = document.getElementById('qr-modal-img');
+    if (qrImg) qrImg.src = qrUrl;
+
+    // Bind action handlers
+    const btnDownload = document.getElementById('btn-download-qr');
+    if (btnDownload) {
+      // Clear previous listeners by cloning button
+      const newBtn = btnDownload.cloneNode(true);
+      btnDownload.parentNode.replaceChild(newBtn, btnDownload);
+      newBtn.addEventListener('click', () => downloadQRCode(qrUrl, `QR_${code}.png`));
+    }
+
+    const btnPrint = document.getElementById('btn-print-qr');
+    if (btnPrint) {
+      const newBtn = btnPrint.cloneNode(true);
+      btnPrint.parentNode.replaceChild(newBtn, btnPrint);
+      newBtn.addEventListener('click', () => printQRCode(qrUrl, title));
+    }
+
+    if (qrCodeModal) qrCodeModal.style.display = 'flex';
+  }
+
+  function printQRCode(imageUrl, title) {
+    const win = window.open('', '_blank');
+    win.document.write(`
+      <html>
+        <head>
+          <title>Print QR Code - ${title}</title>
+          <style>
+            body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; }
+            img { width: 300px; height: 300px; border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
+            h2 { margin: 0 0 10px 0; }
+            p { margin: 0; color: #666; font-size: 0.9rem; }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <h2>${title}</h2>
+          <img src="${imageUrl}">
+          <p>Scan to join the alumni community</p>
+        </body>
+      </html>
+    `);
+    win.document.close();
+  }
+
+  async function downloadQRCode(imageUrl, filename) {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download QR code', err);
+      window.open(imageUrl, '_blank');
+    }
+  }
+
+  async function openViewMembersModal(batchId, batchYear) {
+    if (!supabase) return;
+    document.getElementById('view-members-title').textContent = `Batch of ${batchYear} Members`;
+    const tbody = document.getElementById('batch-members-tbody');
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Loading members...</td></tr>`;
+
+    if (viewMembersModal) viewMembersModal.style.display = 'flex';
+
+    try {
+      const { data: members, error } = await supabase
+        .from('alumni_members')
+        .select(`
+          id, joined_at,
+          user:profiles!user_id(id, full_name, email, username)
+        `)
+        .eq('batch_id', batchId)
+        .order('joined_at', { ascending: false });
+
+      if (error) throw error;
+
+      const renderMembers = (filterText = '') => {
+        tbody.innerHTML = '';
+        const list = (members || []).filter(m => {
+          const u = m.user || {};
+          const name = (u.full_name || '').toLowerCase();
+          const username = (u.username || '').toLowerCase();
+          const email = (u.email || '').toLowerCase();
+          const query = filterText.toLowerCase();
+          return name.includes(query) || username.includes(query) || email.includes(query);
+        });
+
+        if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No members matched.</td></tr>`;
+          return;
+        }
+
+        list.forEach(m => {
+          const u = m.user || {};
+          const name = u.full_name || 'Unknown';
+          const username = u.username || '—';
+          const email = u.email || '—';
+          const dateStr = new Date(m.joined_at).toLocaleDateString('en-IN');
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 700; color: var(--dark-bg);">${name}</td>
+            <td>@${username}</td>
+            <td>${email}</td>
+            <td>${dateStr}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      };
+
+      renderMembers();
+
+      // Bind search field
+      const searchInput = document.getElementById('batch-member-search');
+      if (searchInput) {
+        searchInput.value = '';
+        const newSearch = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearch, searchInput);
+        newSearch.addEventListener('input', (e) => renderMembers(e.target.value));
+      }
+
+    } catch (err) {
+      console.error('Failed to load batch members', err);
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px; color: #EF4444;">Error loading members: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function approveAlumniRequest(requestId) {
+    if (!supabase) return;
+    if (!confirm('Are you sure you want to approve this request? This will automatically grant the user the Alumni role, set their school and batch, and add them as a batch member.')) return;
+
+    try {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      if (uuidRegex.test(requestId)) {
+        const { error } = await supabase
+          .from('alumni_requests')
+          .update({ status: 'approved' })
+          .eq('id', requestId);
+        if (error) throw error;
+      } else {
+        // Mock fallback
+        let localRequests = [];
+        try { localRequests = JSON.parse(localStorage.getItem('campuslink_alumni_requests') || '[]'); } catch(e) {}
+        const req = localRequests.find(r => r.id === requestId);
+        if (req) {
+          req.status = 'approved';
+          localStorage.setItem('campuslink_alumni_requests', JSON.stringify(localRequests));
+
+          // Increment usesCount of the invitation link in localStorage
+          if (req.invite_id) {
+            let localInvites = [];
+            try { localInvites = JSON.parse(localStorage.getItem('campuslink_alumni_invites') || '[]'); } catch(e) {}
+            const invite = localInvites.find(i => i.id === req.invite_id);
+            if (invite) {
+              invite.usesCount = (invite.usesCount || 0) + 1;
+              invite.uses_count = (invite.uses_count || 0) + 1;
+              localStorage.setItem('campuslink_alumni_invites', JSON.stringify(localInvites));
+            }
+          }
+
+          // Also add to local alumni members
+          let localMembers = [];
+          try { localMembers = JSON.parse(localStorage.getItem('campuslink_alumni_members') || '[]'); } catch(e) {}
+          if (!localMembers.find(m => m.user_id === req.user_id && m.batch_id === req.batch_id)) {
+            localMembers.push({
+              id: 'amem_' + Date.now(),
+              school_id: req.school_id,
+              batch_id: req.batch_id,
+              user_id: req.user_id,
+              joined_at: new Date().toISOString()
+            });
+            localStorage.setItem('campuslink_alumni_members', JSON.stringify(localMembers));
+          }
+
+          // Also add to local alumni list (campuslink_alumni)
+          let localAlumni = [];
+          try { localAlumni = JSON.parse(localStorage.getItem('campuslink_alumni') || '[]'); } catch(e) {}
+          if (!localAlumni.find(a => a.username === req.username)) {
+            localAlumni.push({
+              id: req.user_id,
+              schoolId: req.school_id,
+              userId: req.user_id,
+              campuslinkId: 'CL-ALM-' + Math.floor(1000 + Math.random() * 9000),
+              fullName: req.full_name,
+              username: req.username,
+              email: req.email,
+              phone: '',
+              gender: '',
+              graduatingYear: req.passing_year,
+              graduatingClass: req.department || req.program || 'General',
+              section: '',
+              admissionNumber: '',
+              rollNumber: '',
+              dateOfBirth: '',
+              currentOccupation: '',
+              currentLocation: '',
+              achievements: '',
+              status: 'verified',
+              verificationStatus: 'verified',
+              createdAt: new Date().toISOString()
+            });
+            localStorage.setItem('campuslink_alumni', JSON.stringify(localAlumni));
+          }
+
+          // Move user to graduated section
+          let students = [];
+          try { students = JSON.parse(localStorage.getItem('campuslink_students') || '[]'); } catch(e) {}
+          const student = students.find(s => s.id === req.user_id || s.username === req.username);
+          if (student) {
+            student.status = 'graduated';
+            localStorage.setItem('campuslink_students', JSON.stringify(students));
+          }
+        }
+      }
+
+      showToast('Alumni request approved successfully!');
+      await loadAlumniDashboard();
+    } catch (err) {
+      console.error('Failed to approve request', err);
+      showToast('Error approving request: ' + err.message, 'error');
+    }
+  }
+
+  async function rejectAlumniRequest(requestId) {
+    if (!supabase) return;
+    if (!confirm('Are you sure you want to reject this joining request?')) return;
+
+    try {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(requestId)) {
+        const { error } = await supabase
+          .from('alumni_requests')
+          .update({ status: 'rejected' })
+          .eq('id', requestId);
+        if (error) throw error;
+      } else {
+        // Mock fallback
+        let localRequests = [];
+        try { localRequests = JSON.parse(localStorage.getItem('campuslink_alumni_requests') || '[]'); } catch(e) {}
+        const req = localRequests.find(r => r.id === requestId);
+        if (req) {
+          req.status = 'rejected';
+          localStorage.setItem('campuslink_alumni_requests', JSON.stringify(localRequests));
+        }
+      }
+
+      showToast('Alumni request rejected.');
+      await loadAlumniDashboard();
+    } catch (err) {
+      console.error('Failed to reject request', err);
+      showToast('Error rejecting request: ' + err.message, 'error');
+    }
+  }
+
+  async function requestMoreInfo(requestId) {
+    if (!supabase) return;
+    const msg = prompt('Enter a message explaining what additional information is required from the applicant:');
+    if (msg === null) return; // Cancelled
+    if (!msg.trim()) return alert('Message is required to request more information.');
+
+    try {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(requestId)) {
+        const { error } = await supabase
+          .from('alumni_requests')
+          .update({
+            status: 'info_requested',
+            info_request_details: msg.trim()
+          })
+          .eq('id', requestId);
+        if (error) throw error;
+      } else {
+        // Mock fallback
+        let localRequests = [];
+        try { localRequests = JSON.parse(localStorage.getItem('campuslink_alumni_requests') || '[]'); } catch(e) {}
+        const req = localRequests.find(r => r.id === requestId);
+        if (req) {
+          req.status = 'info_requested';
+          req.info_request_details = msg.trim();
+          localStorage.setItem('campuslink_alumni_requests', JSON.stringify(localRequests));
+        }
+      }
+
+      showToast('More information requested from applicant.');
+      await loadAlumniDashboard();
+    } catch (err) {
+      console.error('Failed to request more info', err);
+      showToast('Error: ' + err.message, 'error');
+    }
+  }
+
+  // ── Initial Data Load ────────────────────────────────────
+  if (supabase) {
+    try {
+      if (currentUserProfile.platform_role === 'school_admin') {
+        // For school admin, load events, registrations, admissions, applications, contact requests, and alumni
+        await loadEventsData();
+        await loadRegistrationsData();
+        await loadAdmissionsData();
+        await loadApplicationsData();
+        await loadContactRequestsData();
+        
+        // Load pending requests count for navigation badge
+        try {
+          const { data: requests } = await supabase
+            .from('alumni_requests')
+            .select('id')
+            .eq('school_id', userSchool.id)
+            .eq('status', 'pending');
+          const badge = document.getElementById('alumni-req-count-badge');
+          if (badge && requests && requests.length > 0) {
+            badge.textContent = requests.length;
+            badge.style.display = 'inline-block';
+          }
+        } catch (err) {
+          console.warn('Failed to retrieve initial requests count badge', err);
+        }
+      } else {
+        await loadSystemStats();
+        await loadSchoolsData();
+        await loadUsersData(); // Loaded before suggestions so email lookup works
+        await loadSuggestionsData();
+        await loadEventsData();
+        await loadRegistrationsData();
+        await loadAdmissionsData();
+        await loadApplicationsData();
+        await loadPostsData();
+        await loadContactRequestsData();
+        await loadModerationReports();
+        await loadUserReports();
+        renderAnalytics();
+      }
+    } catch (loadErr) {
+      console.warn('[Admin Init] Error loading startup statistics/data:', loadErr);
+    } finally {
+      if (window.hideAuthOverlayTransition) {
+        window.hideAuthOverlayTransition();
+      }
+    }
+  }
+
+  // ── Push Notifications Tab Controller ───────────────────────────
+  function initPushNotificationsTab() {
+    const pushTitle = document.getElementById('push-title');
+    const pushMessage = document.getElementById('push-message');
+    const pushLink = document.getElementById('push-link');
+    
+    const previewTitle = document.getElementById('preview-title');
+    const previewBody = document.getElementById('preview-body');
+    const previewLinkContainer = document.getElementById('preview-link-container');
+    const previewLinkVal = document.getElementById('preview-link-val');
+
+    function updatePreview() {
+      if (previewTitle && pushTitle) {
+        previewTitle.textContent = pushTitle.value.trim() || 'Notification Title';
+      }
+      if (previewBody && pushMessage) {
+        previewBody.textContent = pushMessage.value.trim() || 'Type a title and body to see this live preview update. The notification will reach all devices instantly.';
+      }
+      if (previewLinkContainer && previewLinkVal && pushLink) {
+        const val = pushLink.value.trim();
+        if (val) {
+          previewLinkVal.textContent = val;
+          previewLinkContainer.style.display = 'flex';
+        } else {
+          previewLinkContainer.style.display = 'none';
+        }
+      }
+    }
+
+    if (pushTitle) pushTitle.addEventListener('input', updatePreview);
+    if (pushMessage) pushMessage.addEventListener('input', updatePreview);
+    if (pushLink) pushLink.addEventListener('input', updatePreview);
+
+    // Bind form submit
+    const form = document.getElementById('push-notification-form');
+    if (form && !form.dataset.bound) {
+      form.dataset.bound = 'true';
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const targetRole = document.getElementById('push-target-role').value;
+        const title = pushTitle.value.trim();
+        const body = pushMessage.value.trim();
+        const link = pushLink.value.trim();
+
+        if (!title || !body) {
+          showToast('Please fill in title and body.', 'error');
+          return;
+        }
+
+        const btn = document.getElementById('btn-send-push');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span>Sending...</span> <span class="spinner" style="width: 14px; height: 14px; border-width: 1.5px; border-top-color: white; border-radius: 50%; display: inline-block;"></span>`;
+
+        try {
+          showToast('Fetching recipient profiles...', 'info');
+          
+          // 1. Fetch profiles based on targeting role
+          let query = supabase.from('profiles').select('id');
+          if (targetRole !== 'all') {
+            query = query.eq('user_type', targetRole);
+          }
+          const { data: users, error: fetchErr } = await query;
+          if (fetchErr) throw fetchErr;
+
+          if (!users || users.length === 0) {
+            showToast('No target users found for this role.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            return;
+          }
+
+          showToast(`Broadcasting to ${users.length} users...`, 'info');
+
+          // 2. Perform bulk insertion in notifications table
+          const chunkSize = 100;
+          let successCount = 0;
+          for (let i = 0; i < users.length; i += chunkSize) {
+            const chunk = users.slice(i, i + chunkSize);
+            const payloads = chunk.map(u => ({
+              user_id: u.id,
+              actor_id: session.user.id,
+              type: 'message',
+              title: title,
+              body: body,
+              link: link || '',
+              is_read: false
+            }));
+
+            const { error: insertErr } = await supabase
+              .from('notifications')
+              .insert(payloads);
+
+            if (insertErr) throw insertErr;
+            successCount += chunk.length;
+          }
+
+          showToast(`Successfully broadcasted push notification to ${successCount} devices!`, 'success');
+          form.reset();
+          updatePreview();
+        } catch (err) {
+          console.error('Failed to send broadcast push notification:', err);
+          showToast(`Failed to send broadcast: ${err.message}`, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      });
+    }
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAdmin);
+} else {
+  initAdmin();
+}

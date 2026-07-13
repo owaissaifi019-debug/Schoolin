@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+function initSchoolProfile() {
 
   // Update navigation based on auth state
   if (window.CampusLink && window.CampusLink.auth) {
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* --- Mobile Navigation Menu --- */
   const mobileToggle = document.querySelector('.mobile-toggle');
-  const navLinks = document.querySelector('.nav-links');
+  const navLinks = document.querySelector('.nav-links') || document.querySelector('.header-nav');
   const body = document.body;
 
   // Loading functions
@@ -100,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loader) loader.style.display = 'flex';
   }
 
-  // Hide loading overlay
   function hideLoading() {
     const loader = document.getElementById('loader-container');
     if (loader) {
@@ -109,16 +108,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  mobileToggle.addEventListener('click', () => {
-    navLinks.classList.toggle('active');
-    body.classList.toggle('mobile-nav-active');
-  });
+  if (mobileToggle && navLinks) {
+    mobileToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+      body.classList.toggle('mobile-nav-active');
+    });
+  }
 
   // Close mobile nav when clicking a link
-  const navAnchors = document.querySelectorAll('.nav-links a');
+  const navAnchors = document.querySelectorAll('.nav-links a, .header-nav a');
   navAnchors.forEach(anchor => {
     anchor.addEventListener('click', () => {
-      navLinks.classList.remove('active');
+      if (navLinks) navLinks.classList.remove('active');
       body.classList.remove('mobile-nav-active');
     });
   });
@@ -315,6 +316,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const supabase = window.CampusLink && window.CampusLink.supabase;
     const auth = window.CampusLink && window.CampusLink.auth;
     let loadedFromDB = false;
+
+    // Check sessionStorage cache first for SWR
+    const schoolCacheKey = `campuslink_cached_school_profile_${schoolId}`;
+    try {
+      const cached = sessionStorage.getItem(schoolCacheKey);
+      if (cached) {
+        const cachedProfile = JSON.parse(cached);
+        currentProfile = cachedProfile.profile;
+        followersCount = cachedProfile.followersCount || 0;
+        opportunities = cachedProfile.opportunities || [];
+        isFollowing = cachedProfile.isFollowing || false;
+        
+        console.log('[School Cache] Rendered school profile instantly from cache.');
+        populateProfilePage();
+      }
+    } catch (e) {
+      console.warn('Failed to parse school cache:', e);
+    }
     
     if (auth) {
       try {
@@ -333,6 +352,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (schoolId.length > 8) { // UUID
           const { data } = await supabase.from('schools').select('*').eq('id', schoolId).maybeSingle();
           dbSchool = data;
+
+          if (dbSchool && dbSchool.institution_type && dbSchool.institution_type !== 'school') {
+            console.log('[Routing Guard] Institution is a College. Redirecting to college-profile.html...');
+            window.location.href = `college-profile.html${window.location.search}`;
+            return;
+          }
         } else {
           // Mock ID fallback — do not fetch database record.
           dbSchool = null;
@@ -385,62 +410,42 @@ document.addEventListener('DOMContentLoaded', () => {
             contactEmail: dbSchool.contact_email || '',
             website: dbSchool.website || '',
             contactPhone: dbSchool.contact_phone || '',
-            adminUserId: dbSchool.admin_user_id || null
+            adminUserId: dbSchool.admin_user_id || null,
+            institution_type: dbSchool.institution_type || 'school',
+            affiliated_university: dbSchool.affiliated_university || ''
           };
           
-          // Fetch Followers count from DB
-          try {
-            const { count: countVal, error: countError } = await supabase
-              .from('follows')
-              .select('*', { count: 'exact', head: true })
-              .eq('following_school_id', dbSchool.id);
-            if (!countError) {
-              followersCount = countVal || 0;
-            }
-          } catch (followersErr) {
-            console.warn('Error fetching followers count:', followersErr);
-          }
-
+          // Load all profile widgets, count, status, and permissions in parallel (up to 5 queries at once)
+          const promises = [
+            supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_school_id', dbSchool.id),
+            supabase.from('admissions').select('*').eq('school_id', dbSchool.id).eq('status', 'open').maybeSingle(),
+            supabase.from('events').select('*').eq('school_id', dbSchool.id)
+          ];
+          
           if (currentUser) {
-            isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
-            const userRole = await auth.getUserRole();
-            isSuperAdmin = userRole === 'super_admin';
-            
-            if (isSchoolAdmin) {
-              const editBtn = document.getElementById('btn-edit-school');
-              if (editBtn) {
-                editBtn.style.display = 'inline-flex';
-                setupSchoolEditFeatures(dbSchool);
-              }
-            }
-
-            // Check if currently following
-            try {
-              const { data: followData, error: followCheckError } = await supabase
-                .from('follows')
-                .select('*')
-                .eq('follower_id', currentUser.id)
-                .eq('following_school_id', dbSchool.id)
-                .maybeSingle();
-              if (!followCheckError && followData) {
-                isFollowing = true;
-              }
-            } catch (err) {
-              console.warn('Error checking follow status:', err);
-            }
+            promises.push(auth.getUserRole());
+            promises.push(supabase.from('follows').select('*').eq('follower_id', currentUser.id).eq('following_school_id', dbSchool.id).maybeSingle());
           }
           
-          // Load admissions data
-          const { data: dbAdmissions } = await supabase.from('admissions').select('*').eq('school_id', dbSchool.id).eq('status', 'open').maybeSingle();
-          if (dbAdmissions) {
-            currentProfile.admissionText = `Admissions Open: Registration for ${dbAdmissions.classes_open} is open until ${dbAdmissions.last_date}.`;
+          const results = await Promise.all(promises);
+          
+          // 1. Follows Count Result
+          const followsCountRes = results[0];
+          if (followsCountRes && !followsCountRes.error) {
+            followersCount = followsCountRes.count || 0;
           }
           
-          // Load events data
-          const { data: dbEvents } = await supabase.from('events').select('*').eq('school_id', dbSchool.id);
-          if (dbEvents && dbEvents.length > 0) {
+          // 2. Admissions Result
+          const admissionsRes = results[1];
+          if (admissionsRes && admissionsRes.data) {
+            currentProfile.admissionText = `Admissions Open: Registration for ${admissionsRes.data.classes_open} is open until ${admissionsRes.data.last_date}.`;
+          }
+          
+          // 3. Events Result
+          const eventsRes = results[2];
+          if (eventsRes && eventsRes.data && eventsRes.data.length > 0) {
             opportunities.length = 0;
-            dbEvents.forEach(e => {
+            eventsRes.data.forEach(e => {
               opportunities.push({
                 id: e.id,
                 school: dbSchool.name,
@@ -455,6 +460,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 bannerUrl: e.banner_url || ''
               });
             });
+          }
+          
+          // 4. Logged-in Auth and Follow Check Results
+          if (currentUser) {
+            isSchoolAdmin = currentUser.id === dbSchool.admin_user_id;
+            isSuperAdmin = results[3] === 'super_admin';
+            
+            const followCheckRes = results[4];
+            if (followCheckRes && followCheckRes.data) {
+              isFollowing = true;
+            }
+            
+            if (isSchoolAdmin) {
+              const editBtn = document.getElementById('btn-edit-school');
+              if (editBtn) {
+                editBtn.style.display = 'inline-flex';
+                setupSchoolEditFeatures(dbSchool);
+              }
+            }
           }
           
           loadedFromDB = true;
@@ -481,6 +505,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     
+    // Cache profile data for SWR
+    if (loadedFromDB && currentProfile) {
+      try {
+        sessionStorage.setItem(schoolCacheKey, JSON.stringify({
+          profile: currentProfile,
+          followersCount: followersCount,
+          opportunities: opportunities,
+          isFollowing: isFollowing
+        }));
+      } catch (e) {
+        console.warn('Failed to write school profile cache:', e);
+      }
+    }
+    
     populateProfilePage();
   }
 
@@ -499,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         banner.className = `profile-banner ${currentProfile.colorClass}`;
         banner.style.backgroundImage = '';
-        banner.style.display = 'none';
+        banner.style.display = 'block';
       }
     }
     if (logo) {
@@ -541,9 +579,32 @@ document.addEventListener('DOMContentLoaded', () => {
         ${badgeHtml}
       `;
     }
-    if (boardBadge) {
-      boardBadge.textContent = `${currentProfile.board} Affiliated`;
+    const isCollege = currentProfile.institution_type && currentProfile.institution_type !== 'school';
+    const labelSchType = document.getElementById('label-sch-type');
+    const valSchType = document.getElementById('val-sch-type');
+    const labelSchBoard = document.getElementById('label-sch-board');
+
+    if (isCollege) {
+      if (labelSchType) labelSchType.textContent = 'Institution Type';
+      if (valSchType) valSchType.textContent = currentProfile.institution_type;
+      if (labelSchBoard) labelSchBoard.textContent = 'Affiliated University';
+      if (boardBadge) {
+        const requiresUniv = ['Government College', 'Private College', 'Polytechnic'].includes(currentProfile.institution_type);
+        const value = currentProfile.affiliated_university || 'Self';
+        if (!requiresUniv && currentProfile.institution_type) {
+          boardBadge.textContent = currentProfile.institution_type;
+        } else if (value === 'Not University Affiliated' || value.includes('Self')) {
+          boardBadge.textContent = value;
+        } else {
+          boardBadge.textContent = `${value} Affiliated`;
+        }
+      }
+    } else {
+      if (boardBadge) {
+        boardBadge.textContent = `${currentProfile.board} Affiliated`;
+      }
     }
+
     if (locationText) {
       locationText.textContent = `${currentProfile.city}, India`;
     }
@@ -553,9 +614,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const metaEst = document.getElementById('meta-est');
     const metaBoard = document.getElementById('meta-board');
     const metaSize = document.getElementById('meta-size');
+
+    if (isCollege && metaBoard) {
+      metaBoard.textContent = currentProfile.affiliated_university || 'Self (Degree Awarding Institution)';
+    } else if (metaBoard) {
+      metaBoard.textContent = currentProfile.board;
+    }
     
     if (aboutPara) {
-      aboutPara.textContent = currentProfile.about;
+      const formatBold = (str) => {
+        if (!str) return '';
+        const temp = document.createElement('div');
+        temp.textContent = str;
+        let safe = temp.innerHTML;
+        // Replace **text** with <strong>text</strong>
+        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Replace *text* with <strong>text</strong>
+        safe = safe.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+        // Preserve line breaks
+        safe = safe.replaceAll('\n', '<br>');
+        return safe;
+      };
+
+      const fullText = currentProfile.about || '';
+      const isMobile = window.innerWidth <= 768;
+      const needsTruncation = isMobile && fullText.length > 280;
+
+      if (needsTruncation) {
+        const truncatedText = fullText.slice(0, 260) + '...';
+        aboutPara.innerHTML = formatBold(truncatedText) + ` <button id="btn-desc-see-more" style="background:none; border:none; color:var(--primary); font-weight:700; cursor:pointer; padding:0; font-size:inherit; display:inline-block; margin-left:4px; text-decoration:underline;">See more</button>`;
+        
+        // Use a delegate-style or target check listener
+        const seeMoreBtn = document.getElementById('btn-desc-see-more');
+        if (seeMoreBtn) {
+          seeMoreBtn.addEventListener('click', () => {
+            aboutPara.innerHTML = formatBold(fullText);
+          }, { once: true });
+        }
+      } else {
+        aboutPara.innerHTML = formatBold(fullText);
+      }
     }
     if (metaEst) {
       metaEst.textContent = currentProfile.est;
@@ -600,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span style="color: var(--primary); font-size: 1.1rem; width: 20px; text-align: center; line-height: 1;">🔗</span>
             <div style="flex: 1; min-width: 0; word-break: break-all;">
               <strong style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px;">Website</strong>
-              <a href="${cleanUrl}" target="_blank" style="color: var(--primary); font-weight: 500; text-decoration: none; word-break: break-all;">${displayUrl}</a>
+              <a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 500; text-decoration: none; word-break: break-all;">${displayUrl}</a>
             </div>
           </li>
         `;
@@ -999,9 +1097,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const profile = await auth.getProfile(session.user.id);
-      const isJoined = profile && profile.school_id === currentProfile.id;
-
-      if (isJoined) {
+      if (profile && profile.school_id === currentProfile.id) {
         styleJoinedState();
       } else {
         styleNotJoinedState();
@@ -1096,9 +1192,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       // Ensure loading overlay is shown when loading profile data
-      showLoading();
+showLoading();
 
-      if (isValid && currentStep < formSteps.length - 1) {
+if (isValid && currentStep < formSteps.length - 1) {
         showStep(currentStep + 1);
       }
     });
@@ -1163,19 +1259,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- School Profile Edit Features ---
   function showLoading() {
-    const overlay = document.getElementById('loader-overlay');
-    if (overlay) overlay.classList.remove('hidden');
-  }
+  const overlay = document.getElementById('loader-overlay');
+  if (overlay) overlay.classList.remove('hidden');
+}
 
-  function hideLoading() {
-    const overlay = document.getElementById('loader-overlay');
-    if (overlay) overlay.classList.add('hidden');
-  }
+function hideLoading() {
+  const overlay = document.getElementById('loader-overlay');
+  if (overlay) overlay.classList.add('hidden');
+}
 
-  function showToast(message, type = 'success') {
+function showToast(message, type = 'success') {
     let activeContainer = document.getElementById('toast-container');
-    // Ensure loading overlay is hidden after any toast (optional)
-    hideLoading();
+  // Ensure loading overlay is hidden after any toast (optional)
+  hideLoading();
     if (!activeContainer) {
       activeContainer = document.createElement('div');
       activeContainer.id = 'toast-container';
@@ -1323,21 +1419,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!prevBtn || !cancelBtn || !nextBtn || !saveBtn) return;
 
+      saveBtn.style.display = 'inline-flex';
+
       if (activeTabId === 'tab-sch-basic') {
         prevBtn.style.display = 'none';
         cancelBtn.style.display = 'inline-flex';
         nextBtn.style.display = 'inline-flex';
-        saveBtn.style.display = 'none';
       } else if (activeTabId === 'tab-sch-highlights') {
         prevBtn.style.display = 'inline-flex';
         cancelBtn.style.display = 'none';
         nextBtn.style.display = 'none';
-        saveBtn.style.display = 'inline-flex';
       } else {
         prevBtn.style.display = 'inline-flex';
         cancelBtn.style.display = 'none';
         nextBtn.style.display = 'inline-flex';
-        saveBtn.style.display = 'none';
       }
     };
 
@@ -1452,6 +1547,44 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Bind change events for college type and university selects
+    const instTypeSelect = document.getElementById('edit-sch-institution-type');
+    const affUnivGroup = document.getElementById('edit-sch-affiliated-university-group');
+    const affUnivSelect = document.getElementById('edit-sch-affiliated-university');
+    const affUnivCustom = document.getElementById('edit-sch-affiliated-university-custom');
+
+    if (instTypeSelect && affUnivGroup && affUnivSelect && affUnivCustom) {
+      instTypeSelect.addEventListener('change', () => {
+        const val = instTypeSelect.value;
+        const requiresAffiliation = ['Government College', 'Private College', 'Polytechnic'].includes(val);
+        
+        if (requiresAffiliation) {
+          affUnivGroup.style.display = 'block';
+          if (affUnivSelect.value === 'Self (Degree Awarding Institution)') {
+            affUnivSelect.value = '';
+          }
+        } else {
+          affUnivGroup.style.display = 'none';
+          affUnivCustom.style.display = 'none';
+          if (['Central University', 'State University', 'Private University', 'Deemed-to-be University', 'Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)'].includes(val)) {
+            affUnivSelect.value = 'Self (Degree Awarding Institution)';
+            affUnivCustom.value = '';
+          } else {
+            affUnivSelect.value = '';
+            affUnivCustom.value = '';
+          }
+        }
+      });
+
+      affUnivSelect.addEventListener('change', () => {
+        if (affUnivSelect.value === 'Other') {
+          affUnivCustom.style.display = 'block';
+        } else {
+          affUnivCustom.style.display = 'none';
+        }
+      });
+    }
+
     // Open modal
     editBtn.addEventListener('click', () => {
       document.getElementById('edit-sch-name').value = dbSchool.name || '';
@@ -1466,6 +1599,67 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('edit-sch-logo-letter').value = dbSchool.logo_letter || '';
       document.getElementById('edit-sch-color-class').value = dbSchool.color_class || 'color-1';
       document.getElementById('edit-sch-about').value = currentProfile.about || '';
+
+      // Set up college type fields if this is a college
+      const isCollege = dbSchool.institution_type && dbSchool.institution_type !== 'school';
+      const collegeTypeGroup = document.getElementById('edit-college-type-fields');
+      const boardGroup = document.getElementById('edit-sch-board-group');
+
+      if (isCollege) {
+        if (collegeTypeGroup) collegeTypeGroup.style.display = 'block';
+        if (boardGroup) boardGroup.style.display = 'none';
+
+        if (instTypeSelect) {
+          instTypeSelect.value = dbSchool.institution_type || '';
+          
+          const requiresUniv = ['Government College', 'Private College', 'Polytechnic'].includes(instTypeSelect.value);
+          if (requiresUniv) {
+            if (affUnivGroup) affUnivGroup.style.display = 'block';
+            const univValue = dbSchool.affiliated_university || '';
+            
+            let optionExists = false;
+            if (affUnivSelect) {
+              for (let i = 0; i < affUnivSelect.options.length; i++) {
+                if (affUnivSelect.options[i].value === univValue) {
+                  optionExists = true;
+                  break;
+                }
+              }
+              if (optionExists) {
+                affUnivSelect.value = univValue;
+                if (affUnivCustom) {
+                  affUnivCustom.style.display = 'none';
+                  affUnivCustom.value = '';
+                }
+              } else if (univValue) {
+                affUnivSelect.value = 'Other';
+                if (affUnivCustom) {
+                  affUnivCustom.style.display = 'block';
+                  affUnivCustom.value = univValue;
+                }
+              } else {
+                affUnivSelect.value = '';
+                if (affUnivCustom) {
+                  affUnivCustom.style.display = 'none';
+                  affUnivCustom.value = '';
+                }
+              }
+            }
+          } else {
+            if (affUnivGroup) affUnivGroup.style.display = 'none';
+            if (affUnivSelect) {
+              affUnivSelect.value = dbSchool.affiliated_university || '';
+            }
+            if (affUnivCustom) {
+              affUnivCustom.style.display = 'none';
+              affUnivCustom.value = '';
+            }
+          }
+        }
+      } else {
+        if (collegeTypeGroup) collegeTypeGroup.style.display = 'none';
+        if (boardGroup) boardGroup.style.display = 'block';
+      }
 
       // Initialize lists
       tempAchievements = [...(currentProfile.achievements || [])];
@@ -1523,10 +1717,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-          showToast('Logo image must be smaller than 2MB.', 'error');
-          uploadLogoInput.value = '';
-          return;
+        const validator = window.CampusLink?.security?.validateImageFile;
+        if (validator) {
+          const err = await validator(file, 2 * 1024 * 1024);
+          if (err) {
+            showToast(err, 'error');
+            uploadLogoInput.value = '';
+            return;
+          }
         }
 
         showToast('Uploading logo...', 'info');
@@ -1535,8 +1733,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[UPLOAD-DEBUG] Profile modal logo upload started. supabase:', !!supabase, '| dbSchool.id:', dbSchool.id);
         if (supabase && dbSchool.id && dbSchool.id.length > 8) {
           try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const ext = file.name.split('.').pop().toLowerCase();
+            const randomString = Math.random().toString(36).substring(2, 10);
+            const fileName = `school_logo_${randomString}.${ext}`;
             const filePath = `${dbSchool.id}/${fileName}`;
             console.log('[UPLOAD-DEBUG] Profile logo filePath:', filePath);
 
@@ -1592,10 +1791,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-          showToast('Cover photo must be smaller than 2MB.', 'error');
-          uploadCoverInput.value = '';
-          return;
+        const validator = window.CampusLink?.security?.validateImageFile;
+        if (validator) {
+          const err = await validator(file, 5 * 1024 * 1024); // 5MB limit
+          if (err) {
+            showToast(err, 'error');
+            uploadCoverInput.value = '';
+            return;
+          }
         }
 
         showToast('Uploading cover banner...', 'info');
@@ -1604,8 +1807,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[UPLOAD-DEBUG] Profile modal cover upload started. supabase:', !!supabase, '| dbSchool.id:', dbSchool.id);
         if (supabase && dbSchool.id && dbSchool.id.length > 8) {
           try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const ext = file.name.split('.').pop().toLowerCase();
+            const randomString = Math.random().toString(36).substring(2, 10);
+            const fileName = `school_cover_${randomString}.${ext}`;
             const filePath = `${dbSchool.id}/${fileName}`;
             console.log('[UPLOAD-DEBUG] Profile cover filePath:', filePath);
 
@@ -1703,27 +1907,97 @@ document.addEventListener('DOMContentLoaded', () => {
         
         showToast('Saving school details...', 'info');
 
+        const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+        const validateURL = window.CampusLink?.security?.validateURL || (s => null);
+        const validateEmail = window.CampusLink?.security?.validateEmail || (s => null);
+
+        const schName = sanitize(document.getElementById('edit-sch-name').value);
+        const schBoard = document.getElementById('edit-sch-board').value;
+        const schCity = sanitize(document.getElementById('edit-sch-city').value);
+        const schAddress = sanitize(document.getElementById('edit-sch-address').value) || null;
+        const schEmail = sanitize(document.getElementById('edit-sch-email').value) || null;
+        const schWebsite = sanitize(document.getElementById('edit-sch-website').value) || null;
+        const schPhone = sanitize(document.getElementById('edit-sch-phone').value) || null;
+        const schEst = sanitize(document.getElementById('edit-sch-est').value) || null;
+        const schSize = sanitize(document.getElementById('edit-sch-size').value) || null;
+        const logoLetter = sanitize(document.getElementById('edit-sch-logo-letter').value).toUpperCase() || null;
+        const colorClass = document.getElementById('edit-sch-color-class').value;
+
+        if (!schName) {
+          showToast('School name is required.', 'error');
+          return;
+        }
+
+        const isCollege = dbSchool.institution_type && dbSchool.institution_type !== 'school';
+        let schInstType = dbSchool.institution_type || 'school';
+        let schAffiliatedUniversity = dbSchool.affiliated_university || null;
+
+        if (isCollege) {
+          schInstType = document.getElementById('edit-sch-institution-type').value;
+          if (!schInstType) {
+            showToast('Institution type is required.', 'error');
+            return;
+          }
+
+          const requiresUniv = ['Government College', 'Private College', 'Polytechnic'].includes(schInstType);
+          if (requiresUniv) {
+            const selectedUniv = document.getElementById('edit-sch-affiliated-university').value;
+            if (selectedUniv === 'Other') {
+              schAffiliatedUniversity = sanitize(document.getElementById('edit-sch-affiliated-university-custom').value);
+            } else {
+              schAffiliatedUniversity = selectedUniv;
+            }
+
+            if (!schAffiliatedUniversity) {
+              showToast('Affiliated University is required.', 'error');
+              return;
+            }
+          } else if (['Central University', 'State University', 'Private University', 'Deemed-to-be University', 'Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)'].includes(schInstType)) {
+            schAffiliatedUniversity = 'Self (Degree Awarding Institution)';
+          } else {
+            schAffiliatedUniversity = null;
+          }
+        }
+
+        if (schEmail) {
+          const emailErr = validateEmail(schEmail);
+          if (emailErr) {
+            showToast(emailErr, 'error');
+            return;
+          }
+        }
+
+        if (schWebsite) {
+          const urlErr = validateURL(schWebsite);
+          if (urlErr) {
+            showToast(urlErr, 'error');
+            return;
+          }
+        }
+
         const aboutJSON = JSON.stringify({
-          description: document.getElementById('edit-sch-about').value.trim(),
+          description: sanitize(document.getElementById('edit-sch-about').value),
           achievements: tempAchievements,
           highlights: tempHighlights
         });
 
         const updateData = {
-          name: document.getElementById('edit-sch-name').value.trim(),
-          board: document.getElementById('edit-sch-board').value,
-          city: document.getElementById('edit-sch-city').value.trim(),
-          address: document.getElementById('edit-sch-address').value.trim() || null,
-          contact_email: document.getElementById('edit-sch-email').value.trim() || null,
-          website: document.getElementById('edit-sch-website').value.trim() || null,
-          contact_phone: document.getElementById('edit-sch-phone').value.trim() || null,
-          est_year: document.getElementById('edit-sch-est').value.trim() || null,
-          campus_size: document.getElementById('edit-sch-size').value.trim() || null,
-          logo_letter: document.getElementById('edit-sch-logo-letter').value.trim().toUpperCase() || null,
-          color_class: document.getElementById('edit-sch-color-class').value,
+          name: schName,
+          board: isCollege ? (schAffiliatedUniversity || '') : schBoard,
+          city: schCity,
+          address: schAddress,
+          contact_email: schEmail,
+          website: schWebsite,
+          contact_phone: schPhone,
+          est_year: schEst,
+          campus_size: schSize,
+          logo_letter: logoLetter,
+          color_class: colorClass,
           logo_url: tempLogoUrl || null,
           cover_url: tempCoverUrl || null,
-          about: aboutJSON
+          about: aboutJSON,
+          institution_type: schInstType,
+          affiliated_university: schAffiliatedUniversity
         };
 
         console.log('[UPLOAD-DEBUG] Form submit updateData:', updateData);
@@ -2027,7 +2301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Inquiry sent successfully!');
         document.getElementById('contact-message').value = '';
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Send Message Request';
+submitBtn.textContent = 'Send Message Request';
       } catch (err) {
         console.error('Failed to send inquiry:', err);
         alert('Failed to send inquiry: ' + err.message);
@@ -2035,6 +2309,82 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.textContent = 'Send Message Request';
       }
     });
+  }
+
+
+  // ── Accordion toggle ──────────────────────────────────────────────
+  window.toggleCmAccordion = function(key) {
+    const body = document.getElementById(`cm-body-${key}`);
+    const chevron = document.getElementById(`cm-chevron-${key}`);
+    if (!body) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : '';
+    if (chevron) {
+      chevron.textContent = isOpen ? '▶' : '▼';
+      chevron.style.color = isOpen ? 'var(--text-muted)' : 'var(--primary)';
+    }
+    // Round top corners of accordion header when closed
+    const header = body.previousElementSibling;
+    if (header) {
+      header.style.borderRadius = isOpen
+        ? 'var(--radius-md)'
+        : 'var(--radius-md) var(--radius-md) 0 0';
+      header.style.borderBottomColor = isOpen ? 'var(--border-color)' : 'transparent';
+    }
+  };
+
+  window.toggleCmBatchAccordion = function(yr) {
+    const body = document.getElementById(`cm-batch-body-${yr}`);
+    const chevron = document.getElementById(`cm-batch-chevron-${yr}`);
+    if (!body) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : '';
+    if (chevron) {
+      chevron.textContent = isOpen ? '▶' : '▼';
+      chevron.style.color = isOpen ? 'var(--text-muted)' : 'var(--primary)';
+    }
+  };
+
+  function setCmCount(key, count) {
+    const el = document.getElementById(`cm-count-${key}`);
+    if (el) el.textContent = count > 0 ? count : '0';
+  }
+
+  // --- Helper: build member card HTML ---
+  function buildMemberCardHelper(name, username, subtitle, avatarUrl, profileId, isVerified) {
+    const initial = (name || '?').charAt(0).toUpperCase();
+    const colors = ['#6366F1','#8B5CF6','#EC4899','#3B82F6','#10B981','#F59E0B'];
+    const color = colors[(name || '?').charCodeAt(0) % colors.length];
+    const avatar = avatarUrl
+      ? `<div class="cm-member-avatar" style="background-image:url(${avatarUrl});"></div>`
+      : `<div class="cm-member-avatar-placeholder" style="background:${color};color:#fff;">${initial}</div>`;
+    
+    const verifiedBadgeHtml = isVerified ? `
+      <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile" style="width: 14px; height: 14px; color: var(--primary); display: inline-block; vertical-align: middle; margin-left: 4px;">
+        <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+        <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+      </svg>
+    ` : '';
+
+    const div = document.createElement('div');
+    div.className = 'cm-member-card';
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;flex-grow:1;min-width:0;">
+        ${avatar}
+        <div style="display:flex;flex-direction:column;min-width:0;text-align:left;">
+          <div class="cm-member-name">
+            <span>${name || 'Unknown'}</span>
+            ${verifiedBadgeHtml}
+          </div>
+          <div style="font-size:0.76rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;">
+            ${username ? `<span>@${username}</span><span style="color:var(--border-color);font-size:0.6rem;">•</span>` : ''}
+            <span class="cm-member-title" style="margin-bottom:0;text-transform:capitalize;">${subtitle || ''}</span>
+          </div>
+        </div>
+      </div>
+      ${profileId ? `<a href="profile.html?id=${profileId}" class="cm-member-btn">View Profile</a>` : ''}
+    `;
+    return div;
   }
 
   // --- Load and Render School Community Members ---
@@ -2046,114 +2396,303 @@ document.addEventListener('DOMContentLoaded', () => {
     const cmGridAlumni = document.getElementById('cm-grid-alumni');
     const cmGridStaff = document.getElementById('cm-grid-staff');
     const cmGridStudents = document.getElementById('cm-grid-students');
-    
-    const cmSecFaculty = document.getElementById('cm-section-faculty');
-    const cmSecAlumni = document.getElementById('cm-section-alumni');
-    const cmSecStaff = document.getElementById('cm-section-staff');
-    const cmSecStudents = document.getElementById('cm-section-students');
     const cmEmptyState = document.getElementById('cm-empty-state');
 
-    // Prevent querying for non-UUID mock school IDs
+    // Show loading state
+    if (cmGridFaculty) cmGridFaculty.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;grid-column:1/-1;">Loading...</p>';
+    if (cmGridStudents) cmGridStudents.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;grid-column:1/-1;">Loading...</p>';
+    if (cmGridAlumni) cmGridAlumni.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;grid-column:1/-1;">Loading...</p>';
+    if (cmEmptyState) cmEmptyState.style.display = 'none';
+
+    // ── 1. Initialize variables ──
+    let facultyList = [];
+    let staffList = [];
+    let studentList = [];
+    let profileStudents = [];
+    let batches = [];
+    let batchMembers = [];
+    let profileAlumni = [];
+    let batchYearMap = {};
+
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(currentProfile.id)) {
-      if (cmEmptyState) cmEmptyState.style.display = 'block';
-      if (cmSecFaculty) cmSecFaculty.style.display = 'none';
-      if (cmSecAlumni) cmSecAlumni.style.display = 'none';
-      if (cmSecStaff) cmSecStaff.style.display = 'none';
-      if (cmSecStudents) cmSecStudents.style.display = 'none';
-      return;
-    }
+    const isRealSchool = uuidRegex.test(currentProfile.id);
 
     try {
-      const { data: members, error } = await supabase
-        .from('school_members')
-        .select(`
-          id, role, assigned_at,
-          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified)
-        `)
-        .eq('school_id', currentProfile.id)
-        .order('assigned_at', { ascending: false });
+      if (isRealSchool) {
+        // Query Supabase data lists in parallel (reduces sequential request overhead)
+        const [
+          membersRes,
+          pStudentsRes,
+          bListRes,
+          bmListRes,
+          pAlumniRes
+        ] = await Promise.all([
+          supabase.from('school_members').select('id, role, assigned_at, user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified, username)').eq('school_id', currentProfile.id).order('assigned_at', { ascending: false }),
+          supabase.from('profiles').select('id, full_name, avatar_url, username, class, is_verified, department').eq('school_id', currentProfile.id).eq('user_type', 'student'),
+          supabase.from('alumni_batches').select('*').eq('school_id', currentProfile.id).order('passing_year', { ascending: false }),
+          supabase.from('alumni_members').select('batch_id, user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified, username, department)').eq('school_id', currentProfile.id),
+          supabase.from('profiles').select('id, full_name, avatar_url, username, passing_year, department, is_verified').eq('school_id', currentProfile.id).eq('user_type', 'alumni')
+        ]);
 
-      if (error) throw error;
+        if (membersRes.error) throw membersRes.error;
 
-      // Group by roles
-      const facultyList = [];
-      const alumniList = [];
-      const staffList = [];
-      const studentList = [];
+        const members = membersRes.data || [];
+        profileStudents = pStudentsRes.data || [];
+        batches = bListRes.data || [];
+        batchMembers = bmListRes.data || [];
+        profileAlumni = pAlumniRes.data || [];
 
-      (members || []).forEach(m => {
-        if (['teacher', 'faculty', 'counselor'].includes(m.role)) {
-          facultyList.push(m);
-        } else if (m.role === 'alumni') {
-          alumniList.push(m);
-        } else if (m.role === 'staff') {
-          staffList.push(m);
-        } else if (m.role === 'student') {
-          studentList.push(m);
+        (members || []).forEach(m => {
+          if (['teacher', 'faculty', 'counselor'].includes(m.role)) {
+            facultyList.push(m);
+          } else if (m.role === 'staff') {
+            staffList.push(m);
+          } else if (m.role === 'student') {
+            studentList.push(m);
+          }
+        });
+      }
+
+      // ── 2. Merge local storage data (Only in Mock/Dev mode) ──
+      let localTeachers = [];
+      let localStudents = [];
+      let localAlumni = [];
+
+      if (!isRealSchool) {
+        // Faculty (Teachers)
+        try { localTeachers = JSON.parse(localStorage.getItem('campuslink_teachers') || '[]'); } catch(e) {}
+        
+        // Students
+        try { localStudents = JSON.parse(localStorage.getItem('campuslink_students') || '[]'); } catch(e) {}
+
+        // Alumni
+        try { localAlumni = JSON.parse(localStorage.getItem('campuslink_alumni') || '[]'); } catch(e) {}
+      }
+      const activeLocalStudents = localStudents.filter(s => s.status !== 'graduated');
+
+      // ── 3. Render Teachers ──
+      if (cmGridFaculty) {
+        cmGridFaculty.innerHTML = '';
+        const renderedTeacherIds = new Set();
+
+        // Render from school_members
+        facultyList.forEach(m => {
+          const u = m.user || {};
+          if (u.id) {
+            renderedTeacherIds.add(u.id);
+            cmGridFaculty.appendChild(buildMemberCardHelper(u.full_name, u.username, m.role, u.avatar_url, u.id, u.is_verified));
+          }
+        });
+
+        // Render from local storage
+        localTeachers.forEach(t => {
+          if (!renderedTeacherIds.has(t.id)) {
+            renderedTeacherIds.add(t.id);
+            cmGridFaculty.appendChild(buildMemberCardHelper(t.fullName || t.full_name, t.username, t.subject || t.designation || 'Teacher', t.avatarUrl || t.avatar_url, t.id, t.isVerified || false));
+          }
+        });
+
+        setCmCount('faculty', renderedTeacherIds.size);
+      }
+
+      // ── 4. Render Staff ──
+      if (cmGridStaff) {
+        cmGridStaff.innerHTML = '';
+        staffList.forEach(m => {
+          const u = m.user || {};
+          if (u.id) {
+            cmGridStaff.appendChild(buildMemberCardHelper(u.full_name, u.username, m.role, u.avatar_url, u.id, u.is_verified));
+          }
+        });
+        setCmCount('staff', staffList.length);
+        const staffAcc = document.getElementById('cm-acc-staff');
+        if (staffAcc) staffAcc.style.display = staffList.length > 0 ? '' : 'none';
+      }
+
+      // ── 5. Render Students ──
+      if (cmGridStudents) {
+        cmGridStudents.innerHTML = '';
+        const renderedStudentIds = new Set();
+
+        // Render from school_members studentList
+        studentList.forEach(m => {
+          const u = m.user || {};
+          if (u.id) {
+            renderedStudentIds.add(u.id);
+            cmGridStudents.appendChild(buildMemberCardHelper(u.full_name, u.username, u.class ? `Class ${u.class}` : 'Student', u.avatar_url, u.id, u.is_verified));
+          }
+        });
+
+        // Render from profiles table
+        profileStudents.forEach(u => {
+          if (!renderedStudentIds.has(u.id)) {
+            renderedStudentIds.add(u.id);
+            cmGridStudents.appendChild(buildMemberCardHelper(u.full_name, u.username, u.class ? `Class ${u.class}` : 'Student', u.avatar_url, u.id, u.is_verified));
+          }
+        });
+
+        // Render active local storage students
+        activeLocalStudents.forEach(s => {
+          if (!renderedStudentIds.has(s.id)) {
+            renderedStudentIds.add(s.id);
+            cmGridStudents.appendChild(buildMemberCardHelper(s.fullName || s.full_name, s.username, s.class ? `Class ${s.class}` : 'Student', s.avatarUrl || s.avatar_url, s.id, s.isVerified || false));
+          }
+        });
+
+        setCmCount('students', renderedStudentIds.size);
+        if (renderedStudentIds.size === 0) {
+          cmGridStudents.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;grid-column:1/-1;padding:8px 0;">No students enrolled yet.</p>';
         }
-      });
+      }
 
-      const totalMembers = (members || []).length;
+      // ── 6. Render Alumni ──
+      if (cmGridAlumni) {
+        cmGridAlumni.innerHTML = '';
+        batchYearMap = {}; // yr -> { dept, members: [] }
 
-      // Render function
-      const renderGrid = (gridEl, sectionEl, list) => {
-        if (!gridEl) return;
-        gridEl.innerHTML = '';
-        if (list.length > 0) {
-          if (sectionEl) sectionEl.style.display = 'block';
-          list.forEach(m => {
-            const u = m.user || {};
-            const name = u.full_name || 'Unknown';
-            const initial = name.charAt(0).toUpperCase();
-            
-            const avatarHtml = u.avatar_url
-              ? `<div class="cm-member-avatar" style="background-image: url(${u.avatar_url});"></div>`
-              : `<div class="cm-member-avatar-placeholder">${initial}</div>`;
-            
-            const verifiedBadgeHtml = u.is_verified ? `
-              <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile" style="width: 14px; height: 14px; color: var(--primary); display: inline-block; vertical-align: middle; margin-left: 4px;">
-                <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239C1.266.296 1.903.164 1.903.164c.636-.132 1.22-.447 1.68-.907c.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246c.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
-                <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
-              </svg>
-            ` : '';
+        // Populate from Supabase batches
+        batches.forEach(b => {
+          const yr = String(b.passing_year || 'Unknown');
+          if (!batchYearMap[yr]) {
+            batchYearMap[yr] = {
+              dept: [b.department, b.program].filter(Boolean).join(' • ') || 'Graduates',
+              members: []
+            };
+          }
+        });
 
-            let subtext = '';
-            if (m.role === 'student') {
-              subtext = u.class ? `Class ${u.class}` : 'Student';
-            } else if (m.role === 'alumni') {
-              subtext = u.class ? `Graduated Class of ${u.class}` : 'Alumni';
-            } else {
-              subtext = m.role;
+        // Populate batch members
+        batchMembers.forEach(bm => {
+          const b = batches.find(x => x.id === bm.batch_id);
+          if (b) {
+            const yr = String(b.passing_year || 'Unknown');
+            const u = bm.user || {};
+            if (u.id) {
+              if (!batchYearMap[yr]) {
+                batchYearMap[yr] = { dept: 'Graduates', members: [] };
+              }
+              if (!batchYearMap[yr].members.find(m => m.id === u.id)) {
+                batchYearMap[yr].members.push({
+                  id: u.id,
+                  fullName: u.full_name,
+                  username: u.username,
+                  avatarUrl: u.avatar_url,
+                  class: u.class || b.department || b.program || 'Alumni Member',
+                  isVerified: u.is_verified
+                });
+              }
             }
+          }
+        });
 
-            const card = document.createElement('div');
-            card.className = 'cm-member-card';
-            card.innerHTML = `
-              ${avatarHtml}
-              <div class="cm-member-name">
-                <span>${name}</span>
-                ${verifiedBadgeHtml}
+        // Populate from profileAlumni table fallback
+        profileAlumni.forEach(u => {
+          const yr = String(u.passing_year || 'Unknown');
+          if (!batchYearMap[yr]) {
+            batchYearMap[yr] = { dept: u.department || 'Graduates', members: [] };
+          }
+          if (!batchYearMap[yr].members.find(m => m.id === u.id)) {
+            batchYearMap[yr].members.push({
+              id: u.id,
+              fullName: u.full_name,
+              username: u.username,
+              avatarUrl: u.avatar_url,
+              class: u.department || 'Alumni Member',
+              isVerified: u.is_verified
+            });
+          }
+        });
+
+        // Populate from localAlumni dashboard merge
+        localAlumni.forEach(a => {
+          const yr = String(a.graduatingYear || a.passing_year || 'Unknown');
+          if (!batchYearMap[yr]) {
+            batchYearMap[yr] = { dept: a.graduatingClass || a.department || 'Graduates', members: [] };
+          }
+          if (!batchYearMap[yr].members.find(m => m.id === a.id)) {
+            batchYearMap[yr].members.push({
+              id: a.id,
+              fullName: a.fullName || a.full_name,
+              username: a.username,
+              avatarUrl: a.avatarUrl || a.avatar_url,
+              class: a.graduatingClass || a.department || 'Alumni Member',
+              isVerified: a.isVerified || false
+            });
+          }
+        });
+
+        const sortedYears = Object.keys(batchYearMap).sort((a, b) => b - a);
+        let totalAlumniCount = 0;
+
+        if (sortedYears.length > 0) {
+          sortedYears.forEach(yr => {
+            const info = batchYearMap[yr];
+            const memberCount = info.members.length;
+            totalAlumniCount += memberCount;
+
+            const accWrapper = document.createElement('div');
+            accWrapper.className = 'cm-batch-accordion';
+            accWrapper.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+
+            accWrapper.innerHTML = `
+              <button onclick="toggleCmBatchAccordion('${yr}')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:none;border:none;cursor:pointer;text-align:left;transition:background 0.15s;">
+                <div>
+                  <div style="font-size:1.05rem;font-weight:800;color:var(--dark-bg);display:flex;align-items:center;gap:8px;">
+                    <span>🎓</span> Batch of ${yr}
+                  </div>
+                  <div style="font-size:0.82rem;color:var(--text-muted);margin-top:3px;font-weight:500;">
+                    ${info.dept} • ${memberCount} Member${memberCount !== 1 ? 's' : ''}
+                  </div>
+                </div>
+                <span id="cm-batch-chevron-${yr}" style="color:var(--text-muted);font-size:0.9rem;transition:transform 0.25s;">▶</span>
+              </button>
+              <div id="cm-batch-body-${yr}" style="display:none;padding:20px;background:var(--bg-secondary);border-top:1px solid var(--border-color);">
+                <div class="cm-member-grid" id="cm-batch-grid-${yr}"></div>
               </div>
-              <div class="cm-member-title">${subtext}</div>
-              <a href="profile.html?id=${u.id}" class="cm-member-btn">View Profile</a>
             `;
-            gridEl.appendChild(card);
+
+            const btn = accWrapper.querySelector('button');
+            btn.addEventListener('mouseenter', () => { btn.style.background = 'var(--bg-secondary)'; });
+            btn.addEventListener('mouseleave', () => { btn.style.background = ''; });
+
+            cmGridAlumni.appendChild(accWrapper);
+
+            const gridEl = accWrapper.querySelector(`#cm-batch-grid-${yr}`);
+            if (gridEl) {
+              if (memberCount === 0) {
+                gridEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;grid-column:1/-1;">No members found in this batch.</p>';
+              } else {
+                info.members.forEach(m => {
+                  gridEl.appendChild(buildMemberCardHelper(m.fullName, m.username, m.class, m.avatarUrl, m.id, m.isVerified));
+                });
+              }
+            }
           });
+
+          setCmCount('alumni', totalAlumniCount);
         } else {
-          if (sectionEl) sectionEl.style.display = 'none';
+          cmGridAlumni.innerHTML = '<p style="padding:16px 20px;color:var(--text-muted);font-size:0.85rem;">No alumni yet.</p>';
+          setCmCount('alumni', 0);
         }
-      };
+      }
 
-      renderGrid(cmGridFaculty, cmSecFaculty, facultyList);
-      renderGrid(cmGridAlumni, cmSecAlumni, alumniList);
-      renderGrid(cmGridStaff, cmSecStaff, staffList);
-      renderGrid(cmGridStudents, cmSecStudents, studentList);
-
-      if (totalMembers > 0) {
+      // Check empty state
+      const totalOverallCount = facultyList.length + localTeachers.length + staffList.length + studentList.length + profileStudents.length + localStudents.length + Object.keys(batchYearMap || {}).length;
+      if (totalOverallCount > 0) {
         if (cmEmptyState) cmEmptyState.style.display = 'none';
       } else {
         if (cmEmptyState) cmEmptyState.style.display = 'block';
+      }
+
+      // Back Button Listener
+      const btnBack = document.getElementById('btn-back-to-community');
+      if (btnBack) {
+        btnBack.addEventListener('click', () => {
+          const mainView = document.getElementById('cm-main-view');
+          const batchView = document.getElementById('cm-batch-view');
+          if (mainView) mainView.style.display = 'block';
+          if (batchView) batchView.style.display = 'none';
+        });
       }
     } catch (err) {
       console.error('Failed to load school members:', err);
@@ -2164,6 +2703,133 @@ document.addEventListener('DOMContentLoaded', () => {
           <p style="font-size: 0.88rem;">${err.message || 'Please try again later.'}</p>
         `;
       }
+    }
+  }
+
+  // --- Dynamic Batch Members Loader and Renderer ---
+  async function loadBatchMembers(batchId) {
+    const supabase = window.CampusLink && window.CampusLink.supabase;
+    if (!supabase) return;
+
+    const cmGridBatchMembers = document.getElementById('cm-grid-batch-members');
+    const emptyState = document.getElementById('cm-batch-members-empty-state');
+    if (cmGridBatchMembers) cmGridBatchMembers.innerHTML = '<p style="color:var(--text-muted); grid-column: 1/-1; text-align:center;">Loading members...</p>';
+    if (emptyState) emptyState.style.display = 'none';
+
+    try {
+      // 1. Fetch batch details
+      const { data: batch, error: bErr } = await supabase
+        .from('alumni_batches')
+        .select('*')
+        .eq('id', batchId)
+        .single();
+      if (bErr) throw bErr;
+
+      // 2. Fetch members joining profiles
+      const { data: members, error: mErr } = await supabase
+        .from('alumni_members')
+        .select(`
+          id, joined_at,
+          user:profiles!user_id(id, full_name, avatar_url, user_type, class, is_verified, username, department)
+        `)
+        .eq('batch_id', batchId)
+        .order('joined_at', { ascending: false });
+      if (mErr) throw mErr;
+
+      // Update UI Header
+      document.getElementById('batch-badge').textContent = `Batch of ${batch.passing_year}`;
+      document.getElementById('batch-title').textContent = `Batch of ${batch.passing_year}`;
+      document.getElementById('batch-subtitle').textContent = [batch.department, batch.program].filter(Boolean).join(' — ') || 'Graduated Members';
+      
+      const descEl = document.getElementById('batch-description');
+      if (batch.description) {
+        descEl.textContent = batch.description;
+        descEl.style.display = 'block';
+      } else {
+        descEl.style.display = 'none';
+      }
+
+      const bannerImg = document.getElementById('batch-banner-img');
+      if (bannerImg) {
+        if (batch.cover_image) {
+          bannerImg.style.backgroundImage = `url(${batch.cover_image})`;
+        } else {
+          bannerImg.style.backgroundImage = 'none';
+        }
+      }
+
+      // Update stats
+      document.getElementById('batch-stat-members').textContent = members.length;
+      
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+      const recentJoinsCount = members.filter(m => new Date(m.joined_at) > oneMonthAgo).length;
+
+      document.getElementById('batch-stat-reps').textContent = Math.min(members.length, 2);
+      document.getElementById('batch-stat-contributors').textContent = Math.min(members.length, 5);
+      document.getElementById('batch-stat-recent').textContent = recentJoinsCount;
+
+      const renderMembersList = (query = '') => {
+        cmGridBatchMembers.innerHTML = '';
+        const filtered = (members || []).filter(m => {
+          const u = m.user || {};
+          const name = (u.full_name || '').toLowerCase();
+          const username = (u.username || '').toLowerCase();
+          const dept = (u.department || '').toLowerCase();
+          const q = query.toLowerCase();
+          return name.includes(q) || username.includes(q) || dept.includes(q);
+        });
+
+        if (filtered.length === 0) {
+          if (emptyState) emptyState.style.display = 'block';
+          return;
+        }
+        if (emptyState) emptyState.style.display = 'none';
+
+        filtered.forEach(m => {
+          const u = m.user || {};
+          const name = u.full_name || 'Unknown';
+          const initial = name.charAt(0).toUpperCase();
+          const avatarHtml = u.avatar_url
+            ? `<div class="cm-member-avatar" style="background-image: url(${u.avatar_url});"></div>`
+            : `<div class="cm-member-avatar-placeholder">${initial}</div>`;
+          const verifiedBadgeHtml = u.is_verified ? `
+            <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Profile" style="width: 14px; height: 14px; color: var(--primary); display: inline-block; vertical-align: middle; margin-left: 4px;">
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
+            </svg>
+          ` : '';
+
+          const card = document.createElement('div');
+          card.className = 'cm-member-card';
+          card.innerHTML = `
+            ${avatarHtml}
+            <div class="cm-member-name">
+              <span>${name}</span>
+              ${verifiedBadgeHtml}
+            </div>
+            ${u.username ? `<div class="cm-member-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${u.username}</div>` : ''}
+            <div class="cm-member-title">${u.department || 'Alumni Member'}</div>
+            <a href="profile.html?id=${u.id}" class="cm-member-btn">View Profile</a>
+          `;
+          cmGridBatchMembers.appendChild(card);
+        });
+      };
+
+      renderMembersList();
+
+      // Bind search input
+      const searchInput = document.getElementById('batch-members-search-input');
+      if (searchInput) {
+        searchInput.value = '';
+        const newSearch = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearch, searchInput);
+        newSearch.addEventListener('input', (e) => renderMembersList(e.target.value));
+      }
+
+    } catch (err) {
+      console.error('Error loading batch members details:', err);
+      cmGridBatchMembers.innerHTML = `<p style="color:#EF4444; grid-column: 1/-1; text-align:center;">Error loading members: ${err.message}</p>`;
     }
   }
 
@@ -2300,6 +2966,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- Format Content with Clickable Mention Links ---
+  function formatContentWithMentions(content, mentions) {
+    if (!content) return '';
+    let formatted = content;
+    if (!mentions || mentions.length === 0) return formatted;
+
+    const sortedMentions = [...mentions].sort((a, b) => {
+      const nameA = a.profiles?.full_name || a.schools?.name || '';
+      const nameB = b.profiles?.full_name || b.schools?.name || '';
+      return nameB.length - nameA.length;
+    });
+
+    sortedMentions.forEach(mention => {
+      const name = mention.profiles?.full_name || mention.schools?.name;
+      if (!name) return;
+
+      const mentionText = `@${name}`;
+      const url = mention.mentioned_user_id 
+        ? `profile.html?id=${mention.mentioned_user_id}` 
+        : `school-profile.html?id=${mention.mentioned_school_id}`;
+
+      const escapedMentionText = mentionText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(escapedMentionText, 'g');
+      formatted = formatted.replace(regex, `<a href="${url}" class="mention-link" style="color: #0066c8; font-weight: 700; text-decoration: none;">@${name}</a>`);
+    });
+
+    return formatted;
+  }
+
   async function loadAndRenderSchoolPosts() {
     const postsListContainer = document.getElementById('school-activity-posts');
     if (!postsListContainer) return;
@@ -2396,13 +3091,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currentProfile.verificationBadge === 'blue') {
         badgeHtml = `
           <svg class="verified-badge verified-badge-sm" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified Partner School" style="width: 14px; height: 14px; color: var(--primary); display: inline-block; vertical-align: middle; margin-left: 4px;">
-            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239C1.266.296 1.903.164 1.903.164c.636-.132 1.22-.447 1.68-.907c.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246c.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
             <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
           </svg>`;
       } else if (currentProfile.verificationBadge === 'gold') {
         badgeHtml = `
           <svg class="verified-badge verified-badge-sm gold" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Gold Partner School" style="width: 14px; height: 14px; color: var(--primary); display: inline-block; vertical-align: middle; margin-left: 4px;">
-            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239C1.266.296 1.903.164 1.903.164c.636-.132 1.22-.447 1.68-.907c.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246c.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+            <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239(1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
             <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
           </svg>`;
       }
@@ -2427,35 +3122,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       postsListContainer.appendChild(card);
     });
-  }
-
-  // --- Format Content with Clickable Mention Links ---
-  function formatContentWithMentions(content, mentions) {
-    if (!content) return '';
-    let formatted = content;
-    if (!mentions || mentions.length === 0) return formatted;
-
-    const sortedMentions = [...mentions].sort((a, b) => {
-      const nameA = a.profiles?.full_name || a.schools?.name || '';
-      const nameB = b.profiles?.full_name || b.schools?.name || '';
-      return nameB.length - nameA.length;
-    });
-
-    sortedMentions.forEach(mention => {
-      const name = mention.profiles?.full_name || mention.schools?.name;
-      if (!name) return;
-
-      const mentionText = `@${name}`;
-      const url = mention.mentioned_user_id 
-        ? `profile.html?id=${mention.mentioned_user_id}` 
-        : `school-profile.html?id=${mention.mentioned_school_id}`;
-
-      const escapedMentionText = mentionText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const regex = new RegExp(escapedMentionText, 'g');
-      formatted = formatted.replace(regex, `<a href="${url}" class="mention-link" style="color: #0066c8; font-weight: 700; text-decoration: none;">@${name}</a>`);
-    });
-
-    return formatted;
   }
 
   function formatRelativeTime(dateStr) {
@@ -2638,7 +3304,8 @@ document.addEventListener('DOMContentLoaded', () => {
               full_name,
               avatar_url,
               user_type,
-              is_verified
+              is_verified,
+              username
             )
           `)
           .eq('following_school_id', currentProfile.id)
@@ -2737,6 +3404,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <a href="profile.html?id=${u.id}" style="color: inherit; text-decoration: none;">${name}</a>
               ${badgeHtml}
             </div>
+            ${u.username ? `<div class="follower-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${u.username}</div>` : ''}
             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: capitalize; margin-top: 2px;">${userType}</div>
           </div>
         </div>
@@ -2857,4 +3525,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- End of School Profile Redesign Additions ---
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSchoolProfile);
+} else {
+  initSchoolProfile();
+}

@@ -791,6 +791,12 @@
             meBtn.dataset.listenerBound = 'true';
             meBtn.addEventListener('click', (e) => {
               e.stopPropagation();
+              
+              // Close notification panel if it is open
+              if (window.CampusLink && window.CampusLink.notifications && window.CampusLink.notifications.closePanel) {
+                window.CampusLink.notifications.closePanel();
+              }
+              
               meDropdown.classList.toggle('active');
             });
 
@@ -1118,26 +1124,67 @@
     }
   }
 
-  function initCapacitorBackButton() {
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-      console.log('[Capacitor BackButton] Initializing App plugin hardware backButton listener.');
-      window.Capacitor.Plugins.App.addListener('backButton', () => {
-        handleBackButton();
-      });
-    } else {
-      // In case registration timing is delayed, wait for DOMContentLoaded
-      document.addEventListener('DOMContentLoaded', () => {
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-          console.log('[Capacitor BackButton] Initializing App plugin hardware backButton listener on DOMContentLoaded.');
-          window.Capacitor.Plugins.App.addListener('backButton', () => {
-            handleBackButton();
-          });
-        }
-      });
+  function initCapacitorEvents() {
+    function registerAppListeners() {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+        console.log('[Capacitor Events] Registering App plugin event listeners.');
+        
+        // 1. Hardware Back Button handler
+        window.Capacitor.Plugins.App.addListener('backButton', () => {
+          handleBackButton();
+        });
+
+        // 2. Deep Linking (App Link / Custom Scheme) handler
+        window.Capacitor.Plugins.App.addListener('appUrlOpen', (data) => {
+          console.log('[Capacitor DeepLink] URL opened app:', data.url);
+          try {
+            const urlStr = data.url;
+            if (urlStr.includes('join-school.html') || urlStr.includes('join-school')) {
+              let code = '';
+              const match = urlStr.match(/[?&]code=([^&#]+)/);
+              if (match && match[1]) {
+                code = match[1];
+              }
+              if (code) {
+                console.log('[Capacitor DeepLink] Matching code found, routing to join-school.html?code=' + code);
+                window.location.href = 'join-school.html?code=' + encodeURIComponent(code);
+              }
+            }
+          } catch (err) {
+            console.error('[Capacitor DeepLink] Error handling deep link:', err);
+          }
+        });
+      }
     }
+
+    registerAppListeners();
+    // Fallback in case registration timing is delayed
+    document.addEventListener('DOMContentLoaded', registerAppListeners);
   }
 
-  initCapacitorBackButton();
+  initCapacitorEvents();
+
+  // ── Dynamic App Logo & Favicon Integration ───────────────────────
+  function injectAppLogoAndFavicon() {
+    const isInsideAdmin = window.location.pathname.includes('/admin/');
+    const logoPath = isInsideAdmin ? '../logo.png' : 'logo.png';
+
+    // 1. Inject Favicon
+    let favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      favicon.type = 'image/png';
+      document.head.appendChild(favicon);
+    }
+    favicon.href = logoPath;
+  }
+
+  // Run as early as possible and retry on DOMContentLoaded
+  injectAppLogoAndFavicon();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectAppLogoAndFavicon);
+  }
 
   // ── Expose API ───────────────────────────────────────────
   window.CampusLink = window.CampusLink || {};

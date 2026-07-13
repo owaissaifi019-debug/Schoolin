@@ -85,7 +85,7 @@
 
     // Bind Mobile Navbar Toggle (for header toggle functionality on mobile viewport)
     const mobileToggle = document.querySelector('.mobile-toggle');
-    const navLinks = document.querySelector('.nav-links');
+    const navLinks = document.querySelector('.nav-links') || document.querySelector('.header-nav');
     const body = document.body;
     if (mobileToggle && navLinks) {
       mobileToggle.addEventListener('click', () => {
@@ -95,7 +95,7 @@
     }
 
     // Close mobile nav when clicking a link
-    const navAnchors = document.querySelectorAll('.nav-links a');
+    const navAnchors = document.querySelectorAll('.nav-links a, .header-nav a');
     navAnchors.forEach(anchor => {
       anchor.addEventListener('click', () => {
         if (navLinks) navLinks.classList.remove('active');
@@ -158,7 +158,152 @@
       });
     }
 
+    // --- Profile More Options Dropdown ---
+    const moreBtn = document.getElementById('profile-more-btn');
+    const moreDropdown = document.getElementById('profile-more-dropdown');
+
+    if (moreBtn && moreDropdown) {
+      // Toggle open/close
+      moreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        moreDropdown.classList.toggle('active');
+      });
+
+      // Close when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!moreDropdown.contains(e.target) && e.target !== moreBtn) {
+          moreDropdown.classList.remove('active');
+        }
+      });
+
+      const closeDropdown = () => moreDropdown.classList.remove('active');
+
+      // Share item → reuse existing share-profile-btn logic
+      const ddShare = document.getElementById('dropdown-share-btn');
+      if (ddShare) {
+        ddShare.addEventListener('click', () => {
+          closeDropdown();
+          document.getElementById('share-profile-btn')?.click();
+        });
+      }
+
+      // Edit Profile item → opens edit modal (visibility set in setupOwnerFeatures)
+      const ddEdit = document.getElementById('dropdown-edit-btn');
+      if (ddEdit) {
+        ddEdit.addEventListener('click', () => {
+          closeDropdown();
+          openEditModal();
+        });
+      }
+
+      // Connect item → delegates to the real connect-profile-btn
+      const ddConnect = document.getElementById('dropdown-connect-btn');
+      if (ddConnect) {
+        ddConnect.addEventListener('click', () => {
+          closeDropdown();
+          document.getElementById('connect-profile-btn')?.click();
+        });
+      }
+
+      // Follow item → delegates to the real follow-profile-btn
+      const ddFollow = document.getElementById('dropdown-follow-btn');
+      if (ddFollow) {
+        ddFollow.addEventListener('click', () => {
+          closeDropdown();
+          document.getElementById('follow-profile-btn')?.click();
+        });
+      }
+
+      // Report User item & Modal Setup
+      const ddReport = document.getElementById('dropdown-report-btn');
+      const reportUserModal = document.getElementById('report-user-modal');
+      const reportUserForm = document.getElementById('report-user-form');
+      const reportUserCancel = document.getElementById('report-user-modal-cancel');
+      const reportUserClose = document.getElementById('report-user-modal-close');
+      const reportUserReasonSelect = document.getElementById('report-user-reason-select');
+      const reportUserDetailsTextarea = document.getElementById('report-user-details-textarea');
+      const reportUserDetailsRequired = document.getElementById('report-user-details-required');
+
+      function closeReportUserModal() {
+        if (reportUserModal) {
+          reportUserModal.classList.remove('active');
+          reportUserModal.style.display = 'none';
+        }
+        if (reportUserForm) reportUserForm.reset();
+        if (reportUserDetailsTextarea) reportUserDetailsTextarea.required = false;
+        if (reportUserDetailsRequired) reportUserDetailsRequired.style.display = 'none';
+        document.body.style.overflow = 'auto';
+      }
+
+      if (reportUserReasonSelect && reportUserDetailsTextarea && reportUserDetailsRequired) {
+        reportUserReasonSelect.addEventListener('change', () => {
+          if (reportUserReasonSelect.value === 'Other') {
+            reportUserDetailsTextarea.required = true;
+            reportUserDetailsRequired.style.display = 'inline';
+          } else {
+            reportUserDetailsTextarea.required = false;
+            reportUserDetailsRequired.style.display = 'none';
+          }
+        });
+      }
+
+      if (reportUserCancel) reportUserCancel.addEventListener('click', closeReportUserModal);
+      if (reportUserClose) reportUserClose.addEventListener('click', closeReportUserModal);
+      if (reportUserModal) {
+        reportUserModal.addEventListener('click', (e) => {
+          if (e.target === reportUserModal) closeReportUserModal();
+        });
+      }
+
+      if (ddReport) {
+        ddReport.addEventListener('click', () => {
+          closeDropdown();
+          if (!currentUser) {
+            showToast('You must be logged in to report a user.', 'error');
+            return;
+          }
+          if (reportUserModal) {
+            reportUserModal.classList.add('active');
+            reportUserModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+          }
+        });
+      }
+
+      if (reportUserForm) {
+        reportUserForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!currentUser) {
+            showToast('You must be logged in to report a user.', 'error');
+            return;
+          }
+          const sb = getSupabase();
+          if (!sb) return;
+
+          const reason = reportUserReasonSelect ? reportUserReasonSelect.value : 'Inappropriate profile / behavior';
+          const details = reportUserDetailsTextarea ? reportUserDetailsTextarea.value : 'Reported from profile dropdown menu';
+
+          try {
+            const { error } = await sb.from('user_reports').insert({
+              reported_user_id: profileId,
+              reporter_id: currentUser.id,
+              reason: reason,
+              details: details || 'No additional details provided.'
+            });
+
+            if (error) throw error;
+            showToast('User report submitted. Our team will review it shortly.');
+            closeReportUserModal();
+          } catch (err) {
+            console.error('Failed to submit user report:', err);
+            showToast('Failed to submit report: ' + err.message, 'error');
+          }
+        });
+      }
+    }
+
     // 3. Load Profile details
+
     await loadProfileData(profileId);
 
     // If query parameters demand edit modal and user is owner
@@ -215,6 +360,7 @@
 
       // Fetch School details if linked
       let school = null;
+      let affiliation = null;
       if (profile.school_id) {
         const { data: schoolData, error: schoolError } = await sb
           .from('schools')
@@ -224,6 +370,21 @@
         
         if (!schoolError) {
           school = schoolData;
+        }
+
+        try {
+          const { data: affData, error: affError } = await sb
+            .from('school_members')
+            .select('id, role, assigned_at')
+            .eq('school_id', profile.school_id)
+            .eq('user_id', profileId)
+            .maybeSingle();
+
+          if (!affError && affData) {
+            affiliation = affData;
+          }
+        } catch (affErr) {
+          console.warn('Failed to query school affiliation:', affErr);
         }
       }
 
@@ -312,7 +473,7 @@
       }
 
       // Render the profile views
-      renderProfileView(profile, school, followersCount, isFollowing, postsCount, eventsCount);
+      renderProfileView(profile, school, followersCount, isFollowing, postsCount, eventsCount, affiliation);
 
       // Update connections count display
       const connectionsEl = document.getElementById('profile-connections-count');
@@ -359,7 +520,7 @@
   }
 
   // --- Render Profile View Mode ---
-  function renderProfileView(profile, school, followersCount, isFollowing, postsCount = 0, eventsCount = 0) {
+  function renderProfileView(profile, school, followersCount, isFollowing, postsCount = 0, eventsCount = 0, affiliation = null) {
     const auth = getAuth();
 
     // 0. Cover photo display
@@ -387,8 +548,16 @@
           <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
         </svg>
       ` : '';
-      nameEl.innerHTML = (profile.full_name || 'No Name Provided') + verifiedBadge;
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+      nameEl.innerHTML = escape(profile.full_name || 'No Name Provided') + verifiedBadge;
     }
+
+    const usernameEl = document.getElementById('profile-username');
+    if (usernameEl) {
+      usernameEl.textContent = profile.username ? `@${profile.username}` : '';
+    }
+
+
     
     // Headline e.g. "Student at Delhi Public School"
     let headlineStr = auth.getUserTypeLabel(profile.user_type);
@@ -431,6 +600,42 @@
       }
     }
 
+    // Show verification pending notification on profile if owner is unverified teacher
+    if (profile.user_type === 'teacher' && isOwner) {
+      const teachersRaw = localStorage.getItem('campuslink_teachers');
+      const teachers = teachersRaw ? JSON.parse(teachersRaw) : [];
+      const displayName = profile.full_name || '';
+      const matchingTeacher = teachers.find(t => 
+        t.fullName.toLowerCase() === displayName.toLowerCase() || 
+        t.email?.toLowerCase() === currentUser.email?.toLowerCase()
+      );
+
+      const isVerified = matchingTeacher ? matchingTeacher.verificationStatus === 'verified' : false;
+      
+      if (!isVerified) {
+        let profileNotice = document.getElementById('profile-classroom-unverified-banner');
+        if (!profileNotice) {
+          profileNotice = document.createElement('div');
+          profileNotice.id = 'profile-classroom-unverified-banner';
+          profileNotice.style.cssText = 'background: #FFFBEB; border: 1.5px dashed #F59E0B; border-radius: 12px; padding: 16px; margin-top: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem; color: #B45309; width: 100%; box-sizing: border-box;';
+          profileNotice.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:0.9rem;">
+              <span>⚠️</span> Account Verification Pending
+            </div>
+            <div style="font-weight: 500;">Join a school to access Classrooms. Once a school verifies your account, your primary classroom workspace will be unlocked.</div>
+          `;
+          
+          const profileCard = document.querySelector('.profile-header-card');
+          if (profileCard) {
+            profileCard.appendChild(profileNotice);
+          }
+        }
+      } else {
+        const profileNotice = document.getElementById('profile-classroom-unverified-banner');
+        if (profileNotice) profileNotice.remove();
+      }
+    }
+
     // Update Stats
     const postsCountEl = document.getElementById('profile-posts-count');
     if (postsCountEl) postsCountEl.textContent = postsCount;
@@ -461,29 +666,24 @@
       }
     }
 
-    // Connect Button display
+    // Connect / Follow / Message / Report Button display (Visitor only)
     const connectBtn = document.getElementById('connect-profile-btn');
-    if (connectBtn) {
-      if (currentUser && !isOwner) {
-        connectBtn.style.display = 'inline-flex';
-      } else if (!currentUser) {
-        connectBtn.style.display = 'inline-flex';
-      } else {
-        connectBtn.style.display = 'none';
-      }
-    }
+    const ddConnectBtn = document.getElementById('dropdown-connect-btn');
+    const ddFollowBtn = document.getElementById('dropdown-follow-btn');
+    const ddReportBtn = document.getElementById('dropdown-report-btn');
+    const shareBtn = document.getElementById('share-profile-btn');
+
+    const isVisitor = (currentUser && !isOwner) || !currentUser;
+
+    if (connectBtn) connectBtn.style.display = isVisitor ? 'inline-flex' : 'none';
+    if (ddConnectBtn) ddConnectBtn.style.display = isVisitor ? 'flex' : 'none';
+    if (ddFollowBtn) ddFollowBtn.style.display = isVisitor ? 'flex' : 'none';
+    if (ddReportBtn) ddReportBtn.style.display = isVisitor ? 'flex' : 'none';
+    if (shareBtn) shareBtn.style.display = isOwner ? 'inline-flex' : 'none';
 
     // Message Button display
     const messageBtn = document.getElementById('message-profile-btn');
-    if (messageBtn) {
-      if (currentUser && !isOwner) {
-        messageBtn.style.display = 'inline-flex';
-      } else if (!currentUser) {
-        messageBtn.style.display = 'inline-flex';
-      } else {
-        messageBtn.style.display = 'none';
-      }
-    }
+    if (messageBtn) messageBtn.style.display = isVisitor ? 'inline-flex' : 'none';
 
     // 2. About / Bio Card
     const bioCard = document.getElementById('section-bio-card');
@@ -525,12 +725,13 @@
       if (achArray.length > 0) {
         achievementsContainer.innerHTML = '';
         achArray.forEach(ach => {
+          const escape = window.CampusLink?.security?.escapeHTML || (s => s);
           const item = document.createElement('div');
           item.className = 'achievements-timeline-item';
           item.innerHTML = `
             <div class="timeline-dot">🏆</div>
             <div class="timeline-content">
-              <p class="timeline-desc">${ach}</p>
+              <p class="timeline-desc">${escape(ach)}</p>
             </div>
           `;
           achievementsContainer.appendChild(item);
@@ -549,9 +750,10 @@
       if (sportsArray.length > 0) {
         sportsContainer.innerHTML = '';
         sportsArray.forEach(sport => {
+          const escape = window.CampusLink?.security?.escapeHTML || (s => s);
           const chip = document.createElement('span');
           chip.className = 'profile-sport-chip';
-          chip.innerHTML = `<span class="sport-icon">⚽</span> ${sport}`;
+          chip.innerHTML = `<span class="sport-icon">⚽</span> ${escape(sport)}`;
           sportsContainer.appendChild(chip);
         });
         sportsCard.style.display = 'block';
@@ -568,12 +770,13 @@
       if (certsArray.length > 0) {
         certificatesContainer.innerHTML = '';
         certsArray.forEach(cert => {
+          const escape = window.CampusLink?.security?.escapeHTML || (s => s);
           const card = document.createElement('div');
           card.className = 'profile-cert-card';
           card.innerHTML = `
             <div class="cert-icon">📜</div>
             <div class="cert-info">
-              <h4 class="cert-title">${cert}</h4>
+              <h4 class="cert-title">${escape(cert)}</h4>
               <p class="cert-issuer">Verified Certificate</p>
             </div>
           `;
@@ -599,7 +802,8 @@
         sbSchoolLogo.className = `school-logo-placeholder ${school.color_class || 'bg-gradient-1'}`;
       }
       if (sbSchoolTitle) {
-        sbSchoolTitle.innerHTML = `<a href="school-profile.html?id=${school.id}">${school.name}</a>`;
+        const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+        sbSchoolTitle.innerHTML = `<a href="school-profile.html?id=${school.id}">${escape(school.name)}</a>`;
       }
       if (sbSchoolSub) sbSchoolSub.textContent = school.board ? `${school.board} Affiliation` : 'Registered School';
       if (sbSchoolCity) sbSchoolCity.textContent = school.city || '';
@@ -615,6 +819,56 @@
 
     if (sbClassVal) sbClassVal.textContent = profile.class || 'Not Specified';
     if (sbEmailVal) sbEmailVal.textContent = isOwner ? (profile.email || 'Private') : 'Private';
+
+    // 8. School Affiliation Badge
+    const affContainer = document.getElementById('profile-affiliation-badge-container');
+    if (affContainer) {
+      affContainer.style.display = 'none';
+      affContainer.innerHTML = '';
+      
+      if (school) {
+        if (affiliation) {
+          // Verified member badge
+          let icon = '🏅';
+          let roleTitle = 'Member';
+          
+          if (affiliation.role === 'teacher') {
+            icon = '🏅';
+            roleTitle = 'Teacher';
+          } else if (affiliation.role === 'alumni') {
+            icon = '🎓';
+            roleTitle = 'Alumni';
+          } else if (affiliation.role === 'student') {
+            icon = '📚';
+            roleTitle = 'Student';
+          } else if (affiliation.role) {
+            roleTitle = affiliation.role;
+          }
+          
+          affContainer.className = 'profile-affiliation-badge-container';
+          affContainer.innerHTML = `
+            <span class="profile-affiliation-icon">${icon}</span>
+            <span>
+              ${roleTitle} at <a href="school-profile.html?id=${school.id}">${school.name}</a>
+              <span style="font-weight: normal; opacity: 0.85;">— Verified by School</span>
+            </span>
+            <span class="profile-affiliation-verified-tick" title="Verified Member">✓</span>
+          `;
+          affContainer.style.display = 'inline-flex';
+        } else {
+          // Unverified member badge
+          affContainer.className = 'profile-affiliation-badge-container unverified';
+          affContainer.innerHTML = `
+            <span class="profile-affiliation-icon">🏫</span>
+            <span>
+              Member of <a href="school-profile.html?id=${school.id}">${school.name}</a>
+              <span style="font-weight: normal; opacity: 0.85;">— Unverified</span>
+            </span>
+          `;
+          affContainer.style.display = 'inline-flex';
+        }
+      }
+    }
 
     // --- 7.5: Experience Section (LinkedIn-style) ---
     const expCard = document.getElementById('section-experience-card');
@@ -679,6 +933,11 @@
 
   // --- Follow Actions ---
   function updateFollowButtonState(btn, following) {
+    const ddFollowText = document.getElementById('dropdown-follow-text');
+    if (ddFollowText) {
+      ddFollowText.textContent = following ? 'Following' : 'Follow';
+    }
+
     if (following) {
       btn.className = 'btn btn-following';
       btn.style.backgroundColor = 'transparent';
@@ -797,6 +1056,19 @@
       existingRejectBtn.remove();
     }
 
+    const ddConnectText = document.getElementById('dropdown-connect-text');
+    if (ddConnectText) {
+      if (status === 'accepted') {
+        ddConnectText.textContent = 'Connected';
+      } else if (status === 'pending_sent') {
+        ddConnectText.textContent = 'Cancel Request';
+      } else if (status === 'pending_received') {
+        ddConnectText.textContent = 'Accept';
+      } else {
+        ddConnectText.textContent = 'Connect';
+      }
+    }
+
     if (status === 'accepted') {
       btn.className = 'btn-connected';
       btn.title = 'Click to disconnect';
@@ -809,7 +1081,7 @@
       btn.title = 'Click to withdraw request';
       btn.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>Requested</span>
+        <span>Cancel Request</span>
       `;
     } else if (status === 'pending_received') {
       btn.className = 'btn-connect';
@@ -1175,6 +1447,16 @@
     if (editBtn) editBtn.style.display = 'inline-flex';
     if (avatarLabel) avatarLabel.style.display = 'flex';
 
+    // Dropdown: show Edit, hide Connect/Follow/Report for owner
+    const ddEdit = document.getElementById('dropdown-edit-btn');
+    const ddConnect = document.getElementById('dropdown-connect-btn');
+    const ddFollow = document.getElementById('dropdown-follow-btn');
+    const ddReport = document.getElementById('dropdown-report-btn');
+    if (ddEdit) ddEdit.style.display = 'flex';
+    if (ddConnect) ddConnect.style.display = 'none';
+    if (ddFollow) ddFollow.style.display = 'none';
+    if (ddReport) ddReport.style.display = 'none';
+
     // School Join CTA
     if (ctaCard && !profileUser.school_id) {
       ctaCard.style.display = 'block';
@@ -1210,17 +1492,21 @@
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Avatar file size must be less than 2MB', 'error');
-      return;
+    const validator = window.CampusLink?.security?.validateImageFile;
+    if (validator) {
+      const err = await validator(file, 2 * 1024 * 1024);
+      if (err) {
+        showToast(err, 'error');
+        return;
+      }
     }
 
     showToast('Uploading avatar...', 'info');
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const ext = file.name.split('.').pop().toLowerCase();
+      const randomString = Math.random().toString(36).substring(2, 10);
+      const fileName = `avatar_${randomString}.${ext}`;
       const filePath = `avatars/${profileUser.id}/${fileName}`;
 
       // Upload avatar to Supabase bucket
@@ -1288,17 +1574,21 @@
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Cover image size must be less than 2MB', 'error');
-      return;
+    const validator = window.CampusLink?.security?.validateImageFile;
+    if (validator) {
+      const err = await validator(file, 5 * 1024 * 1024); // 5MB limit
+      if (err) {
+        showToast(err, 'error');
+        return;
+      }
     }
 
     showToast('Uploading cover photo...', 'info');
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const ext = file.name.split('.').pop().toLowerCase();
+      const randomString = Math.random().toString(36).substring(2, 10);
+      const fileName = `cover_${randomString}.${ext}`;
       const filePath = `covers/${profileUser.id}/${fileName}`;
 
       // Upload cover to Supabase bucket
@@ -1557,7 +1847,8 @@
     // Achievements Add
     if (addAchBtn && achInput) {
       const addAch = () => {
-        const val = achInput.value.trim();
+        const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+        const val = sanitize(achInput.value);
         if (val && !editAchievements.includes(val)) {
           editAchievements.push(val);
           renderAchievementsList();
@@ -1576,7 +1867,8 @@
     // Certificates Add
     if (addCertBtn && certInput) {
       const addCert = () => {
-        const val = certInput.value.trim();
+        const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+        const val = sanitize(certInput.value);
         if (val && !editCertificates.includes(val)) {
           editCertificates.push(val);
           renderCertificatesList();
@@ -1603,9 +1895,10 @@
     container.querySelectorAll('.tag-chip').forEach(el => el.remove());
 
     editSkills.forEach((skill, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
       const chip = document.createElement('span');
       chip.className = 'tag-chip';
-      chip.innerHTML = `${skill} <span class="tag-remove" data-index="${index}">&times;</span>`;
+      chip.innerHTML = `${escape(skill)} <span class="tag-remove" data-index="${index}">&times;</span>`;
       container.insertBefore(chip, input);
     });
 
@@ -1627,9 +1920,10 @@
     container.querySelectorAll('.tag-chip').forEach(el => el.remove());
 
     editSports.forEach((sport, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
       const chip = document.createElement('span');
       chip.className = 'tag-chip';
-      chip.innerHTML = `${sport} <span class="tag-remove" data-index="${index}">&times;</span>`;
+      chip.innerHTML = `${escape(sport)} <span class="tag-remove" data-index="${index}">&times;</span>`;
       container.insertBefore(chip, input);
     });
 
@@ -1653,10 +1947,11 @@
     }
 
     editAchievements.forEach((ach, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
       const li = document.createElement('li');
       li.className = 'editable-list-item';
       li.innerHTML = `
-        <span>${ach}</span>
+        <span>${escape(ach)}</span>
         <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
       `;
       listEl.appendChild(li);
@@ -1682,10 +1977,11 @@
     }
 
     editCertificates.forEach((cert, index) => {
+      const escape = window.CampusLink?.security?.escapeHTML || (s => s);
       const li = document.createElement('li');
       li.className = 'editable-list-item';
       li.innerHTML = `
-        <span>${cert}</span>
+        <span>${escape(cert)}</span>
         <button type="button" class="btn-remove-list-item" data-index="${index}">&times;</button>
       `;
       listEl.appendChild(li);
@@ -1814,14 +2110,18 @@
 
     showToast('Saving profile details...', 'info');
 
-    // Extract inputs
-    const fullName = document.getElementById('edit-full-name').value.trim();
-    const schoolId = document.getElementById('edit-school').value || null;
-    const gradeClass = document.getElementById('edit-class').value.trim() || null;
-    const bioText = document.getElementById('edit-bio').value.trim() || null;
+    // Extract inputs & sanitize
+    const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+    const validateName = window.CampusLink?.security?.validateName || (s => null);
 
-    if (!fullName) {
-      showToast('Full name is required.', 'error');
+    const fullName = sanitize(document.getElementById('edit-full-name').value);
+    const schoolId = document.getElementById('edit-school').value || null;
+    const gradeClass = sanitize(document.getElementById('edit-class').value) || null;
+    const bioText = sanitize(document.getElementById('edit-bio').value) || null;
+
+    const nameErr = validateName(fullName);
+    if (nameErr) {
+      showToast(nameErr, 'error');
       return;
     }
 
@@ -1911,7 +2211,7 @@
     }
   }
 
-  // Run on page load
+  // Run on page load (robust ready state check)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

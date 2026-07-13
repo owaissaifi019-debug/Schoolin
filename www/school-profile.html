@@ -2,17 +2,111 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('campuslink-theme');
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      const currentTheme = savedTheme || systemTheme;
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      
+      const setupThemeToggle = () => {
+        const toggleTheme = () => {
+          const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
+          const nextTheme = activeTheme === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', nextTheme);
+          localStorage.setItem('campuslink-theme', nextTheme);
+          updateUI(nextTheme);
+        };
+
+        const updateUI = (theme) => {
+          const toggleBtns = document.querySelectorAll('.theme-toggle-btn');
+          toggleBtns.forEach(btn => {
+            btn.innerHTML = theme === 'dark' 
+              ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>` 
+              : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+            btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+          });
+        };
+
+        updateUI(currentTheme);
+
+        document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
+          btn.onclick = (e) => {
+            e.preventDefault();
+            toggleTheme();
+          };
+        });
+
+        // Double click/tap on logo to toggle theme with single-click disambiguation
+        const logoSelectors = [
+          '#header-logo',
+          '.header-logo-box',
+          '.logo',
+          '.auth-mobile-logo',
+          '.mobile-header-brand',
+          '.logo-brand-wrapper',
+          '.mobile-school-logo',
+          '.mobile-school-name'
+        ];
+        
+        logoSelectors.forEach(selector => {
+          document.querySelectorAll(selector).forEach(logo => {
+            let clickTimeout = null;
+            let clickCount = 0;
+            let lastTapTime = 0;
+            
+            // Touch double-tap for mobile view
+            logo.addEventListener('touchstart', (e) => {
+              const now = Date.now();
+              if (now - lastTapTime < 300 && now - lastTapTime > 0) {
+                e.preventDefault();
+                toggleTheme();
+              }
+              lastTapTime = now;
+            }, { passive: false });
+
+            // Desktop click disambiguation
+            logo.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              clickCount++;
+              
+              if (clickCount === 1) {
+                clickTimeout = setTimeout(() => {
+                  clickCount = 0;
+                  const href = logo.getAttribute('href');
+                  if (href) {
+                    window.location.href = href;
+                  }
+                }, 250);
+              } else if (clickCount === 2) {
+                clearTimeout(clickTimeout);
+                clickCount = 0;
+                toggleTheme();
+              }
+            });
+          });
+        });
+      };
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupThemeToggle);
+      } else {
+        setupThemeToggle();
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>School Profile | CampusLink</title>
   <meta name="description" content="View verified school profile on the CampusLink Network. Search school events, academic curriculum, achievements, and admission announcements.">
   
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="css/core/variables.css">
-  <link rel="stylesheet" href="css/core/reset.css">
-  <link rel="stylesheet" href="css/core/typography.css">
-  <link rel="stylesheet" href="css/core/utilities.css">
-  <link rel="stylesheet" href="css/core/animations.css">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css?v=1.2">
+  <link rel="stylesheet" href="css/schools.css?v=1.2">
   <link rel="stylesheet" href="style.css?v=1.1">
+  <link rel="stylesheet" href="css/profile.css">
   <style>
     /* --- Mobile Touch Responsiveness Overlay Fix --- */
     .modal-overlay {
@@ -149,6 +243,9 @@
               </div>
             </div>
           </li>
+          <li class="theme-toggle-item" style="margin-right: 8px;">
+            <button class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle theme">🌙</button>
+          </li>
           <li class="member-only" id="nav-me-item">
             <button class="nav-me-btn" id="nav-me-btn">
               <div class="nav-me-avatar" id="nav-me-avatar-img">?</div>
@@ -274,6 +371,9 @@
       </div>
     </div>
   </div>
+      </div>
+    </div>
+  </div>
 
   <!-- --- Profile Tabs Section --- -->
   <div class="container">
@@ -302,9 +402,9 @@
         
         <!-- Tab 1: About -->
         <div class="profile-tab-panel active" id="panel-about">
-          <h2>About the School</h2>
           <div class="about-grid">
             <div>
+              <h2>About the School</h2>
               <p style="margin-bottom: 20px; font-size: 1.05rem;" id="about-intro-para">
                 Loading school description...
               </p>
@@ -323,16 +423,16 @@
                     <span>Established</span>
                     <span id="meta-est">...</span>
                   </li>
-                  <li class="about-meta-item">
-                    <span>School Type</span>
-                    <span>Co-Educational</span>
+                  <li class="about-meta-item" id="detail-item-type">
+                    <span id="label-sch-type">School Type</span>
+                    <span id="val-sch-type">Co-Educational</span>
                   </li>
-                  <li class="about-meta-item">
-                    <span>Intake Grades</span>
-                    <span>Nursery to XII</span>
+                  <li class="about-meta-item" id="detail-item-grades">
+                    <span id="label-sch-grades">Intake Grades</span>
+                    <span id="val-sch-grades">Nursery to XII</span>
                   </li>
-                  <li class="about-meta-item">
-                    <span>Affiliation Board</span>
+                  <li class="about-meta-item" id="detail-item-board">
+                    <span id="label-sch-board">Affiliation Board</span>
                     <span id="meta-board">...</span>
                   </li>
                   <li class="about-meta-item">
@@ -394,15 +494,15 @@
 
         <!-- Tab 3: Admissions -->
         <div class="profile-tab-panel" id="panel-admissions">
-          <h2>Admission Details (2026 - 2027)</h2>
-          <div class="admission-highlight-box" id="admission-status-box">
-            Admissions Open: Registration for nursery and grade XI starts June 15, 2026.
-          </div>
-          <div style="margin-top: 24px; display: flex; justify-content: flex-start;">
-            <a href="#" id="btn-profile-apply-admission" class="btn btn-primary" style="padding: 12px 32px; font-size: 0.95rem; text-decoration: none; display: none;">Apply Now</a>
-          </div>
           <div class="about-grid">
             <div>
+              <h2>Admission Details (2026 - 2027)</h2>
+              <div class="admission-highlight-box" id="admission-status-box" style="margin-bottom: 20px;">
+                Admissions Open: Registration for nursery and grade XI starts June 15, 2026.
+              </div>
+              <div style="margin-top: 16px; margin-bottom: 24px; display: flex; justify-content: flex-start;">
+                <a href="#" id="btn-profile-apply-admission" class="btn btn-primary" style="padding: 12px 32px; font-size: 0.95rem; text-decoration: none; display: none;">Apply Now</a>
+              </div>
               <h3 style="margin-bottom: 12px; font-size: 1.15rem;">Application Process</h3>
               <p style="margin-bottom: 16px;">
                 Parents can download the prospectus and registration form online. Duly filled physical copies or digitally compiled uploads must be submitted before the target entry deadline.
@@ -458,56 +558,158 @@
 
         <!-- Tab 5: Community -->
         <div class="profile-tab-panel" id="panel-community">
-          <h2>Community Members</h2>
-          <p style="color: var(--text-muted); margin-bottom: 30px;">
-            Verified teachers, faculty, alumni, staff, and students associated with this institution.
-          </p>
+          
+          <!-- MAIN COMMUNITY VIEW -->
+          <div id="cm-main-view">
+            <h2>Community Members</h2>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">
+              Verified teachers, faculty, alumni, staff, and students associated with this institution.
+            </p>
 
-          <!-- Teachers & Faculty Section -->
-          <div class="cm-section" id="cm-section-faculty" style="margin-bottom: 32px; display: none;">
-            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>👨‍🏫</span> Teachers & Faculty
-            </h3>
-            <div class="cm-member-grid" id="cm-grid-faculty">
+            <!-- Accordion Sections -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+
+              <!-- Teachers & Faculty Accordion -->
+              <div class="cm-accordion" id="cm-acc-faculty">
+                <button class="cm-acc-header" onclick="toggleCmAccordion('faculty')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:0.95rem;color:var(--dark-bg);text-align:left;transition:all 0.2s;box-shadow:var(--shadow-sm);">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.3rem;">👨‍🏫</span>
+                    <span>Teachers &amp; Faculty</span>
+                    <span id="cm-count-faculty" style="background:var(--primary-light);color:var(--primary);font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:99px;">—</span>
+                  </div>
+                  <span id="cm-chevron-faculty" style="color:var(--text-muted);font-size:1rem;transition:transform 0.25s;">▶</span>
+                </button>
+                <div id="cm-body-faculty" style="display:none;padding:20px;border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--white);">
+                  <div class="cm-member-grid" id="cm-grid-faculty">
+                    <!-- Dynamic member cards -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Students Accordion -->
+              <div class="cm-accordion" id="cm-acc-students">
+                <button class="cm-acc-header" onclick="toggleCmAccordion('students')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:0.95rem;color:var(--dark-bg);text-align:left;transition:all 0.2s;box-shadow:var(--shadow-sm);">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.3rem;">📚</span>
+                    <span>Students</span>
+                    <span id="cm-count-students" style="background:rgba(16,185,129,0.1);color:#10B981;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:99px;">—</span>
+                  </div>
+                  <span id="cm-chevron-students" style="color:var(--text-muted);font-size:1rem;transition:transform 0.25s;">▶</span>
+                </button>
+                <div id="cm-body-students" style="display:none;padding:20px;border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--white);">
+                  <div class="cm-member-grid" id="cm-grid-students">
+                    <!-- Dynamic member cards -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Alumni Accordion -->
+              <div class="cm-accordion" id="cm-acc-alumni">
+                <button class="cm-acc-header" onclick="toggleCmAccordion('alumni')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:0.95rem;color:var(--dark-bg);text-align:left;transition:all 0.2s;box-shadow:var(--shadow-sm);">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.3rem;">🎓</span>
+                    <span>Alumni</span>
+                    <span id="cm-count-alumni" style="background:rgba(139,92,246,0.12);color:#8B5CF6;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:99px;">—</span>
+                  </div>
+                  <span id="cm-chevron-alumni" style="color:var(--text-muted);font-size:1rem;transition:transform 0.25s;">▶</span>
+                </button>
+                <div id="cm-body-alumni" style="display:none;border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--white);overflow:hidden;">
+                  <!-- Batch list inside alumni accordion -->
+                  <div id="cm-grid-alumni" style="display:flex;flex-direction:column;gap:0;">
+                    <!-- Dynamic batch year cards -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Staff (hidden by default, shown only if data exists) -->
+              <div class="cm-accordion" id="cm-acc-staff" style="display:none;">
+                <button class="cm-acc-header" onclick="toggleCmAccordion('staff')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--white);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;font-weight:700;font-size:0.95rem;color:var(--dark-bg);text-align:left;transition:all 0.2s;box-shadow:var(--shadow-sm);">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.3rem;">🏅</span>
+                    <span>Staff</span>
+                    <span id="cm-count-staff" style="background:rgba(245,158,11,0.12);color:#D97706;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:99px;">—</span>
+                  </div>
+                  <span id="cm-chevron-staff" style="color:var(--text-muted);font-size:1rem;transition:transform 0.25s;">▶</span>
+                </button>
+                <div id="cm-body-staff" style="display:none;padding:20px;border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--white);">
+                  <div class="cm-member-grid" id="cm-grid-staff">
+                    <!-- Dynamic member cards -->
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- end accordion stack -->
+
+            <!-- Empty State -->
+            <div id="cm-empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted); display: none;">
+              <p style="font-size: 1.1rem; margin-bottom: 4px;">No community members yet.</p>
+              <p style="font-size: 0.88rem;">This school has not assigned any verified members.</p>
+            </div>
+
+            <!-- Keep hidden section refs for JS compat -->
+            <div id="cm-section-faculty" style="display:none;"></div>
+            <div id="cm-section-alumni" style="display:none;"></div>
+            <div id="cm-section-staff" style="display:none;"></div>
+            <div id="cm-section-students" style="display:none;"></div>
+          </div><!-- end cm-main-view -->
+
+          <!-- BATCH DETAILS PAGE VIEW -->
+          <div id="cm-batch-view" style="display: none;">
+            <button id="btn-back-to-community" style="background: none; border: none; color: var(--primary); font-weight: 700; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-bottom: 24px; padding: 0;">
+              ← Back to Community
+            </button>
+            
+            <!-- Batch Cover Banner -->
+            <div id="batch-banner" style="position: relative; border-radius: var(--radius-lg); height: 180px; overflow: hidden; margin-bottom: 24px; display: flex; flex-direction: column; justify-content: flex-end; padding: 24px; background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+              <div id="batch-banner-img" style="position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0.35;"></div>
+              <div style="position: relative; z-index: 2;">
+                <span id="batch-badge" style="background: var(--primary); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; margin-bottom: 8px;">Batch Year</span>
+                <h2 id="batch-title" style="font-size: 1.75rem; font-weight: 800; color: white; margin: 0; line-height: 1.2;">Batch of 2024</h2>
+                <p id="batch-subtitle" style="font-size: 0.88rem; color: rgba(255, 255, 255, 0.75); margin-top: 4px; margin-bottom: 0;">Science Department</p>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <p id="batch-description" style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 24px; display: none;"></p>
+
+            <!-- Statistics Dashboard Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; margin-bottom: 30px;">
+              <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 4px;">👥</div>
+                <div id="batch-stat-members" style="font-size: 1.2rem; font-weight: 800; color: var(--dark-bg);">0</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Members</div>
+              </div>
+              <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 4px;">👨‍💼</div>
+                <div id="batch-stat-reps" style="font-size: 1.2rem; font-weight: 800; color: var(--dark-bg);">0</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Reps</div>
+              </div>
+              <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 4px;">⭐️</div>
+                <div id="batch-stat-contributors" style="font-size: 1.2rem; font-weight: 800; color: var(--dark-bg);">0</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Top Contributors</div>
+              </div>
+              <div style="background: rgba(15, 23, 42, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                <div style="font-size: 1.5rem; margin-bottom: 4px;">✨</div>
+                <div id="batch-stat-recent" style="font-size: 1.2rem; font-weight: 800; color: var(--dark-bg);">0</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Recent Joins</div>
+              </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div style="margin-bottom: 24px; max-width: 400px;">
+              <input type="text" id="batch-members-search-input" placeholder="Search batch by name, username, department..." style="width: 100%; padding: 10px 16px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; background: white; transition: border-color 0.2s;">
+            </div>
+
+            <!-- Batch Members List -->
+            <div class="cm-member-grid" id="cm-grid-batch-members">
               <!-- Dynamic member cards -->
+            </div>
+            <div id="cm-batch-members-empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted); display: none;">
+              <p style="font-size: 1.05rem;">No batch members found matching your search.</p>
             </div>
           </div>
 
-          <!-- Alumni Section -->
-          <div class="cm-section" id="cm-section-alumni" style="margin-bottom: 32px; display: none;">
-            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>🎓</span> Alumni
-            </h3>
-            <div class="cm-member-grid" id="cm-grid-alumni">
-              <!-- Dynamic member cards -->
-            </div>
-          </div>
-
-          <!-- Staff Section -->
-          <div class="cm-section" id="cm-section-staff" style="margin-bottom: 32px; display: none;">
-            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>🏅</span> Staff
-            </h3>
-            <div class="cm-member-grid" id="cm-grid-staff">
-              <!-- Dynamic member cards -->
-            </div>
-          </div>
-
-          <!-- Students Section -->
-          <div class="cm-section" id="cm-section-students" style="margin-bottom: 32px; display: none;">
-            <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>📚</span> Students
-            </h3>
-            <div class="cm-member-grid" id="cm-grid-students">
-              <!-- Dynamic member cards -->
-            </div>
-          </div>
-
-          <!-- Empty State -->
-          <div id="cm-empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-            <p style="font-size: 1.1rem; margin-bottom: 4px;">No community members yet.</p>
-            <p style="font-size: 0.88rem;">This school has not assigned any verified members.</p>
-          </div>
         </div>
       </main>
     </div>
@@ -548,6 +750,7 @@
             <a href="#" class="footer-social-icon" aria-label="Instagram">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0h.003zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233 0-2.136.008-2.388.046-3.231.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045v.002zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92zm-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217zm0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334z"/>
+              </svg>
             </a>
           </div>
         </div>
@@ -578,7 +781,7 @@
         <div class="footer-links">
           <h4>Company</h4>
           <ul>
-            <li><a href="#">About Us</a></li>
+            <li><a href="about.html">About Us</a></li>
             <li><a href="#">Careers</a></li>
             <li><a href="#">Press Kit</a></li>
             <li><a href="#">Contact</a></li>
@@ -657,6 +860,48 @@
             </select>
           </div>
 
+          <!-- Institution Type and Affiliated University (Colleges only) -->
+          <div id="edit-college-type-fields" style="display: none; margin-bottom: 16px;">
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label for="edit-sch-institution-type">Institution Type *</label>
+                <select id="edit-sch-institution-type">
+                  <option value="">Select Institution Type...</option>
+                  <option value="Central University">Central University</option>
+                  <option value="State University">State University</option>
+                  <option value="Private University">Private University</option>
+                  <option value="Deemed-to-be University">Deemed-to-be University</option>
+                  <option value="Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)">Institute of National Importance (IIT, NIT, IIIT, AIIMS, etc.)</option>
+                  <option value="Government College">Government College</option>
+                  <option value="Private College">Private College</option>
+                  <option value="Polytechnic">Polytechnic</option>
+                  <option value="School">School</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              
+              <div class="form-group col-6" id="edit-sch-affiliated-university-group" style="display: none;">
+                <label for="edit-sch-affiliated-university">Affiliated University *</label>
+                <div style="position: relative;">
+                  <select id="edit-sch-affiliated-university">
+                    <option value="">Select University...</option>
+                    <option value="Not University Affiliated">Not University Affiliated</option>
+                    <option value="Jamia Millia Islamia">Jamia Millia Islamia</option>
+                    <option value="AKTU (Dr. A.P.J. Abdul Kalam Technical University)">AKTU (Dr. A.P.J. Abdul Kalam Technical University)</option>
+                    <option value="Anna University">Anna University</option>
+                    <option value="VTU (Visvesvaraya Technological University)">VTU (Visvesvaraya Technological University)</option>
+                    <option value="Delhi University">Delhi University</option>
+                    <option value="University of Mumbai">University of Mumbai</option>
+                    <option value="Rajasthan Technical University">Rajasthan Technical University</option>
+                    <option value="MAKAUT">MAKAUT</option>
+                    <option value="Other">Other (Enter Manually)</option>
+                  </select>
+                  <input type="text" id="edit-sch-affiliated-university-custom" placeholder="Enter custom university name" class="form-control" style="display: none; margin-top: 8px; width: 100%;">
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-group">
             <label for="edit-sch-about">About / Description</label>
             <textarea id="edit-sch-about" rows="5" placeholder="Describe your school's history, infrastructure, academic focus, and unique opportunities..."></textarea>
@@ -666,7 +911,7 @@
         <!-- Tab 2: Location & Contact -->
         <div class="tab-pane" id="tab-sch-contact">
           <div class="form-row">
-            <div class="form-group col-6">
+            <div class="form-group col-6" id="edit-sch-board-group">
               <label for="edit-sch-board">Affiliation Board</label>
               <select id="edit-sch-board">
                 <option value="">Select Board...</option>
@@ -938,6 +1183,6 @@
   <script src="mobile-nav.js"></script>
 
   <!-- Page JS Script -->
-  <script src="school-profile.js?v=2.0"></script>
+  <script src="school-profile.js?v=4.0"></script>
 </body>
 </html>

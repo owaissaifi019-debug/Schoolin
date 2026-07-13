@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us | CampusLink</title>
+  <meta name="description" content="Discover the mission, vision, and team behind CampusLink — India's premier educational networking platform connecting schools, students, teachers, and alumni.">
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Hanken+Grotesk:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="style.css?v=1.3">
+
+  <style>
+    /* Scoped Premium About Page Styles */
+    .about-body {
+      background-color: #fcfdfe;
+      overflow-x: hidden;
+    }
+
+    /* ── Hero Section ── */
+    .about-hero {
+      position: relative;
+      padding: 100px 0 80px;
+      background: radial-gradient(circle at 10% 20%, rgba(235, 245, 255, 0.6) 0%, rgba(224, 250, 248, 0.4) 90%);
+      border-bottom: 1px solid var(--border-color);
+      overflow: hidden;
+      text-align: center;
+    }
+
+    .about-hero::before {
+      content: '';
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: rgba(0, 102, 200, 0.08);
+      border-radius: 50%;
+      filter: blur(80px);
+      top: -100px;
+      left: -100px;
+      pointer-events: none;
+    }
+
+    .about-hero::after {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      background: rgba(0, 210, 196, 0.08);
+      border-radius: 50%;
+      filter: blur(60px);
+      bottom: -50px;
+      right: -50px;
+      pointer-events: none;
+    }
+
+    .about-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      background-color: var(--primary-light);
+      color: var(--primary);
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0, 102, 200, 0.06);
+      border: 1px solid rgba(0, 102, 200, 0.1);
+    }
+
+    .about-hero h1 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: clamp(2.4rem, 5vw, 4rem);
+      font-weight: 800;
+      line-height: 1.15;
+      color: var(--dark-bg);
+      letter-spacing: -0.02em;
+      max-width: 800px;
+      margin: 0 auto 24px;
+    }
+
+    .about-hero p {
+      font-family: 'Manrope', sans-serif;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      line-height: 1.65;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ── Stats Grid ── */
+    .about-stats-sec {
+      padding: 0;
+      margin-top: -40px;
+      position: relative;
+      z-index: 20;
+    }
+
+    .about-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+    }
+
+    .about-stat-card {
+      background: var(--white);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .about-stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 40px rgba(0, 102, 200, 0.08);
+      border-color: rgba(0, 102, 200, 0.2);
+    }
+
+    .about-stat-num {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .about-stat-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* ── Split Mission & Vision ── */
+    .about-split-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 40px;
+      margin-top: 48px;
+    }
+
+    .about-split-card {
+      background: var(--white);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 44px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .about-split-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+    }
+
+    .about-split-mission::after { background: var(--primary); }
+    .about-split-vision::after { background: var(--accent); }
+
+    .about-split-card h2 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--dark-bg);
+    }
+
+    .about-split-card p {
+      font-size: 0.98rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+
+    .about-pill-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+    .about-split-mission .about-pill-icon { background-color: var(--primary-light); color: var(--primary); }
+    .about-split-vision .about-pill-icon { background-color: var(--accent-light); color: var(--accent); }
+
+    /* ── Pillars Grid ── */
+    .about-pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      margin-top: 40px;
+    }
+
+    .about-pillar-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 32px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.25s ease;
+    }
+    .about-pillar-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: rgba(0, 210, 196, 0.2);
+    }
+
+    .about-pillar-icon {
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+    }
+
+    .about-pillar-card h3 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--dark-bg);
+      margin-bottom: 12px;
+    }
+
+    .about-pillar-card p {
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    /* ── Features Showcase ── */
+    .about-features-section {
+      background-color: var(--light-bg);
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      padding: 80px 0;
+    }
+
+    .about-section-header {
+      text-align: center;
+      margin-bottom: 56px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .about-section-header h2 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--dark-bg);
+      margin-bottom: 16px;
+    }
+
+    .about-section-header p {
+      font-size: 0.96rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .showcase-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 32px;
+    }
+
+    .showcase-item {
+      background: var(--white);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      display: flex;
+      gap: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .showcase-badge {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      flex-shrink: 0;
+    }
+    .showcase-item:nth-child(2n) .showcase-badge {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    .showcase-desc h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--dark-bg);
+      margin-bottom: 8px;
+    }
+
+    .showcase-desc p {
+      font-size: 0.88rem;
+      line-height: 1.65;
+      color: var(--text-muted);
+    }
+
+    /* ── CTA Banner ── */
+    .about-cta-banner {
+      background: linear-gradient(135deg, var(--dark-bg) 0%, #162040 100%);
+      border-radius: var(--radius-lg);
+      padding: 60px 40px;
+      text-align: center;
+      color: var(--white);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      margin-top: 60px;
+    }
+
+    .about-cta-banner::before {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      background: rgba(0, 210, 196, 0.1);
+      border-radius: 50%;
+      top: -150px; left: -50px;
+      filter: blur(50px);
+    }
+
+    .about-cta-banner h2 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--white);
+      position: relative;
+      z-index: 2;
+    }
+
+    .about-cta-banner p {
+      font-size: 1.05rem;
+      color: rgba(255,255,255,0.7);
+      max-width: 520px;
+      margin: 0 auto 32px;
+      line-height: 1.6;
+      position: relative;
+      z-index: 2;
+    }
+
+    .about-cta-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .about-cta-btn {
+      padding: 14px 32px;
+      font-weight: 700;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.94rem;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    .about-cta-primary {
+      background: var(--primary);
+      color: var(--white);
+      border: 1px solid var(--primary);
+    }
+    .about-cta-primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+      box-shadow: 0 4px 16px rgba(0, 102, 200, 0.35);
+    }
+    .about-cta-secondary {
+      background: transparent;
+      color: var(--white);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .about-cta-secondary:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* ── Quote Section ── */
+    .about-quote-section {
+      background: radial-gradient(circle at 50% 50%, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.4) 100%);
+      padding: 80px 0;
+      text-align: center;
+      border-top: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .about-quote-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+    }
+
+    .about-quote-container::before {
+      content: '“';
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 8rem;
+      font-weight: 800;
+      color: rgba(0, 102, 200, 0.08);
+      position: absolute;
+      top: -60px;
+      left: 10px;
+      line-height: 1;
+    }
+
+    .about-quote-text {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      line-height: 1.6;
+      color: var(--dark-bg);
+      font-style: italic;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .about-quote-author {
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.05em;
+    }
+
+    .about-quote-author span {
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    /* ── Mobile Layout ── */
+    @media (max-width: 900px) {
+      .about-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+      .about-split-grid { grid-template-columns: 1fr; gap: 24px; }
+      .about-pillars-grid { grid-template-columns: 1fr; gap: 20px; }
+      .showcase-grid { grid-template-columns: 1fr; gap: 20px; }
+      .about-split-card { padding: 32px 24px; }
+      .about-hero { padding: 80px 24px 60px; }
+      .about-cta-banner { padding: 44px 24px; }
+    }
+
+    @media (max-width: 480px) {
+      .about-stats-grid { grid-template-columns: 1fr; }
+      .about-cta-actions { flex-direction: column; gap: 12px; }
+      .about-cta-btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body class="about-body">
+
+  <!-- --- Header / Navigation (LinkedIn-Style) --- -->
+  <header>
+    <div class="container">
+      <div class="header-left">
+        <a href="index.html" class="header-logo-box" id="header-logo">
+          <span class="logo-text">CampusLink</span><span style="color: var(--accent);">.</span>
+        </a>
+      </div>
+      
+      <nav class="header-nav">
+        <ul class="nav-list">
+          <li>
+            <a href="index.html" id="nav-home-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+              <span>Home</span>
+            </a>
+          </li>
+          <li>
+            <a href="networking.html" id="nav-network-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <span>My Network</span>
+            </a>
+          </li>
+          <li>
+            <a href="schools.html" id="nav-schools-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path>
+              </svg>
+              <span>Schools</span>
+            </a>
+          </li>
+          <li>
+            <a href="events.html" id="nav-events-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span>Events</span>
+            </a>
+          </li>
+          <li>
+            <a href="admissions.html" id="nav-admissions-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              <span>Admissions</span>
+            </a>
+          </li>
+          <li id="nav-notif-item">
+            <a href="#" id="notif-bell-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span>Notifications</span>
+            </a>
+          </li>
+          <!-- Profile Dropdown Trigger -->
+          <li class="nav-me-item" id="nav-me-item">
+            <a href="#" class="nav-me-btn" id="nav-me-btn">
+              <div class="nav-me-avatar" id="nav-avatar-img">G</div>
+              <span class="me-text">Me</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      
+      <!-- Mobile Toggle -->
+      <button class="mobile-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- --- Hero Header --- -->
+  <section class="about-hero">
+    <div class="container">
+      <span class="about-badge">India's School Network</span>
+      <h1>Connecting Minds. Building Futures.</h1>
+      <p>CampusLink is India's premier educational ecosystem, uniting schools, educators, parents, and students in one secure, collaborative network.</p>
+    </div>
+  </section>
+
+  <!-- --- Stats Highlight Section --- -->
+  <section class="about-stats-sec">
+    <div class="container">
+      <div class="about-stats-grid">
+        <div class="about-stat-card">
+          <div class="about-stat-num">500+</div>
+          <div class="about-stat-label">Verified Schools</div>
+        </div>
+        <div class="about-stat-card">
+          <div class="about-stat-num">2.4k+</div>
+          <div class="about-stat-label">Global Events</div>
+        </div>
+        <div class="about-stat-card">
+          <div class="about-stat-num">50k+</div>
+          <div class="about-stat-label">Active Users</div>
+        </div>
+        <div class="about-stat-card">
+          <div class="about-stat-num">29</div>
+          <div class="about-stat-label">States Reached</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- --- Core Pillars Section --- -->
+  <section class="section">
+    <div class="container">
+      <div class="about-split-grid">
+        <div class="about-split-card about-split-mission">
+          <div class="about-pill-icon">🚀</div>
+          <h2>Our Mission</h2>
+          <p>To dismantle geographical and resource barriers within India's educational landscape. By offering direct connectivity, collaboration portals, and event showcases, we empower every institution—regardless of its scale—to excel on a unified platform.</p>
+        </div>
+        <div class="about-split-card about-split-vision">
+          <div class="about-pill-icon">👁️</div>
+          <h2>Our Vision</h2>
+          <p>A digitized, hyper-connected academic ecosystem where student achievements are celebrated, professional knowledge flows freely between educators, and admissions are completely transparent and seamless for every Indian household.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- --- Core Values --- -->
+  <section class="section">
+    <div class="container">
+      <div class="about-section-header">
+        <h2>Our Core Values</h2>
+        <p>The structural foundation guiding how we develop products, support communities, and protect data.</p>
+      </div>
+
+      <div class="about-pillars-grid">
+        <div class="about-pillar-card">
+          <div class="about-pillar-icon">🔒</div>
+          <h3>Academic Trust</h3>
+          <p>Every school profile, event host, and admissions desk is manually verified by our standards committee, ensuring a safe ecosystem for minors and professionals.</p>
+        </div>
+        <div class="about-pillar-card">
+          <div class="about-pillar-icon">🤝</div>
+          <h3>Democratic Growth</h3>
+          <p>We provide smaller regional schools with the exact same tools and event exposure as elite urban institutions, leveling the playing field for student development.</p>
+        </div>
+        <div class="about-pillar-card">
+          <div class="about-pillar-icon">💡</div>
+          <h3>Continuous Flow</h3>
+          <p>Enabling a continuous loop of learning where alumni mentor students, teachers share modern pedagogies, and parents make data-backed career path decisions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- --- Features Grid --- -->
+  <section class="about-features-section">
+    <div class="container">
+      <div class="about-section-header">
+        <h2>Features Inside CampusLink</h2>
+        <p>Explore the tools engineered to unify and elevate school communications.</p>
+      </div>
+
+      <div class="showcase-grid">
+        <div class="showcase-item">
+          <div class="showcase-badge">📢</div>
+          <div class="showcase-desc">
+            <h3>Academic Feed</h3>
+            <p>Share, applaud, and document accomplishments, projects, and victories. Keep the school community updated on daily wins.</p>
+          </div>
+        </div>
+        <div class="showcase-item">
+          <div class="showcase-badge">🎓</div>
+          <div class="showcase-desc">
+            <h3>Admissions Engine</h3>
+            <p>Explore board affiliations, verify admission schedules, download catalogs, and submit application forms to schools online.</p>
+          </div>
+        </div>
+        <div class="showcase-item">
+          <div class="showcase-badge">📅</div>
+          <div class="showcase-desc">
+            <h3>Events Dashboard</h3>
+            <p>Host or find science fests, sports meets, cultural fests, and workshops. Complete registration directly on the platform.</p>
+          </div>
+        </div>
+        <div class="showcase-item">
+          <div class="showcase-badge">💬</div>
+          <div class="showcase-desc">
+            <h3>Secured Messenger</h3>
+            <p>Connect with peers, chat directly with verified representatives, check connections, and collaborate on interstate projects.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- --- Quote Section ── -->
+  <section class="about-quote-section">
+    <div class="about-quote-container">
+      <p class="about-quote-text">"It doesn't take long for circumstances to change. It takes time to change your mindset"</p>
+      <div class="about-quote-author">— Owais Qarni <span>(Founder)</span></div>
+    </div>
+  </section>
+
+  <!-- --- Interactive CTA --- -->
+  <section class="section">
+    <div class="container">
+      <div class="about-cta-banner">
+        <h2>Are you ready to join the ecosystem?</h2>
+        <p>Whether you want to showcase your school's accomplishments, register for fests, or build your professional network, we have a place for you.</p>
+        <div class="about-cta-actions">
+          <a href="login.html" class="about-cta-btn about-cta-primary">Get Started</a>
+          <a href="networking.html" class="about-cta-btn about-cta-secondary">Explore Connections</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- --- Footer --- -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <!-- Info Column -->
+        <div class="footer-info">
+          <a href="index.html" class="footer-logo">
+            CampusLink<span style="color: var(--accent);">.</span>
+          </a>
+          <p>India's elite educational platform connecting students, educators, and schools to build the future of education.</p>
+        </div>
+
+        <!-- Links Column 1 -->
+        <div class="footer-links">
+          <h4>Platform</h4>
+          <ul>
+            <li><a href="index.html#features">Features</a></li>
+            <li><a href="index.html#showcase">Live Feed</a></li>
+            <li><a href="index.html#how-it-works">How It Works</a></li>
+            <li><a href="#">Security</a></li>
+          </ul>
+        </div>
+
+        <!-- Links Column 2 -->
+        <div class="footer-links">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="#">Guides</a></li>
+            <li><a href="#">Case Studies</a></li>
+            <li><a href="#">Support Center</a></li>
+            <li><a href="#">Pricing</a></li>
+          </ul>
+        </div>
+
+        <!-- Links Column 3 -->
+        <div class="footer-links">
+          <h4>Company</h4>
+          <ul>
+            <li><a href="about.html">About Us</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Press Kit</a></li>
+            <li><a href="#">Contact</a></li>
+          </ul>
+        </div>
+
+        <!-- Newsletter Sign-up -->
+        <div class="footer-newsletter">
+          <h4>Get Newsletter Updates</h4>
+          <p>Receive bi-weekly opportunities summaries, fests notifications, and admission timeline updates.</p>
+          <form class="newsletter-form">
+            <input type="email" placeholder="Your work email..." required>
+            <button type="submit">Subscribe</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Footer Bottom -->
+      <div class="footer-bottom">
+        <p>&copy; 2026 CampusLink Network Inc. All rights reserved.</p>
+        <div class="footer-bottom-links">
+          <a href="privacy-policy.html">Privacy Policy</a>
+          <a href="terms-and-conditions.html">Terms & Conditions</a>
+          <a href="delete-account.html">Delete Account</a>
+          <a href="#">Sitemap</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Supabase CDN + Auth Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="mobile-nav.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Auth Nav State
+      if (window.CampusLink && window.CampusLink.auth) {
+        window.CampusLink.auth.updateNavAuthState();
+      }
+
+      // Sticky Header Logic
+      const header = document.querySelector('header');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 50) {
+          header.classList.add('scrolled');
+        } else {
+          header.classList.remove('scrolled');
+        }
+      });
+
+      // Mobile Menu Toggle
+      const mobileToggle = document.getElementById('mobile-menu-toggle');
+      const navLinks = document.querySelector('.header-nav');
+      const body = document.body;
+
+      if (mobileToggle && navLinks) {
+        mobileToggle.addEventListener('click', () => {
+          navLinks.classList.toggle('active');
+          body.classList.toggle('mobile-nav-active');
+        });
+      }
+    });
+  </script>
+</body>
+</html>

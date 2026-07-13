@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+function initEventDetail() {
 
   // Update navigation based on auth state
   if (window.CampusLink && window.CampusLink.auth) {
@@ -18,19 +18,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* --- Mobile Navigation Menu --- */
   const mobileToggle = document.querySelector('.mobile-toggle');
-  const navLinks = document.querySelector('.nav-links');
+  const navLinks = document.querySelector('.nav-links') || document.querySelector('.header-nav');
   const body = document.body;
 
-  mobileToggle.addEventListener('click', () => {
-    navLinks.classList.toggle('active');
-    body.classList.toggle('mobile-nav-active');
-  });
+  if (mobileToggle && navLinks) {
+    mobileToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+      body.classList.toggle('mobile-nav-active');
+    });
+  }
 
   // Close mobile nav when clicking a link
-  const navAnchors = document.querySelectorAll('.nav-links a');
+  const navAnchors = document.querySelectorAll('.nav-links a, .header-nav a');
   navAnchors.forEach(anchor => {
     anchor.addEventListener('click', () => {
-      navLinks.classList.remove('active');
+      if (navLinks) navLinks.classList.remove('active');
       body.classList.remove('mobile-nav-active');
     });
   });
@@ -802,8 +804,22 @@ document.addEventListener('DOMContentLoaded', () => {
           
           // Validate UUID
           if (!targetEventId || targetEventId.toString().length <= 8) {
-            // Mock event - fetch first real event for UUID
-            const { data: dbEvents } = await supabase.from('events').select('id, school_id').limit(1);
+            // Mock event - fetch first real event for UUID belonging to user's school
+            let userSchoolId = null;
+            if (currentUser) {
+              const { data: prof } = await supabase
+                .from('profiles')
+                .select('school_id')
+                .eq('id', currentUser.id)
+                .maybeSingle();
+              if (prof) userSchoolId = prof.school_id;
+            }
+            
+            let query = supabase.from('events').select('id, school_id');
+            if (userSchoolId) {
+              query = query.eq('school_id', userSchoolId);
+            }
+            const { data: dbEvents } = await query.limit(1);
             if (dbEvents && dbEvents.length > 0) {
               targetEventId = dbEvents[0].id;
               targetSchoolId = dbEvents[0].school_id;
@@ -944,4 +960,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load event details on startup
   loadEventDetail();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initEventDetail);
+} else {
+  initEventDetail();
+}

@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+/* --- Design Variables --- */
+:root {
+  --primary: #0066C8;
+  --primary-rgb: 0, 102, 200;
+  --primary-hover: #0050A0;
+  --primary-light: #EBF5FF;
+  
+  --accent: #00D2C4;
+  --accent-rgb: 0, 210, 196;
+  --accent-hover: #00B3A7;
+  --accent-light: #E0FAF8;
+  
+  --dark-bg: #0F172A;
+  --dark-surface: #1E293B;
+  --light-bg: #F8FAFC;
+  --white: #FFFFFF;
+  
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --text-white: #FFFFFF;
+  
+  --border-color: rgba(15, 23, 42, 0.08);
+  --border-focus: rgba(0, 102, 200, 0.4);
+  
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 12px 24px -6px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 20px 40px -12px rgba(15, 23, 42, 0.12);
+  --shadow-glow: 0 0 20px rgba(0, 210, 196, 0.25);
+  
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: all 0.15s ease;
+}

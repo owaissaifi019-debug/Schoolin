@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+-document.addEventListener('DOMContentLoaded', () => {
 
   // Update navigation based on auth state
   if (window.CampusLink && window.CampusLink.auth) {
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (this.active) {
         const query = value.substring(this.triggerIndex + 1, caretPos);
-        if (caretPos <= this.triggerIndex || query.includes('\n') || query.includes(' ')) {
+        if (caretPos <= this.triggerIndex || query.includes('\n')) {
           this.close();
           return;
         }
@@ -411,13 +411,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Expose so external scripts (e.g. mobile-nav.js) can also bind mention autocomplete
-  window.MentionAutocomplete = MentionAutocomplete;
-
   // --- Format Content with Clickable Mention Links ---
   function formatContentWithMentions(content, mentions) {
     if (!content) return '';
-    let formatted = content;
+    const escape = window.CampusLink?.security?.escapeHTML || (s => s);
+    let formatted = escape(content);
     if (!mentions || mentions.length === 0) return formatted;
 
     const sortedMentions = [...mentions].sort((a, b) => {
@@ -430,14 +428,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const name = mention.profiles?.full_name || mention.schools?.name;
       if (!name) return;
 
-      const mentionText = `@${name}`;
+      const escapedName = escape(name);
       const url = mention.mentioned_user_id 
         ? `profile.html?id=${mention.mentioned_user_id}` 
         : `school-profile.html?id=${mention.mentioned_school_id}`;
 
-      const escapedMentionText = mentionText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const rawMentionText = `@${name}`;
+      const escapedMentionText = escape(rawMentionText).replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
       const regex = new RegExp(escapedMentionText, 'g');
-      formatted = formatted.replace(regex, `<a href="${url}" class="mention-link" style="color: #0066c8; font-weight: 700; text-decoration: none;">@${name}</a>`);
+      formatted = formatted.replace(regex, `<a href="${url}" class="mention-link" style="color: #0066c8; font-weight: 700; text-decoration: none;">@${escapedName}</a>`);
     });
 
     return formatted;
@@ -455,43 +454,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* --- Mobile Navigation Menu --- */
   const mobileToggle = document.querySelector('.mobile-toggle');
-  const navLinks = document.querySelector('.nav-links');
+  const navLinks = document.querySelector('.nav-links') || document.querySelector('.header-nav');
   const body = document.body;
 
-  mobileToggle.addEventListener('click', () => {
-    navLinks.classList.toggle('active');
-    body.classList.toggle('mobile-nav-active');
-  });
+  if (mobileToggle && navLinks) {
+    mobileToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+      body.classList.toggle('mobile-nav-active');
+    });
+  }
 
   // Close mobile nav and toggle active class when clicking a link
-  const navAnchors = document.querySelectorAll('.nav-links a');
+  const navAnchors = document.querySelectorAll('.nav-links a, .header-nav a');
   navAnchors.forEach(anchor => {
-    anchor.addEventListener('click', (e) => {
-      navLinks.classList.remove('active');
+    anchor.addEventListener('click', () => {
+      if (navLinks) {
+        navLinks.classList.remove('active');
+      }
       body.classList.remove('mobile-nav-active');
       
       navAnchors.forEach(a => a.classList.remove('active'));
       anchor.classList.add('active');
     });
   });
-
-  // Events & Admissions Nav specific filtering behaviour
-  const navEventsLink = document.getElementById('nav-events-link');
-  const navAdmissionsLink = document.getElementById('nav-admissions-link');
-
-  if (navEventsLink) {
-    navEventsLink.addEventListener('click', () => {
-      const allTab = document.querySelector('.tab-btn[data-filter="all"]');
-      if (allTab) allTab.click();
-    });
-  }
-
-  if (navAdmissionsLink) {
-    navAdmissionsLink.addEventListener('click', () => {
-      const admissionsTab = document.querySelector('.tab-btn[data-filter="admissions"]');
-      if (admissionsTab) admissionsTab.click();
-    });
-  }
 
   // Active Link Scroll Highlight (ScrollSpy)
   const sections = document.querySelectorAll('section[id]');
@@ -1034,6 +1019,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeFeedFilter = 'all';
   let activeTopicFilter = 'all';
   let userFollows = { users: new Set(), schools: new Set() };
+  let allFeedPosts = [];
+  let displayedPostsCount = 5;
 
   // Relative time helper
   function formatRelativeTime(dateString) {
@@ -1186,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const p = currentUserProfile;
       const displayName = p.full_name || currentUser.email;
       
-      const isSchoolUser = (p.user_type === 'school_representative' || p.platform_role === 'school_admin') && p.school_id;
+      const isSchoolUser = p.school_id;
 
       if (isSchoolUser && p.schools) {
         const s = p.schools;
@@ -1233,11 +1220,27 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (s.verification_badge === 'blue') {
           badgeHtml = `
             <svg class="verified-badge verified-badge-md" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" title="Verified School" style="display:inline-block; vertical-align:middle; margin-left:4px;">
-              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239(1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
+              <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816z" fill="currentColor"/>
               <path d="M9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z" fill="#FFFFFF"/>
             </svg>`;
         }
         
+        let badgeLabel = isCollege ? 'Verified College' : 'Verified School';
+        if (p.user_type === 'student') {
+          badgeLabel = isCollege ? 'Verified Student' : 'Verified Student';
+        } else if (p.user_type === 'teacher') {
+          badgeLabel = 'Verified Teacher';
+        } else if (p.user_type === 'alumni') {
+          badgeLabel = 'Verified Alumni';
+        }
+
+        let roleDisplayHtml = '';
+        if (p.platform_role === 'school_admin' || p.user_type === 'school_representative') {
+          roleDisplayHtml = `👤 Admin: ${displayName}`;
+        } else {
+          roleDisplayHtml = `👤 Name: ${displayName}`;
+        }
+
         sidebarContainer.innerHTML = `
           <div class="feed-sidebar-card profile-sidebar-card">
             <div class="profile-card-cover ${colorClass}"></div>
@@ -1248,10 +1251,10 @@ document.addEventListener('DOMContentLoaded', () => {
               <h3 class="profile-card-name">
                 <a href="${profileUrl}">${schoolName}${badgeHtml}</a>
               </h3>
-              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">${isCollege ? 'Verified College' : 'Verified School'}</span>
+              <span class="profile-card-badge school_representative" style="${badgeColorStyle}">${badgeLabel}</span>
               <p class="profile-card-headline">${boardText} ${city ? `• ${city}` : ''}</p>
               <p class="profile-card-school" style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); margin-top: 4px;">
-                👤 Admin: ${displayName}
+                ${roleDisplayHtml}
               </p>
             </div>
             <div class="profile-card-footer">
@@ -1468,8 +1471,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const createPostModal = document.getElementById('create-post-modal');
   const createPostForm = document.getElementById('create-post-form');
   const postTopicSelect = document.getElementById('post-topic-select');
-  // NOTE: declared as 'let' so initCreatePostForm() can update the reference after cloneNode()
-  let postContentTextarea = document.getElementById('post-content-textarea');
+  const postContentTextarea = document.getElementById('post-content-textarea');
+  if (postContentTextarea) {
+    new MentionAutocomplete(postContentTextarea, (item) => {
+      postContentTextarea.selectedMentions = postContentTextarea.selectedMentions || [];
+      postContentTextarea.selectedMentions.push(item);
+    });
+  }
 
   function openCreatePostModal(topic = 'achievement') {
     if (!createPostModal) return;
@@ -1543,8 +1551,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     createPostModal.classList.add('active');
     document.body.style.overflow = 'hidden';
-
-
   }
 
   function closeCreatePostModal() {
@@ -1777,15 +1783,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function initCreatePostForm() {
     if (!createPostForm) return;
 
-    // Remove any existing listeners by replacing with a clone
+    // Remove any existing listeners
     const newForm = createPostForm.cloneNode(true);
     createPostForm.parentNode.replaceChild(newForm, createPostForm);
-
-    // Update the outer reference so openCreatePostModal/.value resets still work
-    const clonedTextarea = newForm.querySelector('#post-content-textarea');
-    if (clonedTextarea) {
-      postContentTextarea = clonedTextarea;
-    }
 
     // Re-bind cancel button listener on cloned form
     const cancelBtn = newForm.querySelector('#post-modal-cancel');
@@ -1847,7 +1847,8 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const type = postAsSelect ? postAsSelect.value : 'personal';
       const topic = postTopicSelectEl ? postTopicSelectEl.value : 'general';
-      const content = newForm.querySelector('#post-content-textarea').value.trim();
+      const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+      const content = sanitize(newForm.querySelector('#post-content-textarea').value);
 
       if (!content) return;
 
@@ -1960,6 +1961,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const feedContainer = document.getElementById('social-feed');
     if (!feedContainer) return;
 
+    displayedPostsCount = 5;
+    allFeedPosts = [];
+
+    // Check sessionStorage cache first for SWR (stale-while-revalidate) pattern
+    const cacheKey = `campuslink_cached_feed_${activeFeedFilter}_${activeTopicFilter || 'all'}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        console.log('[Feed Cache] Rendering cached posts instantly:', cachedData.length);
+        allFeedPosts = cachedData;
+        renderFeed(allFeedPosts.slice(0, displayedPostsCount));
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached feed:', e);
+    }
+
     try {
       const { data: posts, error } = await supabase
         .from('posts')
@@ -1979,6 +1997,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar_url,
             school_id,
             is_verified,
+            username,
             schools (
               name,
               verification_badge,
@@ -2017,6 +2036,7 @@ document.addEventListener('DOMContentLoaded', () => {
               avatar_url,
               is_verified,
               school_id,
+              username,
               schools (
                 name,
                 verification_badge,
@@ -2098,6 +2118,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   avatar_url,
                   school_id,
                   is_verified,
+                  username,
                   schools (
                     name,
                     verification_badge,
@@ -2136,6 +2157,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     avatar_url,
                     is_verified,
                     school_id,
+                    username,
                     schools (
                       name,
                       verification_badge,
@@ -2174,7 +2196,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      renderFeed(filteredPosts);
+      // Cache the loaded posts for SWR
+      if (filteredPosts) {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(filteredPosts.slice(0, 30)));
+        } catch (e) {
+          console.warn('Failed to save feed cache:', e);
+        }
+      }
+
+      allFeedPosts = filteredPosts;
+      
+      // If a specific post is linked, ensure we show enough posts to display it
+      if (targetPostId) {
+        const targetIndex = allFeedPosts.findIndex(p => p.id === targetPostId);
+        if (targetIndex !== -1 && targetIndex >= displayedPostsCount) {
+          displayedPostsCount = targetIndex + 1;
+        }
+      }
+
+      renderFeed(allFeedPosts.slice(0, displayedPostsCount));
 
       if (targetPostId) {
         setTimeout(() => {
@@ -2414,11 +2455,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <a href="${profileUrl}" class="post-avatar-link">
             ${authorAvatar}
           </a>
-          <div class="post-meta-info">
-            <div class="post-author-row">
-              <a href="${profileUrl}" class="post-author-name">${authorName}${badgeHtml}${roleBadgeHtml}</a>
-            </div>
-            <div class="post-meta-sub-row">
+            <div class="post-meta-info">
+              <div class="post-author-row">
+                <a href="${profileUrl}" class="post-author-name">${authorName}${badgeHtml}${roleBadgeHtml}</a>
+              </div>
+              ${(post.post_type !== 'school' && p.username) ? `<div class="post-author-username" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${p.username}</div>` : ''}
+              <div class="post-meta-sub-row">
               <span class="post-author-headline">${headlineText}</span>
               <span class="post-meta-separator">•</span>
               <span class="post-time">${formatRelativeTime(post.created_at)}</span>
@@ -2558,9 +2600,12 @@ document.addEventListener('DOMContentLoaded', () => {
                   </a>
                   <div class="comment-item-content-wrapper">
                     <div class="comment-item-header">
-                      <div class="comment-item-author-info">
-                        <a href="${commenterProfileUrl}" class="comment-item-author-name">${commenterName}${commenterBadge}</a>
-                        <span class="comment-item-author-role ${cp.user_type || 'student'}">${auth.getUserTypeLabel(cp.user_type)}</span>
+                      <div class="comment-item-author-info" style="display: flex; flex-direction: column; align-items: flex-start;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                          <a href="${commenterProfileUrl}" class="comment-item-author-name">${commenterName}${commenterBadge}</a>
+                          <span class="comment-item-author-role ${cp.user_type || 'student'}">${auth.getUserTypeLabel(cp.user_type)}</span>
+                        </div>
+                        ${cp.username ? `<span class="comment-item-author-username" style="font-size: 0.7rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; margin-bottom: 2px;">@${cp.username}</span>` : ''}
                       </div>
                       <span class="comment-item-time">${formatRelativeTime(c.created_at)}</span>
                     </div>
@@ -2703,6 +2748,7 @@ document.addEventListener('DOMContentLoaded', () => {
             card.style.transform = 'scale(0.95)';
             setTimeout(() => {
               card.remove();
+              allFeedPosts = allFeedPosts.filter(p => p.id !== postId);
 
               // Check if feed is now empty
               const remaining = feedContainer.querySelectorAll('.feed-post-card');
@@ -2846,6 +2892,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     });
+
+    // Append a "Load More" button if there are more posts in the database than displayed
+    if (allFeedPosts.length > posts.length) {
+      const loadMoreContainer = document.createElement('div');
+      loadMoreContainer.className = 'feed-load-more-container';
+      loadMoreContainer.style.cssText = 'display: flex; justify-content: center; margin: 24px 0 32px 0;';
+      loadMoreContainer.innerHTML = `
+        <button id="btn-load-more-posts" class="btn btn-primary" style="padding: 12px 32px; font-weight: 600; border-radius: 8px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 86, 179, 0.15); transition: all 0.2s ease;">
+          <span>Load More Posts</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      `;
+      feedContainer.appendChild(loadMoreContainer);
+
+      const btn = loadMoreContainer.querySelector('#btn-load-more-posts');
+      if (btn) {
+        if (!document.getElementById('feed-spin-style')) {
+          const style = document.createElement('style');
+          style.id = 'feed-spin-style';
+          style.textContent = `
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+
+        btn.addEventListener('mouseenter', () => {
+          btn.style.transform = 'translateY(-2px)';
+          btn.style.boxShadow = '0 6px 16px rgba(0, 86, 179, 0.25)';
+        });
+        btn.addEventListener('mouseleave', () => {
+          btn.style.transform = 'translateY(0)';
+          btn.style.boxShadow = '0 4px 12px rgba(0, 86, 179, 0.15)';
+        });
+
+        btn.addEventListener('click', () => {
+          btn.disabled = true;
+          btn.innerHTML = `
+            <span class="spinner" style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; vertical-align: middle;"></span>
+            <span>Loading...</span>
+          `;
+          
+          setTimeout(() => {
+            displayedPostsCount += 5;
+            renderFeed(allFeedPosts.slice(0, displayedPostsCount));
+          }, 400);
+        });
+      }
+    }
   }
 
   // Toggle Like Status
@@ -2949,6 +3047,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+    const cleanContent = sanitize(content);
+    if (!cleanContent) return;
+
     const submitBtn = inputField.nextElementSibling;
     try {
       if (submitBtn) submitBtn.disabled = true;
@@ -2958,7 +3060,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .insert({
           post_id: postId,
           user_id: currentUser.id,
-          content: content
+          content: cleanContent
         })
         .select('id')
         .single();
@@ -2967,7 +3069,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Save mentions
       const finalMentions = (inputField.selectedMentions || []).filter(m => {
-        return content.includes(`@${m.name}`);
+        return cleanContent.includes(`@${m.name}`);
       });
 
       for (const mention of finalMentions) {

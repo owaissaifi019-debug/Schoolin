@@ -657,7 +657,7 @@
     
     if (!cardContainer || !grid) return;
 
-    if (!currentUser) {
+    if (!currentUser || (searchQuery && searchQuery.trim().length > 0)) {
       cardContainer.style.display = 'none';
       return;
     }
@@ -851,7 +851,7 @@
         if (currentUser && p.id === currentUser.id) return false;
         
         // Exclude Connected, Requested, and Pending users from suggestions
-        if (currentUser) {
+        if (currentUser && !q) {
           const conn = userConnections.get(p.id);
           if (conn && (conn.status === 'accepted' || conn.status === 'pending')) return false;
         }
@@ -865,7 +865,7 @@
         if (currentUser && p.id === currentUser.id) return false;
         
         // Exclude Connected, Requested, and Pending users from suggestions
-        if (currentUser) {
+        if (currentUser && !q) {
           const conn = userConnections.get(p.id);
           if (conn && (conn.status === 'accepted' || conn.status === 'pending')) return false;
         }
@@ -966,6 +966,23 @@
     const emptyState = document.getElementById('net-empty-state');
     const countEl = document.getElementById('net-results-count');
     if (!grid) return;
+
+    // Toggle Suggested Connections panel and Schools Suggestion section visibility based on active search query
+    const suggestedCard = document.getElementById('suggested-connections-card');
+    const schoolsSection = document.getElementById('schools-suggestion-section');
+    const cleanQuery = (searchQuery || '').trim();
+    
+    if (cleanQuery.length > 0) {
+      if (suggestedCard) suggestedCard.style.display = 'none';
+      if (schoolsSection) schoolsSection.style.display = 'none';
+    } else {
+      if (suggestedCard && currentUser) {
+        suggestedCard.style.display = 'block';
+      }
+      if (schoolsSection) {
+        schoolsSection.style.display = 'block';
+      }
+    }
 
     updateNetworkStats();
     syncFilterUI();

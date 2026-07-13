@@ -181,6 +181,21 @@ CREATE POLICY "Participants can update message read status" ON public.messages
     )
   );
 
+-- Messages DELETE policy: Senders or conversation owners can delete messages
+DROP POLICY IF EXISTS "Users can delete their own messages or conversation owners can delete any message" ON public.messages;
+CREATE POLICY "Users can delete their own messages or conversation owners can delete any message" ON public.messages
+  FOR DELETE
+  USING (
+    sender_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM public.conversations c
+      WHERE c.id = messages.conversation_id AND (
+        c.created_by = auth.uid() OR
+        c.initiator_id = auth.uid()
+      )
+    )
+  );
+
 -- 6. Enable Realtime Publications (Supabase Realtime listens to these)
 -- Note: In Supabase, if the tables are already in the publication, these might return notifications or run.
 -- We safely try to add them.

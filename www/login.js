@@ -88,9 +88,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const auth = window.CampusLink && window.CampusLink.auth;
   const supabase = window.CampusLink && window.CampusLink.supabase;
   if (!auth || !supabase) {
-     console.error('Auth or Supabase module not loaded');
-     showToast('Failed to initialize the authentication module. Please check your internet connection and Supabase settings.');
-     return;
+    console.error('Auth or Supabase module not loaded');
+    showToast('Failed to initialize the authentication module. Please check your internet connection and Supabase settings.');
+    return;
   }
 
   // Check URL hash/params or sessionStorage for password recovery flow
@@ -104,7 +104,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (existingSession && !isRecovery) {
     const role = await auth.getUserRole();
     if (role === 'school_admin') {
-      window.location.href = 'dashboard.html';
+      const schoolObj = await auth.getSchoolForUser(existingSession.user.id);
+      if (schoolObj && schoolObj.institution_type && schoolObj.institution_type !== 'school') {
+        window.location.href = 'college-dashboard.html';
+      } else {
+        window.location.href = 'dashboard.html';
+      }
     } else if (role === 'super_admin') {
       window.location.href = 'admin/index.html';
     } else {
@@ -317,6 +322,112 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // ── Username Uniqueness Check ───────────────────────────
+  const usernameInput = document.getElementById('reg-username');
+  let usernameAvailable = false;
+  let usernameTimeout = null;
+
+  function showUsernameStatus(status, message) {
+    const errorEl = document.getElementById('err-reg-username');
+    const inputEl = document.getElementById('reg-username');
+    if (!errorEl) return;
+
+    if (status === 'success') {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      errorEl.style.color = '#10B981'; // Green
+      if (inputEl) {
+        const wrapper = inputEl.closest('.input-icon-wrapper');
+        if (wrapper) {
+          wrapper.style.borderColor = '#10B981';
+          wrapper.classList.remove('input-error');
+        }
+      }
+    } else if (status === 'error') {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      errorEl.style.color = '#EF4444'; // Red
+      if (inputEl) {
+        const wrapper = inputEl.closest('.input-icon-wrapper');
+        if (wrapper) {
+          wrapper.style.borderColor = '#EF4444';
+          wrapper.classList.add('input-error');
+        }
+      }
+    } else if (status === 'checking') {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      errorEl.style.color = '#9CA3AF'; // Gray
+      if (inputEl) {
+        const wrapper = inputEl.closest('.input-icon-wrapper');
+        if (wrapper) {
+          wrapper.style.borderColor = '';
+          wrapper.classList.remove('input-error');
+        }
+      }
+    } else {
+      errorEl.textContent = '';
+      errorEl.style.display = 'none';
+      if (inputEl) {
+        const wrapper = inputEl.closest('.input-icon-wrapper');
+        if (wrapper) {
+          wrapper.style.borderColor = '';
+          wrapper.classList.remove('input-error');
+        }
+      }
+    }
+  }
+
+  if (usernameInput) {
+    usernameInput.addEventListener('input', () => {
+      const username = usernameInput.value.trim();
+      clearTimeout(usernameTimeout);
+      usernameAvailable = false;
+
+      if (!username) {
+        showUsernameStatus('', '');
+        return;
+      }
+
+      const usernameRegex = /^[a-zA-Z0-9_.]+$/;
+      if (username.length < 3 || username.length > 20) {
+        showUsernameStatus('error', 'Username must be 3-20 characters');
+        return;
+      }
+      if (!usernameRegex.test(username)) {
+        showUsernameStatus('error', 'Username can only contain letters, numbers, underscores, and periods');
+        return;
+      }
+
+      showUsernameStatus('checking', 'Checking availability...');
+
+      usernameTimeout = setTimeout(async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('username')
+            .ilike('username', username)
+            .maybeSingle();
+
+          if (error) throw error;
+
+          if (usernameInput.value.trim() !== username) return;
+
+          if (data) {
+            showUsernameStatus('error', '✗ Username already taken');
+            usernameAvailable = false;
+          } else {
+            showUsernameStatus('success', '✓ Username available');
+            usernameAvailable = true;
+          }
+        } catch (err) {
+          console.error('Error checking username:', err);
+          showUsernameStatus('error', 'Error checking availability');
+        }
+      }, 300);
+    });
+  }
+
   // ── Avatar Upload ───────────────────────────────────────
   const avatarUploadArea = document.getElementById('avatar-upload-area');
   const avatarInput = document.getElementById('reg-avatar');
@@ -328,10 +439,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       avatarInput.click();
     });
 
-    avatarInput.addEventListener('change', (e) => {
+    avatarInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (file) {
-        handleAvatarFile(file);
+        await handleAvatarFile(file);
       }
     });
 
@@ -350,26 +461,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       }, false);
     });
 
-    avatarUploadArea.addEventListener('drop', (e) => {
+    avatarUploadArea.addEventListener('drop', async (e) => {
       const dt = e.dataTransfer;
       const file = dt.files[0];
-      if (file && file.type.startsWith('image/')) {
-        handleAvatarFile(file);
+      if (file) {
+        await handleAvatarFile(file);
       }
     });
   }
 
-  function handleAvatarFile(file) {
-    // Validate size (2MB max)
-    if (file.size > 2 * 1024 * 1024) {
-      showError('reg-avatar', 'Image must be under 2MB');
-      return;
-    }
-
-    // Validate type
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      showError('reg-avatar', 'Please upload a JPG, PNG, or WebP image');
-      return;
+  async function handleAvatarFile(file) {
+    const validator = window.CampusLink?.security?.validateImageFile;
+    if (validator) {
+      const err = await validator(file, 2 * 1024 * 1024);
+      if (err) {
+        showError('reg-avatar', err);
+        selectedAvatarFile = null;
+        if (avatarPreview) avatarPreview.innerHTML = '';
+        avatarUploadArea.classList.remove('has-image');
+        return;
+      }
     }
 
     selectedAvatarFile = file;
@@ -399,12 +510,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     e.preventDefault();
     clearAllErrors();
 
-    const email = document.getElementById('login-email').value.trim();
+    const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+    const validateEmail = window.CampusLink?.security?.validateEmail || (s => null);
+
+    const email = sanitize(document.getElementById('login-email').value);
     const password = document.getElementById('login-password').value;
 
     // Validate
     let hasError = false;
-    if (!email) { showError('login-email', 'Email is required'); hasError = true; }
+    const emailErr = validateEmail(email);
+    if (emailErr) { showError('login-email', emailErr); hasError = true; }
     if (!password) { showError('login-password', 'Password is required'); hasError = true; }
     if (hasError) return;
 
@@ -419,11 +534,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       const userType = profile?.user_type || 'student';
       const displayName = profile?.full_name || loginData.user.user_metadata?.full_name || 'User';
 
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectParam = urlParams.get('redirect');
+      const codeParam = urlParams.get('code');
+
       let redirectPage = 'index.html';
-      if (platformRole === 'super_admin') {
+      if (redirectParam) {
+        redirectPage = redirectParam + (codeParam ? `?code=${codeParam}` : '');
+      } else if (platformRole === 'super_admin') {
         redirectPage = 'admin/index.html';
       } else if (platformRole === 'school_admin') {
-        redirectPage = 'dashboard.html';
+        const schoolObj = await auth.getSchoolForUser(loginData.user.id);
+        if (schoolObj && schoolObj.institution_type && schoolObj.institution_type !== 'school') {
+          redirectPage = 'college-dashboard.html';
+        } else {
+          redirectPage = 'dashboard.html';
+        }
       }
 
       // Show success and redirect
@@ -461,8 +587,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     e.preventDefault();
     clearAllErrors();
 
-    const fullName = document.getElementById('reg-full-name').value.trim();
-    const email = document.getElementById('reg-email').value.trim();
+    const sanitize = window.CampusLink?.security?.sanitizeString || (s => s.trim());
+    const validateName = window.CampusLink?.security?.validateName || (s => null);
+    const validateUsername = window.CampusLink?.security?.validateUsername || (s => null);
+    const validateEmail = window.CampusLink?.security?.validateEmail || (s => null);
+
+    const fullName = sanitize(document.getElementById('reg-full-name').value);
+    const username = sanitize(document.getElementById('reg-username').value).toLowerCase();
+    const email = sanitize(document.getElementById('reg-email').value);
     const userType = document.getElementById('reg-user-type').value;
     const password = document.getElementById('reg-password').value;
     const confirmPassword = document.getElementById('reg-confirm-password').value;
@@ -472,11 +604,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Validate
     let hasError = false;
 
-    if (!fullName) { showError('reg-full-name', 'Full name is required'); hasError = true; }
-    else if (fullName.length < 2) { showError('reg-full-name', 'Name must be at least 2 characters'); hasError = true; }
+    const nameErr = validateName(fullName);
+    if (nameErr) { showError('reg-full-name', nameErr); hasError = true; }
 
-    if (!email) { showError('reg-email', 'Email is required'); hasError = true; }
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('reg-email', 'Enter a valid email address'); hasError = true; }
+    const usernameErr = validateUsername(username);
+    if (usernameErr) { showError('reg-username', usernameErr); hasError = true; }
+    else if (!usernameAvailable) { showUsernameStatus('error', '✗ Username already taken'); hasError = true; }
+
+    const emailErr = validateEmail(email);
+    if (emailErr) { showError('reg-email', emailErr); hasError = true; }
 
     if (!userType) { showError('reg-user-type', 'Please select how you want to join'); hasError = true; }
 
@@ -492,7 +628,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setLoading('btn-register', true);
 
     try {
-      const result = await auth.signUp(email, password, fullName, userType, selectedAvatarFile, isConsentChecked);
+      const result = await auth.signUp(email, password, fullName, userType, selectedAvatarFile, isConsentChecked, username);
 
       // Show success and redirect
       registerForm.style.display = 'none';
@@ -513,7 +649,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('success-message').textContent = `Welcome, ${fullName}! You've joined CampusLink as a ${typeLabel}. Redirecting...`;
 
         setTimeout(() => {
-          window.location.href = 'index.html';
+          const urlParams = new URLSearchParams(window.location.search);
+          const redirectParam = urlParams.get('redirect');
+          const codeParam = urlParams.get('code');
+          let redirectPage = 'index.html';
+          if (redirectParam) {
+            redirectPage = redirectParam + (codeParam ? `?code=${codeParam}` : '');
+          }
+          window.location.href = redirectPage;
         }, 2000);
       }
     } catch (error) {
@@ -650,7 +793,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (platformRole === 'super_admin') {
             redirectPage = 'admin/index.html';
           } else if (platformRole === 'school_admin') {
-            redirectPage = 'dashboard.html';
+            const schoolObj = await auth.getSchoolForUser(user.id);
+            if (schoolObj && schoolObj.institution_type && schoolObj.institution_type !== 'school') {
+              redirectPage = 'college-dashboard.html';
+            } else {
+              redirectPage = 'dashboard.html';
+            }
           }
         }
         
@@ -664,13 +812,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         setLoading('btn-update-password-submit', false);
       }
     });
-  }
-
-  // Run on page load
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    // If DOMContentLoaded fired already, init()
   }
 
 });

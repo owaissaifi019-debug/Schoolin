@@ -3,383 +3,1133 @@
 <head>
   <meta charset="UTF-8">
   <script>
-    if (window.location.hash.includes('recovery') || window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) {
-      sessionStorage.setItem('is_recovery_flow', 'true');
-    }
+    (function() {
+      // Check for recovery hash parameters before Supabase script clears them
+      if (window.location.hash.includes('recovery') || window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) {
+        sessionStorage.setItem('is_recovery_flow', 'true');
+      }
+
+      const savedTheme = localStorage.getItem('campuslink-theme');
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      const currentTheme = savedTheme || systemTheme;
+      document.documentElement.setAttribute('data-theme', currentTheme);
+
+      const setupThemeToggle = () => {
+        const logoSelectors = [
+          '#header-logo', '.header-logo-box', '.logo', '.auth-mobile-logo',
+          '.mobile-header-brand', '.logo-brand-wrapper', '.mobile-school-logo', '.mobile-school-name'
+        ];
+        logoSelectors.forEach(selector => {
+          document.querySelectorAll(selector).forEach(logo => {
+            let lastTapTime = 0;
+            logo.addEventListener('touchstart', (e) => {
+              const now = Date.now();
+              if (now - lastTapTime < 300 && now - lastTapTime > 0) {
+                e.preventDefault();
+                const cur = document.documentElement.getAttribute('data-theme') || 'light';
+                const next = cur === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('campuslink-theme', next);
+              }
+              lastTapTime = now;
+            }, { passive: false });
+          });
+        });
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupThemeToggle);
+      } else {
+        setupThemeToggle();
+      }
+    })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login | CampusLink</title>
+  <title>Sign In | CampusLink</title>
   <meta name="description" content="Login or create your account on CampusLink — India's premier school networking platform for students, teachers, parents, alumni, and schools.">
-  <link rel="stylesheet" href="css/core/variables.css">
-  <link rel="stylesheet" href="css/core/reset.css">
-  <link rel="stylesheet" href="css/core/typography.css">
-  <link rel="stylesheet" href="css/core/utilities.css">
-  <link rel="stylesheet" href="css/core/animations.css">
-  <link rel="stylesheet" href="style.css?v=1.3">
+
+  <!-- Stitch Design Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Page CSS (no style.css — this page is fully self-contained) -->
+  <link rel="stylesheet" href="css/global.css">
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body.login-page {
+      font-family: 'Manrope', sans-serif;
+      background: #000a1f;
+      color: #f7f9fb;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Atmospheric Background ── */
+    .login-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: #000a1f;
+      overflow: hidden;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      animation: orbFloat 8s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 60vw; height: 60vw; background: rgba(0,98,227,0.18); top: -10%; left: -10%; animation-delay: 0s; }
+    .orb-2 { width: 40vw; height: 40vw; background: rgba(0,119,108,0.10); top: 20%; right: -10%; animation-delay: 2s; }
+    .orb-3 { width: 50vw; height: 50vw; background: rgba(0,98,227,0.13); bottom: -10%; left: 20%; animation-delay: 4s; }
+
+    @keyframes orbFloat {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(2%, 3%) scale(1.04); }
+    }
+
+    /* ── Top Nav ── */
+    .login-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 56px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: rgba(0,10,31,0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+    }
+
+    .login-nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 100%;
+      max-width: 1128px;
+      margin: 0 auto;
+      padding: 0 16px;
+      width: 100%;
+    }
+
+    .login-nav-brand {
+      color: var(--primary) !important;
+      font-weight: 800 !important;
+      font-size: 1.35rem !important;
+      display: flex !important;
+      align-items: center !important;
+      text-decoration: none !important;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+      letter-spacing: -0.5px !important;
+      transition: all 0.2s ease !important;
+    }
+    .login-nav-brand:hover {
+      color: var(--primary-hover) !important;
+      transform: scale(1.02) !important;
+    }
+
+    .login-nav-actions { display: flex; gap: 12px; align-items: center; }
+
+    .login-nav-btn {
+      padding: 8px 22px;
+      border-radius: 9999px;
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .login-nav-btn-ghost {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.72);
+    }
+    .login-nav-btn-ghost:hover { background: rgba(255,255,255,0.06); color: #fff; }
+
+    .login-nav-btn-primary {
+      background: #0062e3;
+      border: 1px solid #0062e3;
+      color: #fff;
+    }
+    .login-nav-btn-primary:hover { box-shadow: 0 0 22px rgba(0,98,227,0.45); }
+
+    /* ── Main Layout ── */
+    .login-main {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      padding-top: 74px;
+    }
+
+    .login-content {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 64px;
+      gap: 48px;
+      align-items: flex-start;
+    }
+
+    /* ── Left Hero Panel ── */
+    .login-hero {
+      flex: 0 0 48%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 64px 0;
+      will-change: transform;
+    }
+
+    .login-hero-eyebrow {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #b0c6ff;
+      margin-bottom: 24px;
+    }
+
+    .login-hero h1 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      font-weight: 700;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 28px;
+    }
+
+    .login-hero-desc {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.54);
+      max-width: 440px;
+      margin-bottom: 52px;
+    }
+
+    .login-features {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      margin-bottom: 52px;
+    }
+
+    .login-feature { display: flex; align-items: flex-start; gap: 20px; }
+
+    .login-feature-icon {
+      width: 52px; height: 52px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      font-size: 1.4rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .login-feature:hover .login-feature-icon {
+      transform: scale(1.1);
+      background: rgba(0,98,227,0.15);
+    }
+
+    .login-feature-text h3 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .login-feature-text p {
+      font-size: 0.84rem;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.5;
+    }
+
+    .login-stats {
+      display: flex;
+      gap: 48px;
+      padding-top: 36px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .login-stat strong {
+      display: block;
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .login-stat span {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.42);
+      margin-top: 4px;
+      display: block;
+    }
+
+    /* ── Right Auth Panel ── */
+    .login-form-panel {
+      flex: 0 0 52%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 0;
+    }
+
+    .login-form-card {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 20px;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+      background: rgba(255,255,255,0.035);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.09);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.4);
+    }
+
+    /* ── Tab Toggle ── */
+    .auth-tab-toggle {
+      display: flex;
+      background: rgba(255,255,255,0.05);
+      border-radius: 9999px;
+      padding: 4px;
+      margin-bottom: 36px;
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .auth-tab-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 9999px;
+      background: none;
+      border: none;
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: rgba(255,255,255,0.5);
+      transition: all 0.25s ease;
+    }
+
+    .auth-tab-btn.active {
+      background: #fff;
+      color: #000a1f;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+    }
+
+    /* ── Form Header ── */
+    .auth-form-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .auth-form-header h2 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .auth-form-header p {
+      font-size: 0.86rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* ── Forms ── */
+    .auth-form { display: none; }
+    .auth-form.active { display: block; }
+
+    .form-group { margin-bottom: 20px; }
+
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 8px;
+      margin-left: 2px;
+    }
+
+    .input-icon-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .input-icon-wrapper:focus-within {
+      border-color: #0062e3;
+      box-shadow: 0 0 0 3px rgba(0,98,227,0.18);
+    }
+
+    .input-icon-wrapper > svg {
+      position: absolute;
+      left: 14px;
+      color: rgba(255,255,255,0.35);
+      flex-shrink: 0;
+      pointer-events: none;
+      transition: color 0.2s;
+    }
+
+    .input-icon-wrapper:focus-within > svg { color: #0062e3; }
+
+    .input-icon-wrapper input {
+      width: 100% !important;
+      padding: 14px 44px 14px 44px !important;
+      background: transparent !important;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      color: #fff !important;
+      font-family: 'Manrope', sans-serif !important;
+      font-size: 0.9rem !important;
+    }
+
+    .input-icon-wrapper input::placeholder { color: rgba(255,255,255,0.2); }
+    .input-icon-wrapper input:-webkit-autofill,
+    .input-icon-wrapper input:-webkit-autofill:hover, 
+    .input-icon-wrapper input:-webkit-autofill:focus, 
+    .input-icon-wrapper input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 1000px #141f36 inset !important;
+      -webkit-text-fill-color: #fff !important;
+      transition: background-color 5000s ease-in-out 0s !important;
+      border: none !important;
+      outline: none !important;
+    }
+
+    .password-toggle-btn {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: rgba(255,255,255,0.35);
+      display: flex;
+      align-items: center;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+    .password-toggle-btn:hover { color: rgba(255,255,255,0.8); }
+
+    .error-msg {
+      display: block;
+      font-size: 0.75rem;
+      color: #f87171;
+      margin-top: 6px;
+      margin-left: 2px;
+    }
+
+    /* ── Forgot Link ── */
+    .auth-forgot-link {
+      display: block;
+      text-align: right;
+      font-size: 0.78rem;
+      color: #0062e3;
+      text-decoration: none;
+      margin-top: -12px;
+      margin-bottom: 24px;
+      transition: color 0.2s;
+    }
+    .auth-forgot-link:hover { color: #b0c6ff; }
+
+    /* ── Submit Buttons ── */
+    .auth-submit-btn {
+      width: 100%;
+      padding: 15px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #0062e3 0%, #004bb2 100%);
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(0,98,227,0.32);
+      transition: all 0.25s ease;
+      margin-bottom: 8px;
+    }
+    .auth-submit-btn:hover {
+      box-shadow: 0 12px 32px rgba(0,98,227,0.45);
+      transform: translateY(-1px);
+    }
+    .auth-submit-btn:active { transform: scale(0.98); }
+
+    .btn-loader { display: flex; align-items: center; gap: 8px; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Form Footer ── */
+    .auth-form-footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .auth-form-footer p { font-size: 0.84rem; color: rgba(255,255,255,0.5); }
+
+    .auth-form-footer a {
+      color: #fff;
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      transition: color 0.2s;
+    }
+    .auth-form-footer a:hover { color: #b0c6ff; }
+
+    /* ── Role Cards ── */
+    .role-card-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .role-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Manrope', sans-serif;
+    }
+
+    .role-card:hover {
+      background: rgba(0,98,227,0.12);
+      border-color: rgba(0,98,227,0.4);
+    }
+
+    .role-card.selected {
+      background: rgba(0,98,227,0.18);
+      border-color: #0062e3;
+      box-shadow: 0 0 0 2px rgba(0,98,227,0.2);
+    }
+
+    .role-card-icon { font-size: 1.2rem; }
+
+    .role-card-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+    }
+    .role-card.selected .role-card-label { color: #fff; }
+
+    /* ── Avatar Upload ── */
+    .avatar-upload-area {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px dashed rgba(255,255,255,0.2);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .avatar-upload-area:hover {
+      border-color: rgba(0,98,227,0.5);
+      background: rgba(0,98,227,0.06);
+    }
+
+    .avatar-preview {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      color: rgba(255,255,255,0.4);
+    }
+
+    .avatar-upload-text { display: flex; flex-direction: column; gap: 2px; }
+    .avatar-upload-label { font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.7); }
+    .avatar-upload-hint { font-size: 0.72rem; color: rgba(255,255,255,0.35); }
+
+    /* ── Password Strength ── */
+    .password-strength { margin-top: 10px; }
+    .strength-bar {
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    .strength-fill {
+      height: 100%;
+      width: 0;
+      border-radius: 9999px;
+      transition: width 0.3s ease, background-color 0.3s ease;
+    }
+    .strength-label { font-size: 0.72rem; color: rgba(255,255,255,0.5); }
+
+    /* ── Consent ── */
+    .consent-checkbox-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.55);
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    .consent-checkbox-label input[type="checkbox"] {
+      margin-top: 2px;
+      width: 16px; height: 16px;
+      min-width: 16px;
+      accent-color: #0062e3;
+      cursor: pointer;
+    }
+    .consent-checkbox-label a {
+      color: #0062e3;
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    /* ── Success State ── */
+    .auth-success-state {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .auth-success-icon {
+      width: 72px; height: 72px;
+      background: rgba(0,98,227,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      color: #0062e3;
+    }
+    .auth-success-state h3 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .auth-success-state p { color: rgba(255,255,255,0.55); font-size: 0.9rem; }
+
+    /* ── Error Toast ── */
+    .auth-toast {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 0.82rem;
+    }
+    .auth-toast-icon { color: #f87171; font-size: 1rem; }
+    .auth-toast-msg { flex: 1; color: #fca5a5; }
+    .auth-toast-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: rgba(255,255,255,0.4);
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+
+    /* ── Footer ── */
+    .login-footer {
+      position: relative;
+      z-index: 10;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding: 32px 64px;
+      background: rgba(0,0,0,0.15);
+      backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .login-footer p { font-size: 0.78rem; color: rgba(255,255,255,0.35); }
+
+    .login-footer-links { display: flex; gap: 24px; }
+
+    .login-footer-links a {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .login-footer-links a:hover { color: #0062e3; }
+
+    /* ── Mobile ── */
+    @media (max-width: 900px) {
+      body.login-page { padding-top: 0 !important; }
+      .login-nav { padding: 16px 24px; }
+      .login-main { padding-top: 56px !important; }
+      .login-content { flex-direction: column; padding: 0 24px; gap: 0; }
+      .login-hero { display: none; }
+      .login-form-panel {
+        flex: 1;
+        padding: 20px 0 48px !important;
+        min-height: auto !important;
+        align-items: flex-start !important;
+      }
+      .login-form-card { padding: 28px 24px; }
+      .login-footer { padding: 24px; flex-direction: column; text-align: center; }
+    }
+
+    @media (max-width: 480px) {
+      .login-nav-btn-ghost { display: none; }
+      .login-form-card { padding: 24px 18px; border-radius: 16px; }
+      .role-card-grid { grid-template-columns: repeat(2, 1fr); }
+    /* ── Forgot & Verify Forms ── */
+    .auth-verify-email-form {
+      text-align: center;
+      padding: 20px 10px;
+    }
+    .auth-verify-icon {
+      width: 72px; height: 72px;
+      background: rgba(0,98,227,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      color: #0062e3;
+      font-size: 2rem;
+    }
+    .auth-verify-email-form h2 {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .auth-verify-email-form p {
+      color: rgba(255,255,255,0.65);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+  </style>
 </head>
-<body class="auth-page-body">
+<body class="login-page">
 
-  <!-- Background Decorative Elements -->
-  <div class="auth-bg-shapes">
-    <div class="auth-bg-shape auth-bg-shape-1"></div>
-    <div class="auth-bg-shape auth-bg-shape-2"></div>
-    <div class="auth-bg-shape auth-bg-shape-3"></div>
+  <!-- Atmospheric Background -->
+  <div class="login-bg" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
   </div>
 
-  <div class="auth-page-wrapper">
-
-    <!-- Mobile-only compact sticky header -->
-    <header class="auth-mobile-header" role="banner">
-      <a href="index.html" class="auth-mobile-logo">
-        CampusLink<span class="logo-dot"></span>
+  <!-- Top Navigation -->
+  <header class="login-nav">
+    <div class="container">
+      <a href="index.html" class="login-nav-brand" id="header-logo">
+        <span class="logo-text">CampusLink</span><span style="color: var(--accent);">.</span>
       </a>
-      <span class="auth-mobile-tagline">India's School Network</span>
-    </header>
-
-    <!-- Left Panel — Branding -->
-    <div class="auth-brand-panel">
-      <a href="index.html" class="logo" style="margin-bottom: 32px;">
-        <span>CampusLink</span><span class="logo-dot"></span>
-      </a>
-      <h1>Welcome to India's Largest School Network</h1>
-      <p>Connect, collaborate, and grow with thousands of schools across the country. Whether you're a student, teacher, parent, alumni, or school representative — there's a place for you.</p>
-
-      <div class="auth-brand-features">
-        <div class="auth-feature-item">
-          <div class="auth-feature-icon">🎓</div>
-          <div>
-            <h4>For Students & Alumni</h4>
-            <p>Discover events, competitions, and connect with your school community</p>
-          </div>
-        </div>
-        <div class="auth-feature-item">
-          <div class="auth-feature-icon">👩‍🏫</div>
-          <div>
-            <h4>For Teachers</h4>
-            <p>Network with educators, find workshops, and share resources</p>
-          </div>
-        </div>
-        <div class="auth-feature-item">
-          <div class="auth-feature-icon">🏫</div>
-          <div>
-            <h4>For Parents & Schools</h4>
-            <p>Track admissions, explore school profiles, and manage your school's presence</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="auth-brand-stats">
-        <div class="auth-stat"><strong>500+</strong><span>Schools</span></div>
-        <div class="auth-stat"><strong>2,400+</strong><span>Events</span></div>
-        <div class="auth-stat"><strong>50k+</strong><span>Users</span></div>
-      </div>
+      <nav class="login-nav-actions">
+        <a href="index.html" class="login-nav-btn login-nav-btn-ghost">Back to Home</a>
+        <a href="index.html#about" class="login-nav-btn login-nav-btn-primary">Explore</a>
+      </nav>
     </div>
+  </header>
 
-    <!-- Right Panel — Auth Forms -->
-    <div class="auth-form-panel">
-      <div class="auth-form-container">
+  <!-- Main Content -->
+  <main class="login-main">
+    <div class="login-content">
 
-        <!-- Tab Toggle -->
-        <div class="auth-tab-toggle">
-          <button class="auth-tab-btn active" id="tab-login" data-tab="login">Sign In</button>
-          <button class="auth-tab-btn" id="tab-register" data-tab="register">Create Account</button>
-          <div class="auth-tab-indicator" id="auth-tab-indicator"></div>
+      <!-- Left: Hero Brand Panel -->
+      <section class="login-hero" aria-label="CampusLink platform highlights">
+        <p class="login-hero-eyebrow">India's Largest School Network</p>
+        <h1>Elevating the Future of Learning.</h1>
+        <p class="login-hero-desc">
+          Join a premier ecosystem designed for excellence. Connect with elite institutions,
+          access world-class resources, and lead the next wave of educational innovation.
+        </p>
+
+        <div class="login-features">
+          <div class="login-feature">
+            <div class="login-feature-icon">🎓</div>
+            <div class="login-feature-text">
+              <h3>For Students &amp; Alumni</h3>
+              <p>Discover events, competitions, and connect with your school community.</p>
+            </div>
+          </div>
+          <div class="login-feature">
+            <div class="login-feature-icon">👩‍🏫</div>
+            <div class="login-feature-text">
+              <h3>Professional Growth</h3>
+              <p>Network with educators, find workshops, and access exclusive development tracks.</p>
+            </div>
+          </div>
+          <div class="login-feature">
+            <div class="login-feature-icon">🏫</div>
+            <div class="login-feature-text">
+              <h3>For Parents &amp; Schools</h3>
+              <p>Track admissions, explore school profiles, and manage your school's presence.</p>
+            </div>
+          </div>
         </div>
 
-        <!-- ── Login Form ── -->
-        <form class="auth-form active" id="login-form">
-          <div class="auth-form-header">
-            <h2>Welcome back</h2>
-            <p>Sign in to access your CampusLink account</p>
+        <div class="login-stats">
+          <div class="login-stat"><strong>500+</strong><span>Schools</span></div>
+          <div class="login-stat"><strong>2,400+</strong><span>Events</span></div>
+          <div class="login-stat"><strong>50k+</strong><span>Users</span></div>
+        </div>
+      </section>
+
+      <!-- Right: Auth Form Panel -->
+      <section class="login-form-panel" aria-label="Sign in or create account">
+        <div class="login-form-card">
+
+          <!-- Error Toast -->
+          <div class="auth-toast" id="auth-toast">
+            <span class="auth-toast-icon">⚠</span>
+            <span class="auth-toast-msg" id="auth-toast-msg"></span>
+            <button class="auth-toast-close" id="auth-toast-close">&times;</button>
           </div>
 
-          <div class="form-group">
-            <label for="login-email">Email Address</label>
-            <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              <input type="email" id="login-email" placeholder="you@example.com" required autocomplete="email">
+          <!-- Tab Toggle -->
+          <div class="auth-tab-toggle" role="tablist" aria-label="Authentication tabs">
+            <button class="auth-tab-btn active" id="tab-login" data-tab="login" role="tab" aria-selected="true">Sign In</button>
+            <button class="auth-tab-btn" id="tab-register" data-tab="register" role="tab" aria-selected="false">Create Account</button>
+          </div>
+
+          <!-- Login Form -->
+          <form class="auth-form active" id="login-form">
+            <div class="auth-form-header">
+              <h2>Welcome back</h2>
+              <p>Continue your journey within the CampusLink network.</p>
             </div>
-            <span class="error-msg" id="err-login-email"></span>
-          </div>
 
-          <div class="form-group">
-            <label for="login-password">Password</label>
-            <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <input type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password" minlength="6">
-              <button type="button" class="password-toggle-btn" id="toggle-login-pw" aria-label="Toggle password visibility">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
-            </div>
-            <span class="error-msg" id="err-login-password"></span>
-          </div>
-
-          <!-- Forgot password -->
-          <a href="#" class="auth-forgot-link" id="forgot-password-link">Forgot password?</a>
-
-          <button type="submit" class="btn btn-primary auth-submit-btn" id="btn-login">
-            <span class="btn-text">Sign In</span>
-            <span class="btn-loader" style="display:none;">
-              <span class="spinner"></span>
-            </span>
-          </button>
-
-          <div class="auth-form-footer">
-            <p>Don't have an account? <a href="#" id="switch-to-register">Create one</a></p>
-          </div>
-        </form>
-
-        <!-- ── Register Form ── -->
-        <form class="auth-form" id="register-form">
-          <div class="auth-form-header">
-            <h2>Join CampusLink</h2>
-            <p>Create your account in under a minute</p>
-          </div>
-
-          <!-- Full Name -->
-          <div class="form-group">
-            <label for="reg-full-name">Full Name *</label>
-            <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              <input type="text" id="reg-full-name" placeholder="e.g. Aarav Sharma" required>
-            </div>
-            <span class="error-msg" id="err-reg-full-name"></span>
-          </div>
-
-          <!-- Email -->
-          <div class="form-group">
-            <label for="reg-email">Email Address *</label>
-            <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email">
-            </div>
-            <span class="error-msg" id="err-reg-email"></span>
-          </div>
-
-          <!-- User Type — visual role cards -->
-          <div class="form-group">
-            <label>I want to join as *</label>
-            <!-- Hidden select keeps the existing auth logic intact -->
-            <select id="reg-user-type" required style="display:none;" aria-hidden="true" tabindex="-1">
-              <option value="">Select your role</option>
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
-              <option value="parent">Parent</option>
-              <option value="alumni">Alumni</option>
-              <option value="school_representative">School Rep</option>
-            </select>
-            <!-- Visual role card grid -->
-            <div class="role-card-grid" id="role-card-grid" role="radiogroup" aria-label="Select your role">
-              <button type="button" class="role-card" data-role="student" role="radio" aria-checked="false" id="role-student">
-                <span class="role-card-icon">🎓</span>
-                <span class="role-card-label">Student</span>
-              </button>
-              <button type="button" class="role-card" data-role="teacher" role="radio" aria-checked="false" id="role-teacher">
-                <span class="role-card-icon">👩‍🏫</span>
-                <span class="role-card-label">Teacher</span>
-              </button>
-              <button type="button" class="role-card" data-role="parent" role="radio" aria-checked="false" id="role-parent">
-                <span class="role-card-icon">👪</span>
-                <span class="role-card-label">Parent</span>
-              </button>
-              <button type="button" class="role-card" data-role="alumni" role="radio" aria-checked="false" id="role-alumni">
-                <span class="role-card-icon">🎖️</span>
-                <span class="role-card-label">Alumni</span>
-              </button>
-              <button type="button" class="role-card" data-role="school_representative" role="radio" aria-checked="false" id="role-school-rep" style="grid-column: span 2;">
-                <span class="role-card-icon">🏫</span>
-                <span class="role-card-label">School Rep</span>
-              </button>
-            </div>
-            <span class="error-msg" id="err-reg-user-type"></span>
-          </div>
-
-          <!-- Profile Photo Upload -->
-          <div class="form-group">
-            <label>Profile Photo <span style="color: var(--text-muted); font-weight: 400;">(optional)</span></label>
-            <div class="avatar-upload-area" id="avatar-upload-area">
-              <div class="avatar-preview" id="avatar-preview">
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <div class="form-group">
+              <label for="login-email">Email Address</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="login-email" placeholder="you@school.edu" required autocomplete="email">
               </div>
-              <div class="avatar-upload-text">
-                <span class="avatar-upload-label">Upload photo</span>
-                <span class="avatar-upload-hint">JPG, PNG — max 2MB</span>
+              <span class="error-msg" id="err-login-email"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="login-password">Password</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password" minlength="6">
+                <button type="button" class="password-toggle-btn" id="toggle-login-pw" aria-label="Toggle password visibility">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
               </div>
-              <input type="file" id="reg-avatar" accept="image/jpeg,image/png,image/webp" style="display: none;">
+              <span class="error-msg" id="err-login-password"></span>
             </div>
-            <span class="error-msg" id="err-reg-avatar"></span>
-          </div>
 
-          <!-- Password -->
-          <div class="form-group">
-            <label for="reg-password">Password *</label>
-            <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <input type="password" id="reg-password" placeholder="Minimum 6 characters" required autocomplete="new-password" minlength="6">
-              <button type="button" class="password-toggle-btn" id="toggle-reg-pw" aria-label="Toggle password visibility">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
+            <a href="#" class="auth-forgot-link" id="forgot-password-link">Forgot password?</a>
+
+            <button type="submit" class="auth-submit-btn" id="btn-login">
+              <span class="btn-text">Sign In</span>
+              <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
+            </button>
+
+            <div class="auth-form-footer">
+              <p>New to CampusLink? <a href="#" id="switch-to-register">Join Now</a></p>
             </div>
-            <span class="error-msg" id="err-reg-password"></span>
-            <div class="password-strength" id="password-strength">
-              <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
-              <span class="strength-label" id="strength-label"></span>
+          </form>
+
+          <!-- Register Form -->
+          <form class="auth-form" id="register-form">
+            <div class="auth-form-header">
+              <h2>Join CampusLink</h2>
+              <p>Create your account in under a minute.</p>
             </div>
-          </div>
 
-          <!-- Confirm Password -->
-          <div class="form-group">
-            <label for="reg-confirm-password">Confirm Password *</label>
-            <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <input type="password" id="reg-confirm-password" placeholder="Re-enter your password" required autocomplete="new-password" minlength="6">
+            <div class="form-group">
+              <label for="reg-full-name">Full Name *</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <input type="text" id="reg-full-name" placeholder="e.g. Aarav Sharma" required>
+              </div>
+              <span class="error-msg" id="err-reg-full-name"></span>
             </div>
-            <span class="error-msg" id="err-reg-confirm-password"></span>
-          </div>
 
-          <!-- Consent Checkbox -->
-          <div class="form-group" style="margin-top: 15px; margin-bottom: 20px;">
-            <label class="consent-checkbox-label" for="reg-terms-consent" style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.88rem; color: var(--text-muted); font-weight: 500; line-height: 1.4;">
-              <input type="checkbox" id="reg-terms-consent" required style="margin-top: 3px; width: 16px; height: 16px; min-width: 16px; accent-color: var(--primary); cursor: pointer;">
-              <span>I agree to the <a href="terms-and-conditions.html" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: underline; transition: var(--transition-fast);">Terms & Conditions</a> and <a href="privacy-policy.html" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: underline; transition: var(--transition-fast);">Privacy Policy</a></span>
-            </label>
-            <span class="error-msg" id="err-reg-terms-consent" style="color: #EF4444; font-size: 0.75rem; display: none; margin-top: 4px;"></span>
-          </div>
-
-          <button type="submit" class="btn btn-accent auth-submit-btn" id="btn-register">
-            <span class="btn-text">Create Account</span>
-            <span class="btn-loader" style="display:none;">
-              <span class="spinner"></span>
-            </span>
-          </button>
-
-          <div class="auth-form-footer">
-            <p>Already have an account? <a href="#" id="switch-to-login">Sign in</a></p>
-          </div>
-        </form>
-
-        <!-- Forgot Password Form -->
-        <form class="auth-form" id="forgot-form" style="display: none;">
-          <div class="auth-form-header">
-            <h2>Reset Password</h2>
-            <p>Enter your email address and we'll send you a recovery link.</p>
-          </div>
-
-          <div class="form-group">
-            <label for="forgot-email">Email Address</label>
-            <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              <input type="email" id="forgot-email" placeholder="you@school.edu" required autocomplete="email">
+            <div class="form-group">
+              <label for="reg-username">Username *</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/></svg>
+                <input type="text" id="reg-username" placeholder="e.g. aarav_sharma" required minlength="3" maxlength="20">
+              </div>
+              <span class="error-msg" id="err-reg-username"></span>
             </div>
-            <span class="error-msg" id="err-forgot-email"></span>
+
+            <div class="form-group">
+              <label for="reg-email">Email Address *</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email">
+              </div>
+              <span class="error-msg" id="err-reg-email"></span>
+            </div>
+
+            <div class="form-group">
+              <label>I want to join as *</label>
+              <select id="reg-user-type" required style="display:none;" aria-hidden="true" tabindex="-1">
+                <option value="">Select your role</option>
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+                <option value="parent">Parent</option>
+                <option value="alumni">Alumni</option>
+                <option value="school_representative">School Rep</option>
+              </select>
+              <div class="role-card-grid" id="role-card-grid" role="radiogroup" aria-label="Select your role">
+                <button type="button" class="role-card" data-role="student" role="radio" aria-checked="false" id="role-student">
+                  <span class="role-card-icon">🎓</span>
+                  <span class="role-card-label">Student</span>
+                </button>
+                <button type="button" class="role-card" data-role="teacher" role="radio" aria-checked="false" id="role-teacher">
+                  <span class="role-card-icon">👩‍🏫</span>
+                  <span class="role-card-label">Teacher</span>
+                </button>
+                <button type="button" class="role-card" data-role="parent" role="radio" aria-checked="false" id="role-parent">
+                  <span class="role-card-icon">👪</span>
+                  <span class="role-card-label">Parent</span>
+                </button>
+                <button type="button" class="role-card" data-role="alumni" role="radio" aria-checked="false" id="role-alumni">
+                  <span class="role-card-icon">🎖️</span>
+                  <span class="role-card-label">Alumni</span>
+                </button>
+                <button type="button" class="role-card" data-role="school_representative" role="radio" aria-checked="false" id="role-school-rep" style="grid-column: span 2;">
+                  <span class="role-card-icon">🏫</span>
+                  <span class="role-card-label">School Rep</span>
+                </button>
+              </div>
+              <span class="error-msg" id="err-reg-user-type"></span>
+            </div>
+
+            <div class="form-group">
+              <label>Profile Photo <span style="color: rgba(255,255,255,0.3); font-weight: 400;">(optional)</span></label>
+              <div class="avatar-upload-area" id="avatar-upload-area">
+                <div class="avatar-preview" id="avatar-preview">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div class="avatar-upload-text">
+                  <span class="avatar-upload-label">Upload photo</span>
+                  <span class="avatar-upload-hint">JPG, PNG — max 2MB</span>
+                </div>
+                <input type="file" id="reg-avatar" accept="image/jpeg,image/png,image/webp" style="display: none;">
+              </div>
+              <span class="error-msg" id="err-reg-avatar"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="reg-password">Password *</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="reg-password" placeholder="Minimum 6 characters" required autocomplete="new-password" minlength="6">
+                <button type="button" class="password-toggle-btn" id="toggle-reg-pw" aria-label="Toggle password visibility">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <span class="error-msg" id="err-reg-password"></span>
+              <div class="password-strength" id="password-strength">
+                <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+                <span class="strength-label" id="strength-label"></span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="reg-confirm-password">Confirm Password *</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="reg-confirm-password" placeholder="Re-enter your password" required autocomplete="new-password" minlength="6">
+              </div>
+              <span class="error-msg" id="err-reg-confirm-password"></span>
+            </div>
+
+            <div class="form-group" style="margin-top: 12px; margin-bottom: 20px;">
+              <label class="consent-checkbox-label" for="reg-terms-consent">
+                <input type="checkbox" id="reg-terms-consent" required>
+                <span>I agree to the <a href="terms-and-conditions.html" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a> and <a href="privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a></span>
+              </label>
+              <span class="error-msg" id="err-reg-terms-consent" style="display: none;"></span>
+            </div>
+
+            <button type="submit" class="auth-submit-btn" id="btn-register">
+              <span class="btn-text">Create Account</span>
+              <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
+            </button>
+
+            <div class="auth-form-footer">
+              <p>Already have an account? <a href="#" id="switch-to-login">Sign in</a></p>
+            </div>
+          </form>
+
+          <!-- Forgot Password Form -->
+          <form class="auth-form" id="forgot-form" style="display: none;">
+            <div class="auth-form-header">
+              <h2>Reset Password</h2>
+              <p>Enter your email address and we'll send you a recovery link.</p>
+            </div>
+
+            <div class="form-group">
+              <label for="forgot-email">Email Address</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="forgot-email" placeholder="you@school.edu" required autocomplete="email">
+              </div>
+              <span class="error-msg" id="err-forgot-email"></span>
+            </div>
+
+            <button type="submit" class="auth-submit-btn" id="btn-forgot-submit">
+              <span class="btn-text">Send Reset Link</span>
+              <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
+            </button>
+
+            <div class="auth-form-footer">
+              <p><a href="#" id="forgot-back-to-login">Back to Sign In</a></p>
+            </div>
+          </form>
+
+          <!-- Verify Email Window / Info Panel -->
+          <div class="auth-verify-email-form" id="verify-email-window" style="display: none;">
+            <div class="auth-verify-icon">📬</div>
+            <h2>Verify Your Email</h2>
+            <p>
+              We've sent a verification email to <strong id="verify-email-address" style="color: #fff;">your email</strong>.<br><br>
+              Please check your inbox (and spam folder) and click the activation link to access your account.
+            </p>
+
+            <button type="button" class="auth-submit-btn" id="btn-resend-verification" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); box-shadow: none; margin-bottom: 16px;">
+              <span class="btn-text">Resend Verification Email</span>
+              <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
+            </button>
+
+            <button type="button" class="auth-submit-btn" id="verify-back-to-login">
+              <span>Back to Sign In</span>
+            </button>
           </div>
 
-          <button type="submit" class="auth-submit-btn" id="btn-forgot-submit">
-            <span class="btn-text">Send Reset Link</span>
-            <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
-          </button>
+          <!-- Update Password Form -->
+          <form class="auth-form" id="update-password-form" style="display: none;">
+            <div class="auth-form-header">
+              <h2>Create New Password</h2>
+              <p>Enter your new password below to secure your account.</p>
+            </div>
 
-          <div class="auth-form-footer">
-            <p><a href="#" id="forgot-back-to-login">Back to Sign In</a></p>
+            <div class="form-group">
+              <label for="update-password">New Password</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="update-password" placeholder="Min. 6 characters" required autocomplete="new-password">
+              </div>
+              <span class="error-msg" id="err-update-password"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="update-confirm-password">Confirm Password</label>
+              <div class="input-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="update-confirm-password" placeholder="Repeat new password" required autocomplete="new-password">
+              </div>
+              <span class="error-msg" id="err-update-confirm-password"></span>
+            </div>
+
+            <button type="submit" class="auth-submit-btn" id="btn-update-password-submit">
+              <span class="btn-text">Update Password</span>
+              <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
+            </button>
+          </form>
+
+          <!-- Success State -->
+          <div class="auth-success-state" id="auth-success-state" style="display:none;">
+            <div class="auth-success-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <h3 id="success-title">Account Created!</h3>
+            <p id="success-message">Welcome to CampusLink. Redirecting you...</p>
           </div>
-        </form>
 
-        <!-- Verify Email Window / Info Panel -->
-        <div class="auth-verify-email-form" id="verify-email-window" style="display: none;">
-          <div class="auth-verify-icon">📬</div>
-          <h2>Verify Your Email</h2>
-          <p>
-            We've sent a verification email to <strong id="verify-email-address" style="color: #fff;">your email</strong>.<br><br>
-            Please check your inbox (and spam folder) and click the activation link to access your account.
-          </p>
-
-          <button type="button" class="auth-submit-btn" id="btn-resend-verification" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); box-shadow: none; margin-bottom: 16px;">
-            <span class="btn-text">Resend Verification Email</span>
-            <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
-          </button>
-
-          <button type="button" class="auth-submit-btn" id="verify-back-to-login">
-            <span>Back to Sign In</span>
-          </button>
         </div>
-
-        <!-- Update Password Form -->
-        <form class="auth-form" id="update-password-form" style="display: none;">
-          <div class="auth-form-header">
-            <h2>Create New Password</h2>
-            <p>Enter your new password below to secure your account.</p>
-          </div>
-
-          <div class="form-group">
-            <label for="update-password">New Password</label>
-            <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <input type="password" id="update-password" placeholder="Min. 6 characters" required autocomplete="new-password">
-            </div>
-            <span class="error-msg" id="err-update-password"></span>
-          </div>
-
-          <div class="form-group">
-            <label for="update-confirm-password">Confirm Password</label>
-            <div class="input-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <input type="password" id="update-confirm-password" placeholder="Repeat new password" required autocomplete="new-password">
-            </div>
-            <span class="error-msg" id="err-update-confirm-password"></span>
-          </div>
-
-          <button type="submit" class="auth-submit-btn" id="btn-update-password-submit">
-            <span class="btn-text">Update Password</span>
-            <span class="btn-loader" style="display:none;"><span class="spinner"></span></span>
-          </button>
-        </form>
-
-        <!-- ── Success State ── -->
-        <div class="auth-success-state" id="auth-success-state" style="display:none;">
-          <div class="auth-success-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          </div>
-          <h3 id="success-title">Account Created!</h3>
-          <p id="success-message">Welcome to CampusLink. Redirecting you...</p>
-        </div>
-
-        <!-- ── Error Toast ── -->
-        <div class="auth-toast" id="auth-toast" style="display:none;">
-          <span class="auth-toast-icon">⚠</span>
-          <span class="auth-toast-msg" id="auth-toast-msg"></span>
-          <button class="auth-toast-close" id="auth-toast-close">&times;</button>
-        </div>
-
-      </div>
+      </section>
     </div>
-  </div>
+  </main>
 
-  <!-- Supabase CDN -->
+  <!-- Footer -->
+  <footer class="login-footer">
+    <p>© 2026 CampusLink India. Cultivating the elite educational landscape.</p>
+    <nav class="login-footer-links">
+      <a href="privacy-policy.html">Privacy</a>
+      <a href="terms-and-conditions.html">Terms</a>
+      <a href="about.html">About</a>
+    </nav>
+  </footer>
+
+  <!-- Supabase + Auth Scripts (unchanged) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="auth.js"></script>
   <script src="login.js"></script>
-  <!-- Phase 2: Role card UI + Forgot Password UI (no auth logic changes) -->
+
   <script>
-    /* ── Role Card Grid ── */
+    /* Role Card Grid */
     (function () {
       const grid = document.getElementById('role-card-grid');
       const hiddenSelect = document.getElementById('reg-user-type');
       if (!grid || !hiddenSelect) return;
-
       grid.querySelectorAll('.role-card').forEach(function (card) {
         card.addEventListener('click', function () {
-          // Clear all
           grid.querySelectorAll('.role-card').forEach(function (c) {
             c.classList.remove('selected');
             c.setAttribute('aria-checked', 'false');
           });
-          // Select clicked
           card.classList.add('selected');
           card.setAttribute('aria-checked', 'true');
-          // Sync hidden select (keeps login.js validation intact)
           hiddenSelect.value = card.getAttribute('data-role');
-          // Clear validation error if any
           var errEl = document.getElementById('err-reg-user-type');
           if (errEl) errEl.style.display = 'none';
         });
@@ -387,6 +1137,106 @@
     })();
 
     /* Forgot Password is now handled in login.js */
+  </script>
+
+  <!-- Parallax Scroll: Only on Create Account, right side moves faster to meet left at bottom -->
+  <script>
+    (function() {
+      var hero = document.querySelector('.login-hero');
+      var formPanel = document.querySelector('.login-form-panel');
+      var tabRegister = document.getElementById('tab-register');
+      if (!hero || !formPanel || !tabRegister) return;
+
+      // Add hardware acceleration to both panels
+      hero.style.willChange = 'transform';
+      formPanel.style.willChange = 'transform';
+
+      var cachedL = 0;
+      var cachedR = 0;
+
+      function updateHeights() {
+        // Reset transforms temporarily to read natural layout heights
+        hero.style.transform = 'none';
+        formPanel.style.transform = 'none';
+        
+        cachedL = hero.offsetHeight;
+        cachedR = formPanel.offsetHeight;
+      }
+
+      var ticking = false;
+
+      function applyParallax() {
+        // Only apply parallax if "Create Account" tab is active
+        var isCreateAccountActive = tabRegister.classList.contains('active');
+        if (!isCreateAccountActive) {
+          hero.style.transform = 'none';
+          formPanel.style.transform = 'none';
+          ticking = false;
+          return;
+        }
+
+        if (!cachedL || !cachedR) {
+          updateHeights();
+        }
+
+        var scrollY = window.scrollY || window.pageYOffset;
+        var maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+
+        if (maxScroll <= 0) {
+          hero.style.transform = 'none';
+          formPanel.style.transform = 'none';
+          ticking = false;
+          return;
+        }
+
+        // Percentage of page scrolled (0 to 1)
+        var scrollFraction = Math.min(1, Math.max(0, scrollY / maxScroll));
+
+        // In Create Account, the form panel (Right) is taller.
+        // To avoid empty space at the bottom of the page:
+        // - Right panel (taller) scrolls normally at 1x.
+        // - Left panel (shorter/hero) scrolls slower by translating DOWN.
+        if (cachedR > cachedL) {
+          var diff = cachedR - cachedL;
+          hero.style.transform = 'translateY(' + (scrollFraction * diff) + 'px)';
+          formPanel.style.transform = 'none';
+        } else {
+          hero.style.transform = 'none';
+          formPanel.style.transform = 'none';
+        }
+
+        ticking = false;
+      }
+
+      // Invalidate heights on window resize
+      window.addEventListener('resize', function() {
+        updateHeights();
+        applyParallax();
+      });
+
+      // Update immediately when user clicks tabs or toggle links (which change heights)
+      document.querySelectorAll('.auth-tab-btn, #switch-to-register, #switch-to-login').forEach(function(el) {
+        el.addEventListener('click', function() {
+          setTimeout(function() {
+            updateHeights();
+            applyParallax();
+          }, 150); // slight delay to allow CSS transitions to finish and DOM to update layout
+        });
+      });
+
+      window.addEventListener('scroll', function() {
+        if (!ticking) {
+          requestAnimationFrame(applyParallax);
+          ticking = true;
+        }
+      }, { passive: true });
+
+      // Initial layout measure and alignment
+      setTimeout(function() {
+        updateHeights();
+        applyParallax();
+      }, 200);
+    })();
   </script>
 
 </body>
